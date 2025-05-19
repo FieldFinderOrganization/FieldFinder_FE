@@ -381,22 +381,24 @@ const Profile: React.FC = () => {
   ) => {
     try {
       if (isEditMode && pitchToEdit) {
-        const updatedPitch = await updatePitch(pitchToEdit.pitchId, {
-          ...formData,
-          providerAddressId: pitchToEdit.providerAddressId,
-        });
-        setPitches(
-          pitches.map((p) =>
-            p.pitchId === updatedPitch.pitchId ? updatedPitch : p
-          )
-        );
-        toast.success("Chỉnh sửa sân thành công");
       } else if (selectedAreaId) {
+        const isNameDuplicate = pitches.some((p) => p.name === formData.name);
+        if (isNameDuplicate) {
+          toast.error("Tên sân đã tồn tại trong khu vực này");
+          return;
+        }
         const newPitch = await createPitch({
           ...formData,
           providerAddressId: selectedAreaId,
         });
         setPitches([...pitches, newPitch]);
+        setAreas((prevAreas) =>
+          prevAreas.map((area) =>
+            area.id === selectedAreaId
+              ? { ...area, count: area.count + 1 }
+              : area
+          )
+        );
         toast.success("Thêm sân thành công");
       }
       setOpenPitchModal(false);
@@ -409,14 +411,18 @@ const Profile: React.FC = () => {
   const handleDeleteConfirm = async () => {
     if (selectedPitchIds.length === 1) {
       const pitchId = selectedPitchIds[0];
-
       try {
         await deletePitch(pitchId);
         toast.success("Xóa sân thành công!");
-
         const updatedPitches = pitches.filter((p) => p.pitchId !== pitchId);
         setPitches(updatedPitches);
-
+        setAreas((prevAreas) =>
+          prevAreas.map((area) =>
+            area.id === selectedAreaId
+              ? { ...area, count: area.count - 1 }
+              : area
+          )
+        );
         setOpenDeleteModal(false);
         setSelectedPitchIds([]);
       } catch (error) {
@@ -997,7 +1003,7 @@ const Profile: React.FC = () => {
                           </div>
                           <div className="footer flex flex-col gap-y-[0.2rem] text-gray-600 text-[0.8rem] px-[1rem] py-[0.5rem] h-fit w-full">
                             <p>Giá: {pitch.price}</p>
-                            <p>Mô tả: {pitch.description}</p>
+                            <p>Mô tả: {pitch.description || "Không có"}</p>
                           </div>
                         </CardContent>
                       </Card>
@@ -1071,9 +1077,7 @@ const Profile: React.FC = () => {
 
       <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
         <DialogTitle>Xác nhận xóa sân</DialogTitle>
-        <DialogContent>
-          Bạn có chắc chắn muốn xóa {selectedPitchIds.length} sân đã chọn?
-        </DialogContent>
+        <DialogContent>Bạn có chắc chắn muốn xóa sân đã chọn?</DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteModal(false)}>Hủy</Button>
           <Button color="error" onClick={handleDeleteConfirm}>

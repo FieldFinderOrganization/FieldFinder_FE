@@ -22,9 +22,8 @@ import GroupIcon from "@mui/icons-material/Group";
 import { FaSearch } from "react-icons/fa";
 import { motion } from "framer-motion";
 
-// Định nghĩa interface cho props
 interface SearchBarProps {
-  inView: boolean; // Khai báo prop inView là boolean
+  inView: boolean;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
@@ -36,11 +35,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
     "456 Lê Lợi",
   ];
 
-  const fieldTypes = ["Sân 3", "Sân 7", "Sân 11"];
+  const fieldTypes = ["Sân 5", "Sân 7", "Sân 11"];
 
   const [location, setLocation] = useState<string | null>(null);
   const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs("2025-03-10"));
-  const [fieldType, setFieldType] = useState<string>("Sân 3");
+  const [fieldType, setFieldType] = useState<string>("Sân 5");
 
   const handleSearch = () => {
     console.log("Tìm kiếm:", { location, date, fieldType });

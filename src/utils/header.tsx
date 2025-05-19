@@ -100,9 +100,6 @@ const Header: React.FC = () => {
 
   return (
     <div
-      // className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      //   isScrolled ? "bg-white shadow-md h-[80px]" : "bg-transparent h-[80px]"
-      // } flex items-center`}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md h-[80px]
       flex items-center`}
     >
