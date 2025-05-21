@@ -49,3 +49,8 @@ export const updatePitch = async (
 export const deletePitch = async (pitchId: string): Promise<void> => {
   await axios.delete(`${baseURL}/${pitchId}`);
 };
+
+export const getAllPitches = async (): Promise<PitchResponseDTO[]> => {
+  const response = await axios.get<PitchResponseDTO[]>(`${baseURL}`);
+  return response.data;
+};

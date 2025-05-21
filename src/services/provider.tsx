@@ -97,3 +97,10 @@ export const deleteAddress = async (
 ): Promise<void> => {
   await axios.delete(`${baseURL}/api/provider-addresses/${providerAddressId}`);
 };
+
+export const getAllAddresses = async (): Promise<providerAddress[]> => {
+  const response = await axios.get<providerAddress[]>(
+    `${baseURL}/api/provider-addresses`
+  );
+  return response.data;
+};
