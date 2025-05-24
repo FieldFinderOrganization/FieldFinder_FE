@@ -1037,7 +1037,7 @@ const Home: React.FC = () => {
           >
             Nhận xét
           </Typography>
-          <div className="flex items-end icons absolute right-1 gap-[1.5rem]">
+          <div className="flex items-end icons absolute right-4 gap-[1.5rem]">
             <div
               className={`rounded-full bg-gray-200 flex items-center justify-center ${
                 currentPage === 0 ? "opacity-50" : "cursor-pointer"
