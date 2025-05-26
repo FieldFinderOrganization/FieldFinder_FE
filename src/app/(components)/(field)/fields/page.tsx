@@ -8,6 +8,7 @@ import { CiStar } from "react-icons/ci";
 import { useEffect, useState } from "react";
 import { getAllAddresses } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
+import { useRouter } from "next/navigation";
 
 interface Address {
   providerAddressId: string;
@@ -24,6 +25,7 @@ interface Pitch {
 }
 
 const FieldLists: React.FC = () => {
+  const router = useRouter();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null
@@ -101,6 +103,23 @@ const FieldLists: React.FC = () => {
     ).length;
   };
 
+  const handlePitchClick = (pitch: Pitch) => {
+    const address =
+      addresses.find(
+        (addr) => addr.providerAddressId === pitch.providerAddressId
+      )?.address || "Không xác định";
+    const query = new URLSearchParams({
+      id: pitch.pitchId,
+      name: pitch.name,
+      type: pitch.type,
+      price: pitch.price.toString(),
+      description: pitch.description || "Không có mô tả",
+      address: address,
+      rating: "4.5",
+    }).toString();
+    router.push(`fields/fieldDetail?${query}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
@@ -169,6 +188,7 @@ const FieldLists: React.FC = () => {
                 <Card
                   key={pitch.pitchId}
                   className="w-[250px] h-[220px] bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer"
+                  onClick={() => handlePitchClick(pitch)}
                 >
                   <img
                     src={f.src}

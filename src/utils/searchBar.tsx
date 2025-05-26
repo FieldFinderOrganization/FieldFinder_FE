@@ -38,20 +38,19 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
   const fieldTypes = ["Sân 5", "Sân 7", "Sân 11"];
 
   const [location, setLocation] = useState<string | null>(null);
-  const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs("2025-03-10"));
+  const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
   const [fieldType, setFieldType] = useState<string>("Sân 5");
 
   const handleSearch = () => {
     console.log("Tìm kiếm:", { location, date, fieldType });
   };
 
-  // Định nghĩa variants cho staggered animation
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.15, // Thời gian trễ giữa các phần tử con
+        staggerChildren: 0.15,
       },
     },
   };
@@ -112,6 +111,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
                 sx: { width: { xs: "100%", sm: "200px" } },
               },
             }}
+            disablePast
           />
         </LocalizationProvider>
       </motion.div>
