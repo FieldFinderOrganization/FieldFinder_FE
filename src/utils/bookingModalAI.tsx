@@ -26,7 +26,7 @@ interface BookingModalProps {
   resetSelectedSlots: () => void;
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({
+const BookingModalAI: React.FC<BookingModalProps> = ({
   open,
   onClose,
   fieldData,
@@ -241,4 +241,4 @@ const BookingModal: React.FC<BookingModalProps> = ({
   );
 };
 
-export default BookingModal;
+export default BookingModalAI;

@@ -24,3 +24,18 @@ export const getBookingSlot = async (pitchId: string, date: string) => {
   });
   return response.data;
 };
+
+export const getAvailablePitches = async (date: string, slots: number[]) => {
+  const params = new URLSearchParams();
+  params.append("date", date);
+
+  slots.forEach((slot) => {
+    params.append("slots", slot.toString());
+  });
+
+  const response = await axios.get(`${baseURL}/available-pitches`, {
+    params,
+  });
+
+  return response.data;
+};

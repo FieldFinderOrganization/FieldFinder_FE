@@ -8,7 +8,7 @@ import { CiStar } from "react-icons/ci";
 import { useEffect, useState } from "react";
 import { getAllAddresses } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface Address {
   providerAddressId: string;
@@ -30,77 +30,99 @@ const FieldLists: React.FC = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
     null
   );
-  const [allPitches, setAllPitches] = useState<Pitch[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filteredAddresses, setFilteredAddresses] = useState<Address[]>([]);
-  const [filteredPitches, setFilteredPitches] = useState<Pitch[]>([]);
+  const [basePitches, setBasePitches] = useState<Pitch[]>([]);
+
+  const searchParams = useSearchParams();
+  const pitchIdsParam = searchParams.get("pitchIds");
+  const availablePitchIds = pitchIdsParam ? pitchIdsParam.split(",") : [];
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const addressesData = await getAllAddresses();
-        const pitchesData = await getAllPitches();
+        const [addressesData, pitchesData] = await Promise.all([
+          getAllAddresses(),
+          getAllPitches(),
+        ]);
+
         setAddresses(addressesData);
-        setAllPitches(pitchesData);
-        setFilteredAddresses(addressesData);
-        if (addressesData.length > 0) {
-          setSelectedAddressId(addressesData[0].providerAddressId);
-        }
+
+        const initialPitches = pitchIdsParam
+          ? pitchesData.filter((pitch) =>
+              availablePitchIds.includes(pitch.pitchId)
+            )
+          : pitchesData;
+
+        setBasePitches(initialPitches);
+        setFilteredAddresses(
+          getAddressesForPitches(addressesData, initialPitches)
+        );
+
+        updateSelectedAddress(
+          getAddressesForPitches(addressesData, initialPitches)
+        );
+
+        setSearchTerm("");
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Lỗi khi tải dữ liệu:", error);
       }
     };
+
     fetchData();
-  }, []);
+  }, [pitchIdsParam]);
+
+  const getAddressesForPitches = (addresses: Address[], pitches: Pitch[]) => {
+    const addressIds = [
+      ...new Set(pitches.map((pitch) => pitch.providerAddressId)),
+    ];
+    return addresses.filter((addr) =>
+      addressIds.includes(addr.providerAddressId)
+    );
+  };
+
+  const updateSelectedAddress = (addresses: Address[]) => {
+    setSelectedAddressId(
+      addresses.length > 0 ? addresses[0].providerAddressId : null
+    );
+  };
 
   useEffect(() => {
-    if (searchTerm) {
-      const lowercasedTerm = searchTerm.toLowerCase();
-      const filtered = allPitches.filter((pitch) =>
-        pitch.name.toLowerCase().includes(lowercasedTerm)
-      );
-      setFilteredPitches(filtered);
-      const filteredAddressIds = [
-        ...new Set(filtered.map((pitch) => pitch.providerAddressId)),
-      ];
-      const filteredAddrs = addresses.filter((addr) =>
-        filteredAddressIds.includes(addr.providerAddressId)
-      );
-      setFilteredAddresses(filteredAddrs);
-      if (filteredAddrs.length > 0) {
-        setSelectedAddressId(filteredAddrs[0].providerAddressId);
-      } else {
-        setSelectedAddressId(null);
-      }
-    } else {
-      setFilteredPitches(allPitches);
-      setFilteredAddresses(addresses);
-      if (addresses.length > 0) {
-        setSelectedAddressId(addresses[0].providerAddressId);
-      }
-    }
-  }, [searchTerm, allPitches, addresses]);
+    const filtered = searchTerm
+      ? basePitches.filter((pitch) =>
+          pitch.name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : basePitches;
 
-  useEffect(() => {
-    if (selectedAddressId) {
-      const filtered = filteredPitches.filter(
-        (pitch) => pitch.providerAddressId === selectedAddressId
-      );
-      setPitches(filtered);
-    } else {
-      setPitches([]);
+    const addressesForPitches = getAddressesForPitches(addresses, filtered);
+    setFilteredAddresses(addressesForPitches);
+
+    if (
+      !selectedAddressId ||
+      !addressesForPitches.some(
+        (addr) => addr.providerAddressId === selectedAddressId
+      )
+    ) {
+      updateSelectedAddress(addressesForPitches);
     }
-  }, [selectedAddressId, filteredPitches]);
+
+    const pitchesForSelectedAddress = selectedAddressId
+      ? filtered.filter(
+          (pitch) => pitch.providerAddressId === selectedAddressId
+        )
+      : [];
+
+    setPitches(pitchesForSelectedAddress);
+  }, [searchTerm, basePitches, addresses, selectedAddressId]);
 
   const handleAreaClick = (addressId: string) => {
     setSelectedAddressId(addressId);
   };
 
   const getPitchCount = (addressId: string) => {
-    return filteredPitches.filter(
-      (pitch) => pitch.providerAddressId === addressId
-    ).length;
+    return basePitches.filter((pitch) => pitch.providerAddressId === addressId)
+      .length;
   };
 
   const handlePitchClick = (pitch: Pitch) => {
@@ -108,16 +130,18 @@ const FieldLists: React.FC = () => {
       addresses.find(
         (addr) => addr.providerAddressId === pitch.providerAddressId
       )?.address || "Không xác định";
-    const query = new URLSearchParams({
-      id: pitch.pitchId,
-      name: pitch.name,
-      type: pitch.type,
-      price: pitch.price.toString(),
-      description: pitch.description || "Không có mô tả",
-      address: address,
-      rating: "4.5",
-    }).toString();
-    router.push(`fields/fieldDetail?${query}`);
+
+    router.push(
+      `fields/fieldDetail?${new URLSearchParams({
+        id: pitch.pitchId,
+        name: pitch.name,
+        type: pitch.type,
+        price: pitch.price.toString(),
+        description: pitch.description || "Không có mô tả",
+        address: address,
+        rating: "4.5",
+      }).toString()}`
+    );
   };
 
   return (
