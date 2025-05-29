@@ -10,6 +10,7 @@ interface ChatMessage {
   pitchId?: string;
   bookingDate?: string;
   slotList?: number[];
+  pitchType?: string;
 }
 
 const AIChat: React.FC = () => {
@@ -38,11 +39,12 @@ const AIChat: React.FC = () => {
 
       if (Array.isArray(data)) {
         const aiMessages: ChatMessage[] = data.map((item: any) => ({
-          sender: "ai" as const,
-          text: `Pitch ID: ${item.pitchId}`,
+          sender: "ai",
+          text: `Sân: ${item.name}\nGiá: ${item.price}\nMô tả: ${item.description}`,
           pitchId: item.pitchId,
           bookingDate: item.bookingDate,
           slotList: item.slotList,
+          pitchType: item.pitchType,
         }));
 
         setMessages((prev) => [...prev, ...aiMessages]);
@@ -75,11 +77,12 @@ const AIChat: React.FC = () => {
           {messages.map((msg, index) => (
             <div key={index} className={`chat-message ${msg.sender}`}>
               <div className="message-text">
-                {msg.text}
+                <div style={{ whiteSpace: "pre-line" }}>{msg.text}</div>
                 {msg.sender === "ai" && msg.bookingDate && (
                   <>
-                    <div>Ngày: {msg.bookingDate}</div>
-                    <div>Khung giờ: {msg.slotList?.join(", ")}</div>
+                    <div><strong>Ngày:</strong> {msg.bookingDate}</div>
+                    <div><strong>Khung giờ:</strong> {msg.slotList?.join(", ")}</div>
+                    <div><strong>Loại sân:</strong> {msg.pitchType}</div>
                     <button
                       className="book-button"
                       onClick={() => alert(`Đặt sân: ${msg.pitchId}`)}
