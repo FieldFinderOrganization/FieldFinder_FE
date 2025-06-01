@@ -22,16 +22,12 @@ interface BookingModalProps {
   open: boolean;
   onClose: () => void;
   fieldData: FieldData;
-  onBookingSuccess: () => void;
-  resetSelectedSlots: () => void;
 }
 
 const BookingModalAI: React.FC<BookingModalProps> = ({
   open,
   onClose,
   fieldData,
-  onBookingSuccess,
-  resetSelectedSlots,
 }) => {
   const user = useSelector((state: any) => state.auth.user);
 
@@ -90,14 +86,10 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
         return;
       }
 
-      const formattedDate = dayjs(fieldData.date, "DD/MM/YYYY").format(
-        "YYYY-MM-DD"
-      );
-
       const payload: BookingRequestDTO = {
         pitchId: fieldData.id,
         userId: user.userId,
-        bookingDate: formattedDate,
+        bookingDate: fieldData.date,
         bookingDetails: bookingDetails,
       };
 
@@ -105,8 +97,6 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
       toast.success("Đặt sân thành công!");
 
       onClose();
-      resetSelectedSlots();
-      onBookingSuccess();
     } catch (error) {
       console.error("Booking error:", error);
       toast.error("Đặt sân thất bại!");
@@ -157,7 +147,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
             <div className="flex items-center justify-between w-full">
               <EventIcon className="text-[1.5rem]" />
               <div className="field-info text-[1rem] flex-1 text-right">
-                {dayAbbr}, {fieldData.date}
+                {dayAbbr}, {dateObj.format("DD/MM/YYYY")}
               </div>
             </div>
             <div className="flex items-center justify-between w-full">

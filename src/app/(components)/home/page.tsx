@@ -587,7 +587,7 @@ const Home: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
-      className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]"
+      className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px] "
     >
       <Header />
       <div className="best-locations flex items-center justify-center flex-col sm:flex-row gap-[0.5rem] sm:gap-[1rem] max-w-7xl">
@@ -711,7 +711,7 @@ const Home: React.FC = () => {
           duration: 0.8,
           ease: "easeOut",
         }}
-        className="why-mtkicks max-w-7xl mt-[2rem] space-y-[2rem]"
+        className="why-mtkicks max-w-7xl mt-[2rem] space-y-[2rem] mx-auto"
       >
         <Typography
           variant="h3"
@@ -723,7 +723,7 @@ const Home: React.FC = () => {
         >
           Tại sao là MTKICKs
         </Typography>
-        <div className="card1 flex items-center flex-wrap mx-auto gap-4">
+        <div className="card1 flex items-center flex-wrap mx-auto gap-20">
           {cardData.slice(0, 3).map((card, index) => (
             <Card
               key={index}
@@ -790,7 +790,7 @@ const Home: React.FC = () => {
             </Card>
           ))}
         </div>
-        <div className="card2 flex items-center flex-wrap mx-auto gap-4">
+        <div className="card2 flex items-center flex-wrap mx-auto gap-20">
           {cardData.slice(3, 6).map((card, index) => (
             <Card
               key={index + 3}
@@ -941,7 +941,7 @@ const Home: React.FC = () => {
       </div>
       <div
         ref={discountsRef}
-        className={`discounts mt-[2rem] ${discountsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
+        className={`discounts mt-[2rem] ${discountsInView ? "animate-fadeSlideUp" : "opacity-0 "}`}
       >
         <Typography
           variant="h3"
@@ -960,11 +960,12 @@ const Home: React.FC = () => {
           customLeftArrow={<CustomLeftArrowDis />}
           customRightArrow={<CustomRightArrowDis />}
           showDots={false}
+          className="max-w-7xl mx-auto"
         >
           {slides.map((slide, slideIndex) => (
             <div
               key={slideIndex}
-              className="flex items-center flex-wrap mx-auto gap-4 justify-center"
+              className="flex items-center flex-wrap justify-center"
             >
               {slide.map((discount, index) => (
                 <Card
@@ -1037,7 +1038,7 @@ const Home: React.FC = () => {
           >
             Nhận xét
           </Typography>
-          <div className="flex items-end icons absolute right-4 gap-[1.5rem]">
+          <div className="flex items-end icons absolute right-1 gap-[1.5rem]">
             <div
               className={`rounded-full bg-gray-200 flex items-center justify-center ${
                 currentPage === 0 ? "opacity-50" : "cursor-pointer"
@@ -1059,7 +1060,7 @@ const Home: React.FC = () => {
           </div>
         </div>
         <div className="reviews-cards space-y-[2rem]">
-          <div className="mx-auto gap-4 flex items-center flex-wrap max-7-xl">
+          <div className="mx-auto grid grid-cols-4 max-7-xl space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
             {currentReviews.map((review, index) => (
               <Card
                 key={index}
@@ -1098,7 +1099,7 @@ const Home: React.FC = () => {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       display: "-webkit-box",
-                      WebkitLineClamp: 3, // Giới hạn tối đa 3 dòng
+                      WebkitLineClamp: 3,
                       WebkitBoxOrient: "vertical",
                       marginTop: "0.5rem",
                     }}
