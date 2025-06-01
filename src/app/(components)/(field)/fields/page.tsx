@@ -147,7 +147,7 @@ const FieldLists: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
-      <div className="main flex items-start justify-center gap-x-[2rem] max-w-7xl w-full px-4 mt-[1rem]">
+      <div className="main flex items-start justify-center gap-x-[2rem] max-w-7xl w-full px-4 mt-[1rem] mx-auto">
         <div className="search-tabs w-[20%] flex flex-col gap-y-[1rem] max-w-[250px] bg-white rounded-[10px] shadow-md px-[1.5rem] py-[1rem]">
           <div className="input-container relative">
             <FaSearch className="absolute left-[1rem] top-[50%] translate-y-[-50%] text-[#aaa] cursor-pointer" />

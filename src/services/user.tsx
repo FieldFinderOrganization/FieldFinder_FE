@@ -14,3 +14,8 @@ export const updateUser = async (
 ): Promise<User> => {
   return axios.put(`${baseURL}/users/${userId}`, userObj);
 };
+
+export const getAllUsers = async (): Promise<User[]> => {
+  const response = await axios.get(`${baseURL}/users/users`);
+  return response.data;
+};

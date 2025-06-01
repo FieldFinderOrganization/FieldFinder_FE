@@ -593,7 +593,7 @@ const Home: React.FC = () => {
       className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px] relative"
     >
       <Header />
-      <div className="best-locations flex items-center justify-center flex-col sm:flex-row gap-[0.5rem] sm:gap-[1rem] max-w-7xl">
+      <div className="best-locations flex items-center justify-center flex-col sm:flex-row gap-[0.5rem] sm:gap-[1rem] max-w-7xl mx-auto">
         <div className="w-[55%] flex items-center justify-between max-w-5xl mx-auto">
           <div className="flex flex-col gap-y-[2rem]">
             <Typography

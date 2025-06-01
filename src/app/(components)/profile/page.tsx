@@ -42,7 +42,6 @@ import AddressInfo from "../addressInfo/page";
 import {
   getPitchesByProviderAddressId,
   createPitch,
-  updatePitch,
   PitchRequestDTO,
   PitchResponseDTO,
   deletePitch,

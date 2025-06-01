@@ -8,6 +8,13 @@ interface Provider {
   bank: string;
 }
 
+interface ProviderResponse {
+  providerId: string;
+  userId: string;
+  cardNumber: string;
+  bank: string;
+}
+
 interface Address {
   providerId: string;
   address: string;
@@ -102,5 +109,10 @@ export const getAllAddresses = async (): Promise<providerAddress[]> => {
   const response = await axios.get<providerAddress[]>(
     `${baseURL}/api/provider-addresses`
   );
+  return response.data;
+};
+
+export const getAllProviders = async (): Promise<ProviderResponse[]> => {
+  const response = await axios.get<ProviderResponse[]>(`${baseURL}/providers`);
   return response.data;
 };
