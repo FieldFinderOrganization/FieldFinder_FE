@@ -19,6 +19,8 @@ import Carousel from "react-multi-carousel";
 import "react-multi-carousel/lib/styles.css";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import Header from "@/utils/header";
+import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
+import AIChat from "../ai/page";
 
 interface Field {
   image: string;
@@ -42,6 +44,7 @@ const Home: React.FC = () => {
   const reviewsPerPage = 8;
   const startIndex = currentPage * reviewsPerPage;
   const endIndex = startIndex + reviewsPerPage;
+  const [showChat, setShowChat] = useState(false);
   const [searchBarRef, searchBarInView] = useInView({
     triggerOnce: true,
     threshold: 0.3,
@@ -587,7 +590,7 @@ const Home: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8 }}
-      className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px] "
+      className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px] relative"
     >
       <Header />
       <div className="best-locations flex items-center justify-center flex-col sm:flex-row gap-[0.5rem] sm:gap-[1rem] max-w-7xl">
@@ -1133,6 +1136,23 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
+      <div
+        className="fixed bottom-10 right-5 cursor-pointer z-50"
+        onClick={() => setShowChat(!showChat)}
+      >
+        <Image
+          src="/chatIcon.png"
+          alt="chatIcon"
+          width={60}
+          height={60}
+          className="transition-transform duration-300 hover:scale-110"
+        />
+      </div>
+      {showChat && (
+        <div className="fixed bottom-24 right-5 z-50 w-[350px] h-[450px] shadow-xl rounded-lg overflow-hidden">
+          <AIChat onClose={() => setShowChat(false)} />
+        </div>
+      )}
     </motion.div>
   );
 };

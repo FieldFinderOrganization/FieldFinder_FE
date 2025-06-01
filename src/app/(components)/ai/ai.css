@@ -1,48 +1,40 @@
-/* Đặt container chat giữa màn hình */
-body, html {
+.chat-outer-wrapper {
+  position: relative;
+  width: 100%;
   height: 100%;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(to right, #f1f4f9, #dff1ff);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Container chính */
 .chat-container {
   width: 100%;
-  max-width: 420px;
-  height: 600px;
+  height: 100%;
   background-color: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Khu vực hiển thị tin nhắn */
 .chat-window {
   flex: 1;
-  padding: 16px;
+  padding: 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  background-color: #f9f9f9;
 }
 
-/* Tin nhắn chung */
 .chat-message {
-  max-width: 80%;
-  padding: 12px 14px;
+  max-width: 85%;
+  padding: 8px 12px;
   border-radius: 16px;
   word-wrap: break-word;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Tin nhắn người dùng */
 .chat-message.user {
   align-self: flex-end;
   background-color: #d1e7dd;
@@ -50,7 +42,6 @@ body, html {
   border-bottom-right-radius: 2px;
 }
 
-/* Tin nhắn từ AI */
 .chat-message.ai {
   align-self: flex-start;
   background-color: #e9ecef;
@@ -58,20 +49,19 @@ body, html {
   border-bottom-left-radius: 2px;
 }
 
-/* Khu vực nhập tin nhắn */
 .chat-input-area {
   display: flex;
-  padding: 12px;
+  padding: 10px;
   border-top: 1px solid #dee2e6;
   background-color: #f8f9fa;
 }
 
 .chat-input-area input {
   flex: 1;
-  padding: 10px;
+  padding: 8px 12px;
   border: 1px solid #ced4da;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 20px;
+  font-size: 13px;
   transition: border-color 0.2s;
 }
 
@@ -80,15 +70,14 @@ body, html {
   border-color: #0d6efd;
 }
 
-/* Nút gửi */
 .chat-input-area button {
   margin-left: 8px;
-  padding: 10px 18px;
+  padding: 8px 16px;
   background-color: #0d6efd;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 20px;
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -97,15 +86,14 @@ body, html {
   background-color: #0b5ed7;
 }
 
-/* Nút "Đặt sân" */
 .book-button {
-  margin-top: 8px;
-  padding: 8px 14px;
+  margin-top: 6px;
+  padding: 6px 12px;
   background-color: #198754;
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 16px;
+  font-size: 12px;
   cursor: pointer;
   transition: background-color 0.2s;
 }

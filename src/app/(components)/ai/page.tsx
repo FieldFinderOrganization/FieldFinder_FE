@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import "./ai.css";
 import axios from "axios";
-import dayjs from "dayjs";
+import { IoMdClose } from "react-icons/io";
 import BookingModalAI from "@/utils/bookingModalAI";
 
 interface ChatMessage {
@@ -25,10 +25,22 @@ interface FieldData {
   time: string;
 }
 
-const AIChat: React.FC = () => {
+interface AIChatProps {
+  onClose: () => void;
+}
+const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
+  const [showChat, setShowChat] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [fieldData, setFieldData] = useState<FieldData | null>(null);
+  const [fieldData, setFieldData] = useState<FieldData | null>({
+    id: "",
+    name: "",
+    type: "",
+    price: "",
+    description: "",
+    date: "",
+    time: "",
+  });
 
   const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
   const handleClose = () => setIsModalBookingOpen(false);
@@ -86,32 +98,11 @@ const AIChat: React.FC = () => {
     if (e.key === "Enter") sendMessage();
   };
 
-  const timeSlots = [
-    "6:00 - 7:00",
-    "7:00 - 8:00",
-    "8:00 - 9:00",
-    "9:00 - 10:00",
-    "10:00 - 11:00",
-    "11:00 - 12:00",
-    "12:00 - 13:00",
-    "13:00 - 14:00",
-    "14:00 - 15:00",
-    "15:00 - 16:00",
-    "16:00 - 17:00",
-    "17:00 - 18:00",
-    "18:00 - 19:00",
-    "19:00 - 20:00",
-    "20:00 - 21:00",
-    "21:00 - 22:00",
-    "22:00 - 23:00",
-    "23:00 - 24:00",
-  ];
-
   const handleBookField = (msg: ChatMessage) => {
     const textParts = msg.text.split("\n");
-    const name = textParts[0].split(": ")[1];
-    const price = textParts[1].split(": ")[1];
-    const description = textParts[2].split(": ")[1];
+    const name = textParts[0]?.split(": ")[1] || "Không xác định";
+    const price = textParts[1]?.split(": ")[1] || "0";
+    const description = textParts[2]?.split(": ")[1] || "Không có mô tả";
 
     const timeSlots = (msg.slotList || [])
       .map((slot) => {
@@ -119,10 +110,6 @@ const AIChat: React.FC = () => {
         return `${startHour}:00 - ${startHour + 1}:00`;
       })
       .join(", ");
-
-    const formattedDate = msg.bookingDate
-      ? dayjs(msg.bookingDate).format("DD/MM/YYYY")
-      : "";
 
     const fieldData: FieldData = {
       id: msg.pitchId || "",
@@ -135,13 +122,21 @@ const AIChat: React.FC = () => {
     };
 
     setFieldData(fieldData);
-    console.log(fieldData);
     setIsModalBookingOpen(true);
   };
 
   return (
     <div className="chat-outer-wrapper">
       <div className="chat-container">
+        <div className="chat-header flex justify-between items-center p-3 bg-[#0d6efd] text-white">
+          <h3 className="font-bold">Trợ lý đặt sân</h3>
+          <button
+            onClick={onClose}
+            className="close-button text-white text-xl hover:text-gray-200 cursor-pointer"
+          >
+            <IoMdClose />
+          </button>
+        </div>
         <div className="chat-window">
           {messages.map((msg, index) => (
             <div key={index} className={`chat-message ${msg.sender}`}>
