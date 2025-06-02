@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 import { BookingRequestDTO, createBooking } from "@/services/booking";
 import { toast } from "react-toastify";
+import { createPayment, PaymentRequestDTO } from "@/services/payment";
 
 interface FieldData {
   id: string;
@@ -47,6 +48,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
   const dateObj = dayjs(fieldData.date, "DD/MM/YYYY");
   const dayAbbr = daysOfWeek[dateObj.day()];
+  const [paymentMethod, setPaymentMethod] = React.useState("CASH");
 
   const calculateSlotNumber = (hour: number) => {
     return hour - 6 + 1;
@@ -86,14 +88,29 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
         return;
       }
 
+      const formattedDate = dayjs(fieldData.date, "DD/MM/YYYY").format(
+        "YYYY-MM-DD"
+      );
+
       const payload: BookingRequestDTO = {
         pitchId: fieldData.id,
         userId: user.userId,
-        bookingDate: fieldData.date,
+        bookingDate: formattedDate,
         bookingDetails: bookingDetails,
       };
 
-      await createBooking(payload);
+      const bookingResponse = await createBooking(payload);
+
+      if (paymentMethod === "BANK") {
+        const paymentPayload: PaymentRequestDTO = {
+          bookingId: bookingResponse.bookingId,
+          userId: user.userId,
+          amount: total,
+          paymentMethod: "BANK",
+        };
+
+        await createPayment(paymentPayload);
+      }
       toast.success("Đặt sân thành công!");
 
       onClose();
@@ -188,6 +205,64 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
                 {user?.phone || "Chưa cập nhật"}
               </div>
             </div>
+            <Divider
+              orientation="horizontal"
+              flexItem
+              sx={{ borderColor: "black" }}
+            />
+            <Typography variant="h6" fontWeight={700}>
+              Phương thức thanh toán
+            </Typography>
+            <div className="flex items-center justify-center gap-x-[1rem]">
+              <div
+                className={`w-[140px] h-[40px] rounded-[10px] border-[3px] border-solid p-2 flex items-center gap-x-[0.5rem] justify-center cursor-pointer ${
+                  paymentMethod === "CASH"
+                    ? "border-[#FE2A00]"
+                    : "border-[#A6A6A6]"
+                }`}
+                onClick={() => setPaymentMethod("CASH")}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === "CASH"
+                      ? "border-[#FE2A00]"
+                      : "border-[#A6A6A6]"
+                  }`}
+                >
+                  {paymentMethod === "CASH" && (
+                    <div className="w-2 h-2 rounded-full bg-[#FE2A00]"></div>
+                  )}
+                </div>
+                <div className="w-fit [font-family:'Inter-Regular',Helvetica] font-normal text-black text-[1rem] tracking-[0] leading-[normal]">
+                  Tiền mặt
+                </div>
+              </div>
+
+              <div
+                className={`w-[140px] h-[40px] rounded-[10px] border-[3px] border-solid p-2 flex items-center gap-x-[0.5rem] justify-center cursor-pointer ${
+                  paymentMethod === "BANK"
+                    ? "border-[#FE2A00]"
+                    : "border-[#A6A6A6]"
+                }`}
+                onClick={() => setPaymentMethod("BANK")}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    paymentMethod === "BANK"
+                      ? "border-[#FE2A00]"
+                      : "border-[#A6A6A6]"
+                  }`}
+                >
+                  {paymentMethod === "BANK" && (
+                    <div className="w-2 h-2 rounded-full bg-[#FE2A00]"></div>
+                  )}
+                </div>
+                <div className="w-fit [font-family:'Inter-Regular',Helvetica] font-normal text-black text-[0.9rem] tracking-[0] leading-[normal]">
+                  Thẻ ng.hàng
+                </div>
+              </div>
+            </div>
+
             <Divider
               orientation="horizontal"
               flexItem

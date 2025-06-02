@@ -4,11 +4,22 @@ import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { LineChart } from "@mui/x-charts/LineChart";
 import Box from "@mui/material/Box";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 
 import { getAllProviders } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
-import { getAllUsers } from "@/services/user";
+import { getAllUsers, updateUser } from "@/services/user";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+} from "@mui/material";
 
 export interface PitchData {
   pitchId: string;
@@ -20,6 +31,14 @@ export interface PitchData {
 }
 
 interface UserData {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: "USER" | "PROVIDER";
+}
+
+interface User {
   userId: string;
   name: string;
   email: string;
@@ -40,12 +59,15 @@ const Dashboard: React.FC = () => {
   const [pitches, setPitches] = React.useState<PitchData[]>([]);
   const [loading, setLoading] = React.useState(true);
 
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingUser, setEditingUser] = React.useState<UserData | null>(null);
+  const [tempUserData, setTempUserData] = React.useState<Partial<User>>({});
+
   const weeklyUserData = [0, 1, 2, users.length];
   const weeklyProviderData = [0, 1, 2, providers.length];
   const weeklyPitchData = [0, 2, 3, pitches.length];
   const weeklyInvoiceData = [0, 1, 2, 5];
 
-  // Định nghĩa cột cho bảng người dùng
   const userColumns: GridColDef<UserData>[] = [
     { field: "userId", headerName: "ID Người dùng", width: 250 },
     { field: "name", headerName: "Tên", width: 150, editable: true },
@@ -54,7 +76,6 @@ const Dashboard: React.FC = () => {
     { field: "role", headerName: "Vai trò", width: 120 },
   ];
 
-  // Định nghĩa cột cho bảng nhà cung cấp
   const providerColumns: GridColDef<
     ProviderData & { userName: string; userEmail: string }
   >[] = [
@@ -65,7 +86,6 @@ const Dashboard: React.FC = () => {
     { field: "bank", headerName: "Ngân hàng", width: 150, editable: true },
   ];
 
-  // Kết hợp dữ liệu người dùng với nhà cung cấp
   const providerRows = providers.map((provider) => {
     const user = users.find((u) => u.userId === provider.userId);
     return {
@@ -182,11 +202,10 @@ const Dashboard: React.FC = () => {
             ]}
             yAxis={[{ label: "Số lượng" }]}
             height={300}
-            margin={{ bottom: 30, left: 50 }}
+            margin={{ bottom: 40, left: 50 }}
           />
         </div>
 
-        {/* Bảng Người Dùng */}
         <div className="w-full mt-8">
           <h2 className="text-xl font-semibold mb-4">Danh sách người dùng</h2>
           <Box sx={{ height: 400, width: "100%", mb: 4 }}>
@@ -207,7 +226,6 @@ const Dashboard: React.FC = () => {
           </Box>
         </div>
 
-        {/* Bảng Nhà Cung Cấp */}
         <div className="w-full">
           <h2 className="text-xl font-semibold mb-4">Danh sách nhà cung cấp</h2>
           <Box sx={{ height: 400, width: "100%" }}>

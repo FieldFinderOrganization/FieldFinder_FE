@@ -14,7 +14,10 @@ export interface BookingRequestDTO {
 }
 
 export const createBooking = async (payload: BookingRequestDTO) => {
-  const response = await axios.post<BookingRequestDTO>(baseURL, payload);
+  const response = await axios.post<{
+    BookingRequestDTO: BookingRequestDTO;
+    bookingId: string;
+  }>(baseURL, payload);
   return response.data;
 };
 

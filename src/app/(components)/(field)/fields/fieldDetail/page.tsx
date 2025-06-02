@@ -367,7 +367,7 @@ const FieldDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
-      <div className="main flex gap-x-[2rem] max-w-7xl w-full px-4 mt-[2rem] flex-col">
+      <div className="main flex gap-x-[2rem] max-w-7xl w-full px-4 mt-[2rem] flex-col mx-auto">
         <div className="inline-flex items-start gap-[1rem] relative ml-[1.8rem]">
           <p
             className="relative w-fit mt-[-1.00px] [font-family:'Inter-Bold',Helvetica] font-bold text-[#188862] text-[1.3rem] tracking-[0] leading-[normal] whitespace-nowrap cursor-pointer"
@@ -691,7 +691,34 @@ const FieldDetail: React.FC = () => {
                 {timeSlots.map((slot, index) => {
                   const isBooked = isSlotBooked(slot);
                   const isPast = date?.isBefore(dayjs(), "day");
-                  const isDisabled = isBooked || isPast;
+
+                  // Thêm kiểm tra cho ngày hôm nay
+                  const isToday = date?.isSame(dayjs(), "day");
+                  let isDisabledByTime = false;
+
+                  if (isToday) {
+                    const now = dayjs();
+                    const currentHour = now.hour();
+                    const currentMinute = now.minute();
+
+                    // Lấy giờ bắt đầu của khung giờ
+                    const [start] = slot.split(" - ");
+                    const [slotHour] = start.split(":").map(Number);
+
+                    // Nếu khung giờ đã qua hoặc sắp diễn ra (trong vòng 1 giờ tới)
+                    if (slotHour < currentHour + 1) {
+                      isDisabledByTime = true;
+                    }
+                    // Nếu cùng giờ nhưng đã quá 30 phút
+                    else if (
+                      slotHour === currentHour + 1 &&
+                      currentMinute > 30
+                    ) {
+                      isDisabledByTime = true;
+                    }
+                  }
+
+                  const isDisabled = isBooked || isPast || isDisabledByTime;
 
                   return (
                     <Button

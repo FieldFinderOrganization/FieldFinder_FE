@@ -46,6 +46,7 @@ import {
   PitchResponseDTO,
   deletePitch,
 } from "../../../services/pitch";
+import { updateUser } from "@/services/user";
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
@@ -253,7 +254,8 @@ const Profile: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    await updateUser(editedUser, user?.userId);
     setIsEditing(false);
     dispatch(
       update({
@@ -801,12 +803,23 @@ const Profile: React.FC = () => {
                         Ngân hàng
                       </Typography>
                       {isEditingProvider ? (
-                        <TextField
-                          type="text"
-                          name="bank"
+                        <Autocomplete
+                          options={[
+                            "BIDV",
+                            "Agribank",
+                            "Vietcombank",
+                            "MB Bank",
+                          ]}
                           value={providerUser.bank}
-                          onChange={handleProviderInputChange}
-                          size="small"
+                          onChange={(_, value) =>
+                            setProviderUser((prev) => ({
+                              ...prev,
+                              bank: value || "",
+                            }))
+                          }
+                          renderInput={(params) => (
+                            <TextField {...params} name="bank" size="small" />
+                          )}
                           sx={{ width: "200px" }}
                         />
                       ) : (
