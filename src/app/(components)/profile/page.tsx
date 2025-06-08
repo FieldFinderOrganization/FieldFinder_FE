@@ -21,7 +21,12 @@ import {
   Tooltip,
   Select,
   MenuItem,
+  Box,
+  Modal,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
+import { SelectChangeEvent } from "@mui/material/Select";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
@@ -30,12 +35,14 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import { toast } from "react-toastify";
 import {
   addProvider,
   updateProvider,
   getProvider,
+  getAllProviders,
 } from "../../../services/provider";
 import Sidebar from "@/utils/sideBar";
 import AddressInfo from "../addressInfo/page";
@@ -47,7 +54,15 @@ import {
   deletePitch,
 } from "../../../services/pitch";
 import { updateUser } from "@/services/user";
-
+import {
+  BookingResponseDTO,
+  getAllBookings,
+  updatePaymentStatus,
+  updateStatus,
+} from "@/services/booking";
+import { getAllPayments } from "@/services/payment";
+import { GridValueGetter } from "@mui/x-data-grid";
+import dayjs from "dayjs";
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -60,14 +75,8 @@ const Profile: React.FC = () => {
   const providerTabs = [
     { label: "Thông tin cá nhân", value: 0 },
     { label: "Thông tin sân", value: 1 },
-    { label: "Thông báo", value: 2 },
+    { label: "Thông tin đặt sân", value: 2 },
   ];
-
-  interface Area {
-    id: string;
-    name: string;
-    count: number;
-  }
 
   const tabs = user?.role === "PROVIDER" ? providerTabs : baseTabs;
 
@@ -99,6 +108,115 @@ const Profile: React.FC = () => {
   const indexOfLastPitch = currentPage * pitchesPerPage;
   const indexOfFirstPitch = indexOfLastPitch - pitchesPerPage;
   const currentPitches = pitches.slice(indexOfFirstPitch, indexOfLastPitch);
+
+  const banks = [
+    { code: "BIDV", name: "BIDV" },
+    { code: "VCB", name: "VietcomBank" },
+    { code: "TCB", name: "Techcombank" },
+    { code: "MB", name: "MBBank" },
+    { code: "CTG", name: "VietinBank" },
+  ];
+
+  const fetchAndProcessData = async (providerId: string) => {
+    const bookings = await getAllBookings();
+    const payments = await getAllPayments();
+
+    const filteredBookings = bookings.filter(
+      (booking) => booking.providerId === providerId
+    );
+
+    const paymentMethod =
+      payments.length > 0 ? payments[0].paymentMethod : null;
+
+    const enhancedBookings = filteredBookings.map((booking) => ({
+      ...booking,
+      paymentMethod,
+    }));
+
+    return enhancedBookings;
+  };
+
+  const [bookings, setBookings] = useState<any[]>([]);
+
+  const [open, setOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] =
+    useState<BookingResponseDTO | null>(null);
+
+  const handleOpen = (booking: BookingResponseDTO) => {
+    setSelectedBooking(booking);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedBooking(null);
+  };
+
+  const [paymentStatus, setPaymentStatus] = useState<string>("PAID");
+
+  const handleChangePaymentStatus = (event: SelectChangeEvent) => {
+    setPaymentStatus(event.target.value as string);
+  };
+
+  const handleConfirm = async () => {
+    if (selectedBooking) {
+      try {
+        await updateStatus(selectedBooking.bookingId, "CONFIRMED");
+        await updatePaymentStatus(selectedBooking.bookingId, paymentStatus);
+        toast.success("Cập nhật trạng thái thành công");
+        handleClose();
+      } catch (error) {
+        toast.error("Lỗi khi cập nhật trạng thái");
+      }
+    }
+  };
+
+  const bookingColumns: GridColDef[] = [
+    { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
+    { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
+    { field: "status", headerName: "Trạng thái", width: 120 },
+    {
+      field: "paymentStatus",
+      headerName: "Trạng thái thanh toán",
+      width: 200,
+      renderCell: (params) => {
+        const booking = params.row as BookingResponseDTO & {
+          paymentMethod?: string;
+        };
+        const { paymentMethod, paymentStatus } = booking;
+
+        if (paymentMethod === "BANK") {
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              {paymentStatus}{" "}
+              <CreditCardOutlinedIcon
+                fontSize="small"
+                style={{ marginLeft: 4, cursor: "pointer", color: "#0093FF" }}
+                onClick={() => handleOpen(booking)}
+              />
+            </div>
+          );
+        } else {
+          return paymentStatus;
+        }
+      },
+    },
+    { field: "totalPrice", headerName: "Tổng giá", width: 120 },
+  ];
+
+  useEffect(() => {
+    fetchAndProcessData(user?.providerId)
+      .then((data) => {
+        const rows = data.map((booking) => ({
+          id: booking.bookingId,
+          ...booking,
+        }));
+        setBookings(rows);
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
+  }, [user?.userId]);
 
   const getPitchTypeName = (type: string) => {
     switch (type) {
@@ -804,19 +922,19 @@ const Profile: React.FC = () => {
                       </Typography>
                       {isEditingProvider ? (
                         <Autocomplete
-                          options={[
-                            "BIDV",
-                            "Agribank",
-                            "Vietcombank",
-                            "MB Bank",
-                          ]}
-                          value={providerUser.bank}
-                          onChange={(_, value) =>
+                          options={banks}
+                          getOptionLabel={(option) => option.name}
+                          value={
+                            banks.find(
+                              (bank) => bank.code === providerUser.bank
+                            ) || null
+                          }
+                          onChange={(_, value) => {
                             setProviderUser((prev) => ({
                               ...prev,
-                              bank: value || "",
-                            }))
-                          }
+                              bank: value ? value.code : "",
+                            }));
+                          }}
                           renderInput={(params) => (
                             <TextField {...params} name="bank" size="small" />
                           )}
@@ -1076,9 +1194,30 @@ const Profile: React.FC = () => {
               </div>
             </div>
           )}
+          {initTab === 2 && user?.role === "PROVIDER" && (
+            <div className="flex flex-col items-start justify-start gap-y-[1rem]">
+              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                Danh sách đặt sân
+              </Typography>
+              <Box sx={{ height: 400, width: "100%" }}>
+                <DataGrid
+                  rows={bookings || []}
+                  columns={bookingColumns}
+                  getRowId={(row) => row.bookingId}
+                  initialState={{
+                    pagination: {
+                      paginationModel: { pageSize: 5 },
+                    },
+                  }}
+                  pageSizeOptions={[5]}
+                  checkboxSelection
+                  disableRowSelectionOnClick
+                />
+              </Box>
+            </div>
+          )}
         </div>
       </div>
-
       <PitchModal
         open={openPitchModal}
         onClose={() => setOpenPitchModal(false)}
@@ -1086,7 +1225,6 @@ const Profile: React.FC = () => {
         initialData={isEditMode && pitchToEdit ? pitchToEdit : undefined}
         areaName={areas[selectedIndex]?.name || ""}
       />
-
       <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
         <DialogTitle>Xác nhận xóa sân</DialogTitle>
         <DialogContent>Bạn có chắc chắn muốn xóa sân đã chọn?</DialogContent>
@@ -1097,6 +1235,68 @@ const Profile: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Modal open={open} onClose={handleClose}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 500,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            gapY: 4,
+            p: 4,
+          }}
+        >
+          <Typography variant="h5">Xác nhận thanh toán</Typography>
+          <Divider
+            orientation="horizontal"
+            flexItem
+            sx={{
+              borderColor: "black",
+              borderWidth: "1px",
+              marginBottom: 2,
+              marginTop: 1,
+            }}
+          />
+          {selectedBooking && (
+            <>
+              <Typography>ID Đặt chỗ: {selectedBooking.bookingId}</Typography>
+              <Typography>
+                Ngày đặt:{" "}
+                {dayjs(selectedBooking.bookingDate).format("DD-MM-YYYY")}
+              </Typography>
+              <Typography>
+                Tổng giá: {selectedBooking.totalPrice} VNĐ
+              </Typography>
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel id="payment-status-label">
+                  Trạng thái thanh toán
+                </InputLabel>
+                <Select
+                  labelId="payment-status-label"
+                  value={paymentStatus}
+                  label="Trạng thái thanh toán"
+                  onChange={handleChangePaymentStatus}
+                >
+                  <MenuItem value="PAID">Đã thanh toán</MenuItem>
+                  <MenuItem value="REFUNDED">Đã hoàn tiền</MenuItem>
+                </Select>
+              </FormControl>
+            </>
+          )}
+          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+            <Button variant="outlined" onClick={handleClose}>
+              Hủy
+            </Button>
+            <Button variant="contained" onClick={handleConfirm}>
+              Xác nhận
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+      ;
     </div>
   );
 };

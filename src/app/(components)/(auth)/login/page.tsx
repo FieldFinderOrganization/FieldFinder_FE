@@ -78,7 +78,6 @@ const Login: React.FC = () => {
         dispatch(loginSuccess(userData));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
         toast.success("Đăng nhập thành công");
-        console.log(userData);
         router.push("/home");
       }
     } catch (error) {
@@ -151,9 +150,9 @@ const Login: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-red-700 disabled:bg-gray-400"
-              // disabled={loading}
             >
-              {/* {loading ? "Đang đăng nhập..." : "Đăng nhập"}  */} Đăng nhập
+              {" "}
+              Đăng nhập
             </motion.button>
             <div className="footer mt-[0.4rem] text-center">
               <p className="text-xl">

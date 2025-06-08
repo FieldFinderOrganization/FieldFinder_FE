@@ -35,12 +35,10 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
   const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Modal controls
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
 
-  // Form state
   const emptyForm: PitchRequestDTO = {
     providerAddressId,
     name: "",
@@ -50,7 +48,6 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
   };
   const [formData, setFormData] = useState<PitchRequestDTO>(emptyForm);
 
-  // Load pitches mỗi lần providerAddressId thay đổi
   useEffect(() => {
     if (!providerAddressId) return;
     getPitchesByProviderAddressId(providerAddressId)
@@ -60,12 +57,10 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
 
   const selectedPitch = selectedIndex !== null ? pitches[selectedIndex] : null;
 
-  // Handlers chung
   const handleSelect = (idx: number) => {
     setSelectedIndex(idx === selectedIndex ? null : idx);
   };
 
-  // Thêm sân
   const onAdd = () => {
     setFormData({ ...emptyForm });
     setOpenAdd(true);
@@ -81,7 +76,6 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
     }
   };
 
-  // Sửa sân
   const onEdit = () => {
     if (!selectedPitch) return;
     setFormData({
@@ -107,7 +101,6 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
     }
   };
 
-  // Xóa sân
   const onDelete = () => setOpenDelete(true);
   const confirmDelete = async () => {
     console.log("Deleting pitch:", selectedPitch);

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { update } from "@/redux/features/authSlice";
 
 const baseURL: string = "http://localhost:8080/api/bookings";
 
@@ -6,6 +7,20 @@ export interface BookingRequestDTO {
   pitchId: string;
   userId: string;
   bookingDate: string;
+  bookingDetails: {
+    slot: number;
+    name: string;
+    priceDetail: number;
+  }[];
+}
+
+export interface BookingResponseDTO {
+  bookingId: string;
+  bookingDate: string;
+  status: string;
+  paymentStatus: string;
+  totalPrice: number;
+  providerId: string;
   bookingDetails: {
     slot: number;
     name: string;
@@ -28,6 +43,13 @@ export const getBookingSlot = async (pitchId: string, date: string) => {
   return response.data;
 };
 
+export const getBookingSlotByDate = async (date: string) => {
+  const response = await axios.get(`${baseURL}/slots/all`, {
+    params: { date },
+  });
+  return response.data;
+};
+
 export const getAvailablePitches = async (date: string, slots: number[]) => {
   const params = new URLSearchParams();
   params.append("date", date);
@@ -40,5 +62,44 @@ export const getAvailablePitches = async (date: string, slots: number[]) => {
     params,
   });
 
+  return response.data;
+};
+
+export const getAllBookings = async () => {
+  const response = await axios.get<BookingResponseDTO[]>(
+    `${baseURL}/api/bookings`
+  );
+  return response.data;
+};
+
+export const updateStatus = async (bookingId: string, status: string) => {
+  const response = await axios.put<string>(
+    `${baseURL}/${bookingId}/status`,
+    null,
+    {
+      params: { status },
+    }
+  );
+  return response.data;
+};
+
+export const updatePaymentStatus = async (
+  bookingId: string,
+  status: string
+) => {
+  const response = await axios.put<string>(
+    `${baseURL}/${bookingId}/payment-status`,
+    null,
+    {
+      params: { status },
+    }
+  );
+  return response.data;
+};
+
+export const getBookingByUserId = async (userId: string) => {
+  const response = await axios.get<BookingResponseDTO[]>(
+    `${baseURL}/user/${userId}`
+  );
   return response.data;
 };

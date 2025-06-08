@@ -54,3 +54,10 @@ export const getAllPitches = async (): Promise<PitchResponseDTO[]> => {
   const response = await axios.get<PitchResponseDTO[]>(`${baseURL}`);
   return response.data;
 };
+
+export const getPitchById = async (
+  pitchId: string
+): Promise<PitchRequestDTO> => {
+  const response = await axios.get<PitchRequestDTO>(`${baseURL}/${pitchId}`);
+  return response.data;
+};

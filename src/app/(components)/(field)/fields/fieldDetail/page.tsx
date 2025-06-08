@@ -692,7 +692,6 @@ const FieldDetail: React.FC = () => {
                   const isBooked = isSlotBooked(slot);
                   const isPast = date?.isBefore(dayjs(), "day");
 
-                  // Thêm kiểm tra cho ngày hôm nay
                   const isToday = date?.isSame(dayjs(), "day");
                   let isDisabledByTime = false;
 
@@ -701,16 +700,12 @@ const FieldDetail: React.FC = () => {
                     const currentHour = now.hour();
                     const currentMinute = now.minute();
 
-                    // Lấy giờ bắt đầu của khung giờ
                     const [start] = slot.split(" - ");
                     const [slotHour] = start.split(":").map(Number);
 
-                    // Nếu khung giờ đã qua hoặc sắp diễn ra (trong vòng 1 giờ tới)
                     if (slotHour < currentHour + 1) {
                       isDisabledByTime = true;
-                    }
-                    // Nếu cùng giờ nhưng đã quá 30 phút
-                    else if (
+                    } else if (
                       slotHour === currentHour + 1 &&
                       currentMinute > 30
                     ) {

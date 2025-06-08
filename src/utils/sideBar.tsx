@@ -1,12 +1,12 @@
 import React from "react";
 import SettingsIcon from "@mui/icons-material/Settings";
-import DiscountIcon from "@mui/icons-material/Discount";
 import HistoryIcon from "@mui/icons-material/History";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { Typography } from "@mui/material";
+import { useRouter, usePathname } from "next/navigation";
 
 interface SidebarProps {
   tabs: { label: string; value: number }[];
@@ -25,12 +25,27 @@ const Sidebar: React.FC<SidebarProps> = ({
   handleChangeTab,
   handleLogout,
 }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const isActive = (path: string) => pathname === path;
+
   return (
-    <div className="bg-white w-[23%] flex flex-col items-start justify-start rounded-br-lg shadow-md py-6 px-8 left-sidebar gap-y-[1.5rem]">
-      <div className="flex items-center justify-start gap-x-[1rem]">
-        <SettingsIcon className="text-[1rem]" />
+    <div className="bg-white w-[23%] flex flex-col items-start justify-start rounded-br-lg shadow-md py-6 px-12 left-sidebar gap-y-[2.5rem]">
+      <div
+        className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
+        onClick={() => router.push("/profile")}
+      >
+        <SettingsIcon
+          className="text-[1rem]"
+          sx={{ color: isActive("/profile") ? "black" : "gray" }}
+        />
         <Typography
-          sx={{ fontWeight: "bold", fontSize: "1rem" }}
+          sx={{
+            fontWeight: "bold",
+            fontSize: "1rem",
+            color: isActive("/profile") ? "black" : "gray",
+          }}
           className="cursor-pointer"
         >
           Cài đặt
@@ -67,30 +82,40 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
       )}
-      <div className="flex items-center justify-start gap-x-[1rem]">
-        <DiscountIcon className="text-[1rem]" sx={{ color: "gray" }} />
+      <div
+        className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
+        onClick={() => router.push("/bookingHistory")}
+      >
+        <HistoryIcon
+          className="text-[1rem]"
+          sx={{ color: isActive("/bookingHistory") ? "black" : "gray" }}
+        />
         <Typography
-          sx={{ color: "gray", fontSize: "1rem" }}
-          className="cursor-pointer"
-        >
-          Mã khuyến mãi
-        </Typography>
-      </div>
-      <div className="flex items-center justify-start gap-x-[1rem]">
-        <HistoryIcon className="text-[1rem]" sx={{ color: "gray" }} />
-        <Typography
-          //   variant="h6"
-          sx={{ color: "gray", fontSize: "1rem" }}
+          sx={{
+            color: isActive("/bookingHistory") ? "black" : "gray",
+            fontSize: "1rem",
+            fontWeight: "bold",
+          }}
           className="cursor-pointer"
         >
           Lịch sử đặt sân
         </Typography>
       </div>
-      <div className="flex items-center justify-start gap-x-[1rem]">
-        <RateReviewIcon className="text-[1rem]" sx={{ color: "gray" }} />
+      <div
+        className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
+        onClick={() => router.push("/reviewHistory")}
+      >
+        <RateReviewIcon
+          className="text-[1rem]"
+          sx={{ color: isActive("/reviewHistory") ? "black" : "gray" }}
+        />
         <Typography
           variant="h6"
-          sx={{ color: "gray", fontSize: "1rem" }}
+          sx={{
+            color: isActive("/reviewHistory") ? "black" : "gray",
+            fontSize: "1rem",
+            fontWeight: "bold",
+          }}
           className="cursor-pointer"
         >
           Lịch sử đánh giá
@@ -101,7 +126,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick={handleLogout}
       >
         <LogoutIcon className="text-[1rem]" sx={{ color: "red" }} />
-        <Typography variant="h6" sx={{ color: "red", fontSize: "1rem" }}>
+        <Typography
+          variant="h6"
+          sx={{ color: "red", fontSize: "1rem", fontWeight: "bold" }}
+        >
           Đăng xuất
         </Typography>
       </div>

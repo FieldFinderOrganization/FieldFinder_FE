@@ -111,7 +111,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
 
         await createPayment(paymentPayload);
       }
-      toast.success("Đặt sân thành công!");
+      toast.success("Đặt sân thành côn!");
 
       onClose();
     } catch (error) {

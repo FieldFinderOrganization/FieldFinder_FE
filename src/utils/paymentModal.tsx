@@ -9,33 +9,41 @@ import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 
 interface paymentData {
-  fieldName: string;
+  qrCodeUrl?: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  bankName: string;
+  amount: number;
+}
+
+interface FieldData {
+  id: string;
+  name: string;
   type: string;
+  price: string;
   description: string;
   date: string;
   time: string;
-  amount: string;
-  paymentMethod: string;
-  bankAccountNumber: string;
-  bankName: string;
 }
 
 interface PaymentModalProps {
   open: boolean;
   onClose: () => void;
   paymentData: paymentData;
+  fieldData: FieldData;
 }
 
 const paymentModal: React.FC<PaymentModalProps> = ({
   open,
   onClose,
   paymentData,
+  fieldData,
 }) => {
   const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-  const dateObj = dayjs(paymentData.date, "DD/MM/YYYY");
+  const dateObj = dayjs(fieldData.date, "DD/MM/YYYY");
   const dayAbbr = daysOfWeek[dateObj.day()];
-  const user = useSelector((state: any) => state.auth.user);
 
+  const user = useSelector((state: any) => state.auth.user);
   const getPitchType = (pitchType: string) => {
     switch (pitchType) {
       case "FIVE_A_SIDE":
@@ -48,6 +56,7 @@ const paymentModal: React.FC<PaymentModalProps> = ({
         return "Không xác định";
     }
   };
+
   return (
     <Modal open={open} onClose={onClose}>
       <Box
@@ -70,43 +79,51 @@ const paymentModal: React.FC<PaymentModalProps> = ({
         >
           <CloseIcon />
         </Button>
-        <div className="main flex items-start p-4 gap-x-[2rem]">
-          <Typography variant="h5" fontWeight={700}>
-            Thanh toán{" "}
-          </Typography>
-          <Divider
-            orientation="horizontal"
-            flexItem
-            sx={{ borderColor: "black" }}
-          />
+        <div className="main flex items-start p-4 gap-x-[2rem] justify-center">
           <div className="w-[45%] flex flex-col items-start gap-y-[1rem]">
+            <Typography variant="h6" fontWeight={700}>
+              Thông tin người đặt
+            </Typography>
+            <div className="flex items-center justify-between w-full">
+              <div className="field-info text-[1rem] font-bold">Tên:</div>
+              <div className="field-info text-[1rem] flex-1 text-right">
+                {user?.name || "Không xác định"}
+              </div>
+            </div>
+            <div className="flex items-center justify-between w-full">
+              <div className="field-info text-[1rem] font-bold">
+                Số điện thoại:
+              </div>
+              <div className="field-info text-[1rem] flex-1 text-right">
+                {user?.phone || "Không xác định"}
+              </div>
+            </div>
+            <Divider
+              orientation="horizontal"
+              flexItem
+              sx={{ borderColor: "black" }}
+            />
             <Typography variant="h6" fontWeight={700}>
               Thông tin sân
             </Typography>
             <div className="flex items-center justify-between w-full">
               <div className="field-info text-[1rem] font-bold">Tên sân:</div>
               <div className="field-info text-[1rem] flex-1 text-right">
-                Sân {paymentData.fieldName || "Không xác định"}
+                Sân {fieldData.name || "Không xác định"}
               </div>
             </div>
             <div className="flex items-center justify-between w-full">
               <div className="field-info text-[1rem] font-bold">Loại sân:</div>
               <div className="field-info text-[1rem] flex-1 text-right">
-                {paymentData.type
-                  ? getPitchType(paymentData.type as string)
+                {fieldData.type
+                  ? getPitchType(fieldData.type as string)
                   : "Không xác định"}
               </div>
             </div>
             <div className="flex items-center justify-between w-full">
               <EventIcon className="text-[1.5rem]" />
               <div className="field-info text-[1rem] flex-1 text-right">
-                {dayAbbr}, {paymentData.date}
-              </div>
-            </div>
-            <div className="flex items-center justify-between w-full">
-              <AccessTimeIcon className="text-[1.5rem]" />
-              <div className="field-info text-[1rem] flex-1 text-right">
-                {paymentData.time || "Bạn chưa chọn thời gian"}
+                {dayAbbr}, {fieldData.date}
               </div>
             </div>
           </div>
@@ -125,6 +142,14 @@ const paymentModal: React.FC<PaymentModalProps> = ({
               </div>
               <div className="field-info text-[1rem] flex-1 text-right">
                 {paymentData.bankAccountNumber || "Chưa cập nhật"}
+              </div>
+            </div>
+            <div className="flex items-center justify-between w-full">
+              <div className="field-info text-[1rem] font-bold">
+                Tên tài khỏan:
+              </div>
+              <div className="field-info text-[1rem] flex-1 text-right">
+                {paymentData.bankAccountName || "Chưa cập nhật"}
               </div>
             </div>
             <div className="flex items-center justify-between w-full">
@@ -147,7 +172,13 @@ const paymentModal: React.FC<PaymentModalProps> = ({
                 {paymentData.amount} VNĐ
               </div>
             </div>
-            <div className="images"></div>
+            <div className="images">
+              <img
+                src={paymentData.qrCodeUrl}
+                alt="QR Code"
+                style={{ width: 200, height: 200 }}
+              />
+            </div>
           </div>
         </div>
       </Box>
