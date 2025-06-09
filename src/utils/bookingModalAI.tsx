@@ -173,14 +173,14 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
                 {fieldData.time || "Bạn chưa chọn thời gian"}
               </div>
             </div>
-            <div className="flex items-center justify-between w-full">
+            {/* <div className="flex items-center justify-between w-full">
               <Typography variant="h6" fontWeight={700}>
                 Mã khuyến mãi
               </Typography>
               <div className="bg-[#FE2A00] text-white py-2 px-4 text-[0.8rem] cursor-pointer font-bold rounded-[0.5rem] gap-x-[0.3rem]">
                 <p>Chọn mã</p>
               </div>
-            </div>
+            </div> */}
           </div>
           <Divider
             orientation="vertical"

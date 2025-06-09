@@ -25,6 +25,7 @@ import {
   updatePitch,
   PitchRequestDTO,
   PitchResponseDTO,
+  deletePitch,
 } from "../../../services/pitch";
 
 interface PitchInfoProps {
@@ -103,7 +104,9 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
 
   const onDelete = () => setOpenDelete(true);
   const confirmDelete = async () => {
-    console.log("Deleting pitch:", selectedPitch);
+    if (!selectedPitch) return;
+    await deletePitch(selectedPitch.pitchId);
+    toast.success("Xóa sân thành công");
   };
 
   return (

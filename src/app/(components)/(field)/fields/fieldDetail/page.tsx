@@ -29,7 +29,17 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { toast } from "react-toastify";
 import { getBookingSlot } from "@/services/booking";
+import { getAverageRating, getReviewByPitch } from "@/services/review";
+import f from "../../../../../../public/images/field3.jpg";
 
+interface reviewResponseDTO {
+  reviewId: string;
+  pitchId: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  createat: string;
+}
 const FieldDetail: React.FC = () => {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -40,6 +50,8 @@ const FieldDetail: React.FC = () => {
   const address = searchParams.get("address");
   const rating = searchParams.get("rating");
   const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
+  const [averageRating, setAverageRating] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<reviewResponseDTO[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -65,8 +77,21 @@ const FieldDetail: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      if (id && date) {
-        await fetchBookedSlots();
+      if (!id) return;
+
+      try {
+        const rating = await getAverageRating(id);
+        setAverageRating(rating);
+
+        const pitchReviews = await getReviewByPitch(id);
+        setReviews(pitchReviews);
+
+        if (date) {
+          await fetchBookedSlots();
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Không thể tải dữ liệu sân");
       }
     };
     loadData();
@@ -135,140 +160,7 @@ const FieldDetail: React.FC = () => {
     threshold: 0.1,
   });
 
-  const reviewsData = [
-    {
-      id: 1,
-      name: "Nguyễn Văn A",
-      avatar: "/images/lc1.jpg",
-      rating: 4.5,
-      comment:
-        "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
-      time: "9h trước",
-    },
-    {
-      id: 2,
-      name: "Trần Thị B",
-      avatar: "/images/lc2.jpg",
-      rating: 3,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 3,
-      name: "Trần Thị C",
-      avatar: "/images/lc3.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 4,
-      name: "Trần Thị B",
-      avatar: "/images/lc4.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 5,
-      name: "Trần Thị B",
-      avatar: "/images/lc5.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 6,
-      name: "Trần Thị B",
-      avatar: "/images/lc6.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 7,
-      name: "Trần Thị B",
-      avatar: "/images/lc7.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 8,
-      name: "Trần Thị B",
-      avatar: "/images/lc8.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 9,
-      name: "Nguyễn Văn S",
-      avatar: "/images/lc1.jpg",
-      rating: 5,
-      comment:
-        "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
-      time: "9h trước",
-    },
-    {
-      id: 10,
-      name: "Trần Thị R",
-      avatar: "/images/lc2.jpg",
-      rating: 4.5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 11,
-      name: "Trần Thị M",
-      avatar: "/images/lc3.jpg",
-      rating: 4,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 12,
-      name: "Trần T B",
-      avatar: "/images/lc4.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 13,
-      name: "T Thị B",
-      avatar: "/images/lc5.jpg",
-      rating: 4,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 14,
-      name: "Trần Thị B",
-      avatar: "/images/lc6.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 15,
-      name: "B",
-      avatar: "/images/lc7.jpg",
-      rating: 3,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 16,
-      name: "Trần Thị",
-      avatar: "/images/lc8.jpg",
-      rating: 4.5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-  ];
-
-  const currentReviews = reviewsData.slice(startIndex, endIndex);
+  const currentReviews = reviews.slice(startIndex, endIndex);
 
   const handlePrevRe = () => {
     if (currentPage > 0) {
@@ -277,7 +169,7 @@ const FieldDetail: React.FC = () => {
   };
 
   const handleNextRe = () => {
-    if ((currentPage + 1) * reviewsPerPage < reviewsData.length) {
+    if ((currentPage + 1) * reviewsPerPage < reviews.length) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -392,7 +284,7 @@ const FieldDetail: React.FC = () => {
             </div>
             <div className="flex items-center gap-x-[2.4rem]">
               <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
-                {rating ? `${Math.round(Number(rating) * 2)}/10` : "N/A"}
+                {averageRating !== null ? `${averageRating}` : "5"}/5
               </div>
               <div className="field-info text-[1rem] flex-1 font-bold">
                 {description || "Không có mô tả"}
@@ -542,9 +434,7 @@ const FieldDetail: React.FC = () => {
               </div>
               <div
                 className={`rounded-full bg-gray-200 flex items-center justify-center ${
-                  endIndex >= reviewsData.length
-                    ? "opacity-50"
-                    : "cursor-pointer"
+                  endIndex >= reviews.length ? "opacity-50" : "cursor-pointer"
                 }`}
                 onClick={handleNextRe}
               >
@@ -554,75 +444,84 @@ const FieldDetail: React.FC = () => {
           </div>
           <div className="reviews-cards space-y-[2rem]">
             <div className="mx-auto gap-4 flex items-center flex-wrap max-7-xl">
-              {currentReviews.map((review, index) => (
-                <Card
-                  key={index}
-                  sx={{
-                    maxWidth: "250px",
-                    height: "250px",
-                    position: "relative",
-                    paddingBottom: "50px",
-                  }}
-                  className="mx-auto"
-                >
-                  <CardContent
+              {currentReviews.length > 0 ? (
+                currentReviews.map((review, index) => (
+                  <Card
+                    key={index}
                     sx={{
-                      padding: "1rem",
-                      height: "100%",
-                      display: "flex",
-                      gap: "1rem",
-                      flexDirection: "column",
+                      maxWidth: "250px",
+                      height: "250px",
+                      position: "relative",
+                      paddingBottom: "50px",
                     }}
+                    className="mx-auto"
                   >
-                    <div className="header flex items-center gap-[1rem]">
-                      <img
-                        src={review.avatar}
-                        className="rounded-full h-12 w-12 object-cover"
-                      />
-                      <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
-                        <p className="font-bold text-[1.2rem]">{review.name}</p>
-                        <div className="stars flex items-start gap-x-[0.5rem]">
-                          {renderStars(review.rating)}
-                        </div>
-                      </div>
-                    </div>
-                    <p
-                      className="font-medium text-[0.9rem] text-justify"
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
-                        marginTop: "0.5rem",
+                    <CardContent
+                      sx={{
+                        padding: "1rem",
+                        height: "100%",
+                        display: "flex",
+                        gap: "1rem",
+                        flexDirection: "column",
                       }}
                     >
-                      {review.comment}
-                    </p>
-                  </CardContent>
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      padding: "0 1rem 1rem 1rem",
-                    }}
-                  >
-                    <Divider
-                      sx={{
-                        borderColor: "#ccc",
-                        borderWidth: "1px",
-                        marginBottom: "0.5rem",
+                      <div className="header flex items-center gap-[1rem]">
+                        <img
+                          src={f.src}
+                          className="rounded-full h-12 w-12 object-cover"
+                        />
+                        <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
+                          <p className="font-bold text-[1.2rem]">Tên</p>
+                          <div className="stars flex items-start gap-x-[0.5rem]">
+                            {renderStars(review.rating)}
+                          </div>
+                        </div>
+                      </div>
+                      <p
+                        className="font-medium text-[0.9rem] text-justify"
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                          marginTop: "0.5rem",
+                        }}
+                      >
+                        {review.comment}
+                      </p>
+                    </CardContent>
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: "0 1rem 1rem 1rem",
                       }}
-                    />
-                    <p className="text-[1rem] text-justify">
-                      Đã đánh giá vào{" "}
-                      <span className="font-bold">{review.time}</span>
-                    </p>
-                  </div>
-                </Card>
-              ))}
+                    >
+                      <Divider
+                        sx={{
+                          borderColor: "#ccc",
+                          borderWidth: "1px",
+                          marginBottom: "0.5rem",
+                        }}
+                      />
+                      <p className="text-[1rem] text-justify">
+                        Đã đánh giá vào{" "}
+                        <span className="font-bold">{review.createat}</span>
+                      </p>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <Typography
+                  variant="body1"
+                  sx={{ gridColumn: "span 4", textAlign: "center" }}
+                >
+                  Sân này chưa có đánh giá nào
+                </Typography>
+              )}
             </div>
           </div>
         </div>

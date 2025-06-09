@@ -20,10 +20,10 @@ import { RootState, AppDispatch } from "../redux/store";
 import { logout } from "../redux/features/authSlice";
 import Divider from "@mui/material/Divider";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
-import DiscountIcon from "@mui/icons-material/Discount";
 import HistoryIcon from "@mui/icons-material/History";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
+import f from "../../public/images/field3.jpg";
 
 interface TabItem {
   label: React.ReactNode;
@@ -52,7 +52,6 @@ const Header: React.FC = () => {
     { label: "Trang chủ", path: "/home" },
     { label: "Giới thiệu", path: "/about" },
     { label: "Danh sách sân", path: "/fields" },
-    { label: <LuBellRing size={24} />, path: "/notifications" },
   ];
 
   const tabItems = isAuthenticated ? authenticatedTabItems : defaultTabItems;
@@ -93,9 +92,14 @@ const Header: React.FC = () => {
     router.push("/profile");
   };
 
-  const handleAccount = () => {
+  const handleReview = () => {
     handleMenuClose();
-    router.push("/account");
+    router.push("/reviewHistory");
+  };
+
+  const handleBooking = () => {
+    handleMenuClose();
+    router.push("/bookingHistory");
   };
 
   return (
@@ -104,14 +108,20 @@ const Header: React.FC = () => {
       flex items-center`}
     >
       <div className="header flex items-center justify-between space-x-[1rem] mx-auto sm:space-x-[4rem] max-w-7xl w-full px-4 sm:px-8">
-        <div className="logo flex items-center space-x-[0.5rem] sm:space-x-[1rem]">
+        <div
+          className="logo flex items-center space-x-[0.5rem] sm:space-x-[1rem]"
+          onClick={() => router.push("/home")}
+        >
           <img
             src="/logo.png"
             alt="Logo"
             className="h-10 w-10 sm:h-15 sm:w-15"
           />
-          <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-            MTKICKs
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: "bold", cursor: "pointer" }}
+          >
+            MTKICKS
           </Typography>
         </div>
         <Box className="flex items-center space-x-4">
@@ -164,7 +174,7 @@ const Header: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-500 text-[1.2rem]">Xin chào,</span>
                   <img
-                    src="/images/lc1.jpg"
+                    src={f.src}
                     alt="Avatar"
                     className="w-8 h-8 rounded-full"
                   />
@@ -195,10 +205,7 @@ const Header: React.FC = () => {
               >
                 <MenuList>
                   <div className="header-content flex items-center px-4 gap-x-[1.5rem] mb-[0.5rem]">
-                    <img
-                      src="./images/lc1.jpg"
-                      className="w-10 h-10 rounded-full"
-                    />
+                    <img src={f.src} className="w-10 h-10 rounded-full" />
                     <div className="flex items-start flex-col">
                       <span className="text-gray-700 text-[1rem] font-bold">
                         {user?.name}
@@ -215,20 +222,14 @@ const Header: React.FC = () => {
                     </ListItemIcon>
                     <ListItemText>Thông tin cá nhân</ListItemText>
                   </MenuItem>
-                  <MenuItem>
-                    <ListItemIcon>
-                      <DiscountIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Mã khuyến mãi</ListItemText>
-                  </MenuItem>
                   <Divider sx={{ borderWidth: "1px" }} />
-                  <MenuItem>
+                  <MenuItem onClick={handleReview}>
                     <ListItemIcon>
                       <RateReviewIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Lịch sử đánh giá</ListItemText>
                   </MenuItem>
-                  <MenuItem>
+                  <MenuItem onClick={handleBooking}>
                     <ListItemIcon>
                       <HistoryIcon fontSize="small" />
                     </ListItemIcon>

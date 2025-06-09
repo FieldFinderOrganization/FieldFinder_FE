@@ -63,7 +63,6 @@ const Login: React.FC = () => {
               );
             }
             const addressRes = await getAddress(providerRes.providerId);
-            console.log("addressRes", addressRes);
             userData = {
               ...userData,
               addresses: addressRes.map((addr) => ({
@@ -78,7 +77,19 @@ const Login: React.FC = () => {
         dispatch(loginSuccess(userData));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
         toast.success("Đăng nhập thành công");
-        router.push("/home");
+        // if (userData.role === "PROVIDER") {
+        //   router.push("/profile");
+        // } else {
+        //   router.push("/home");
+        // }
+        switch (userData.role) {
+          case "USER":
+            router.push("/home");
+          case "PROVIDER":
+            router.push("/profile");
+          case "ADMIN":
+            router.push("dashboard");
+        }
       }
     } catch (error) {
       toast.error("Đăng nhập thất bại");
@@ -136,15 +147,6 @@ const Login: React.FC = () => {
                   onClick={handleShowPassword}
                 />
               )}
-            </div>
-            <div className="rf flex justify-between items-center">
-              <div className="remember flex items-center">
-                <Checkbox sx={{ "& .MuiSvgIcon-root": { fontSize: 24 } }} />
-                <p className="text-xl font-medium">Ghi nhớ tôi</p>
-              </div>
-              <div className="font-bold text-red-600 text-xl mr-[1rem]">
-                Quên mật khẩu
-              </div>
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}
