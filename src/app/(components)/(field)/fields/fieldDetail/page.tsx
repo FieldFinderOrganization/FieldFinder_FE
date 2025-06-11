@@ -29,7 +29,8 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { toast } from "react-toastify";
 import { getBookingSlot } from "@/services/booking";
-import { getAverageRating, getReviewByPitch } from "@/services/review";
+import { getReviewByPitch } from "@/services/review";
+import { getAllUsers } from "@/services/user";
 import f from "../../../../../../public/images/field3.jpg";
 
 interface reviewResponseDTO {
@@ -40,6 +41,13 @@ interface reviewResponseDTO {
   comment: string;
   createat: string;
 }
+
+interface User {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 const FieldDetail: React.FC = () => {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -49,9 +57,10 @@ const FieldDetail: React.FC = () => {
   const description = searchParams.get("description");
   const address = searchParams.get("address");
   const rating = searchParams.get("rating");
+  const parsedRating = rating ? parseFloat(rating) : null; // Parse rating from URL
   const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
-  const [averageRating, setAverageRating] = useState<number | null>(null);
   const [reviews, setReviews] = useState<reviewResponseDTO[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: User }>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -80,11 +89,19 @@ const FieldDetail: React.FC = () => {
       if (!id) return;
 
       try {
-        const rating = await getAverageRating(id);
-        setAverageRating(rating);
+        const [pitchReviews, usersData] = await Promise.all([
+          getReviewByPitch(id),
+          getAllUsers(),
+        ]);
 
-        const pitchReviews = await getReviewByPitch(id);
         setReviews(pitchReviews);
+
+        const userMap: { [key: string]: User } = {};
+        usersData.forEach((user) => {
+          userMap[user.userId] = user;
+        });
+
+        setUsers(userMap);
 
         if (date) {
           await fetchBookedSlots();
@@ -174,28 +191,26 @@ const FieldDetail: React.FC = () => {
     }
   };
 
-  const renderStars = (ratingValue: number): React.ReactNode[] => {
+  const renderStars = (rating: number | null): React.ReactNode[] => {
     const stars: React.ReactNode[] = [];
-    const fullStars = Math.floor(ratingValue);
-    const hasHalfStar = ratingValue % 1 >= 0.5;
+    const starRating = rating ? rating / 2 : 0;
+    const fullStars = Math.floor(starRating);
+    const hasHalfStar = starRating % 1 >= 0.5;
 
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <FaStar key={`full-${i}`} className="text-green-600 text-[1rem]" />
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <FaStarHalfAlt key="half" className="text-green-600 text-[1rem]" />
-      );
-    }
-
-    const remainingStars = 5 - stars.length;
-    for (let i = 0; i < remainingStars; i++) {
-      stars.push(
-        <CiStar key={`empty-${i}`} className="text-[1rem] text-green-600" />
-      );
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
+        );
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
+        );
+      } else {
+        stars.push(
+          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
+        );
+      }
     }
 
     return stars;
@@ -212,6 +227,13 @@ const FieldDetail: React.FC = () => {
       default:
         return "Không xác định";
     }
+  };
+
+  const truncateName = (name: string, maxLength: number = 15) => {
+    if (name.length > maxLength) {
+      return name.substring(0, 12) + "...";
+    }
+    return name;
   };
 
   const timeSlots = [
@@ -279,12 +301,14 @@ const FieldDetail: React.FC = () => {
                 Sân {name || "Sân không xác định"}
               </Typography>
               <div className="ratings flex items-center justify-center gap-x-[0.5rem]">
-                {rating ? renderStars(Number(rating)) : "Chưa có đánh giá"}
+                {parsedRating !== null
+                  ? renderStars(parsedRating)
+                  : "Chưa có đánh giá"}
               </div>
             </div>
             <div className="flex items-center gap-x-[2.4rem]">
               <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
-                {averageRating !== null ? `${averageRating}` : "5"}/5
+                {parsedRating !== null ? parsedRating.toFixed(1) : "0"}/10
               </div>
               <div className="field-info text-[1rem] flex-1 font-bold">
                 {description || "Không có mô tả"}
@@ -414,9 +438,9 @@ const FieldDetail: React.FC = () => {
         </div>
         <div
           ref={reviewsRef}
-          className={`discounts mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
+          className={`reviews mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
         >
-          <div className="flex items-center justify-center mb-[2rem] relative">
+          <div className="flex items-center justify-center mb-[2rem] relative mt-[2rem]">
             <Typography
               variant="h3"
               sx={{ fontWeight: "bold", textAlign: "center" }}
@@ -443,7 +467,7 @@ const FieldDetail: React.FC = () => {
             </div>
           </div>
           <div className="reviews-cards space-y-[2rem]">
-            <div className="mx-auto gap-4 flex items-center flex-wrap max-7-xl">
+            <div className="mx-auto grid grid-cols-4 space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
               {currentReviews.length > 0 ? (
                 currentReviews.map((review, index) => (
                   <Card
@@ -454,10 +478,10 @@ const FieldDetail: React.FC = () => {
                       position: "relative",
                       paddingBottom: "50px",
                     }}
-                    className="mx-auto"
                   >
                     <CardContent
                       sx={{
+                        width: "100%",
                         padding: "1rem",
                         height: "100%",
                         display: "flex",
@@ -471,7 +495,11 @@ const FieldDetail: React.FC = () => {
                           className="rounded-full h-12 w-12 object-cover"
                         />
                         <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
-                          <p className="font-bold text-[1.2rem]">Tên</p>
+                          <p className="font-bold text-[1.2rem]">
+                            {truncateName(
+                              users[review.userId]?.name || "Người dùng ẩn danh"
+                            )}
+                          </p>
                           <div className="stars flex items-start gap-x-[0.5rem]">
                             {renderStars(review.rating)}
                           </div>
@@ -509,7 +537,9 @@ const FieldDetail: React.FC = () => {
                       />
                       <p className="text-[1rem] text-justify">
                         Đã đánh giá vào{" "}
-                        <span className="font-bold">{review.createat}</span>
+                        <span className="font-bold">
+                          {dayjs(review.createat).format("DD/MM/YYYY")}
+                        </span>
                       </p>
                     </div>
                   </Card>

@@ -303,10 +303,10 @@ const Dashboard: React.FC = () => {
     try {
       const providerRes = await getAllProviders();
       setProviders(providerRes || []);
-      toast.success("Đã đặt lại danh sách nhà cung cấp");
+      toast.success("Đã đặt lại danh sách Chủ sân");
     } catch (error) {
-      console.error("Lỗi khi đặt lại nhà cung cấp:", error);
-      toast.error("Lỗi khi đặt lại danh sách nhà cung cấp");
+      console.error("Lỗi khi đặt lại Chủ sân:", error);
+      toast.error("Lỗi khi đặt lại danh sách Chủ sân");
     }
   };
 
@@ -783,7 +783,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div ref={providerTableRef} className="w-full mt-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Danh sách nhà cung cấp</h2>
+            <h2 className="text-xl font-semibold">Danh sách Chủ sân</h2>
             <Button
               variant="outlined"
               color="primary"

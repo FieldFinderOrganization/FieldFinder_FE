@@ -3,15 +3,23 @@ import axios from "axios";
 const baseURL: string = "http://localhost:8080/api";
 
 interface User {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
+interface User1 {
   name: string;
   email: string;
   phone: string;
 }
 
 export const updateUser = async (
-  userObj: User,
+  userObj: User1,
   userId: String
-): Promise<User> => {
+): Promise<User1> => {
   return axios.put(`${baseURL}/users/${userId}`, userObj);
 };
 

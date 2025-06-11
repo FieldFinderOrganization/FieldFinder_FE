@@ -24,6 +24,8 @@ import HistoryIcon from "@mui/icons-material/History";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
 import f from "../../public/images/field3.jpg";
+import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
+import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
 
 interface TabItem {
   label: React.ReactNode;
@@ -92,6 +94,11 @@ const Header: React.FC = () => {
     router.push("/profile");
   };
 
+  const handlePitchInfo = () => {
+    handleMenuClose();
+    router.push("/profile?tab=1");
+  };
+
   const handleReview = () => {
     handleMenuClose();
     router.push("/reviewHistory");
@@ -100,6 +107,11 @@ const Header: React.FC = () => {
   const handleBooking = () => {
     handleMenuClose();
     router.push("/bookingHistory");
+  };
+
+  const handleDashboard = () => {
+    handleMenuClose();
+    router.push("/dashboard");
   };
 
   return (
@@ -222,6 +234,22 @@ const Header: React.FC = () => {
                     </ListItemIcon>
                     <ListItemText>Thông tin cá nhân</ListItemText>
                   </MenuItem>
+                  {user?.role === "PROVIDER" && (
+                    <MenuItem onClick={handlePitchInfo}>
+                      <ListItemIcon>
+                        <FlutterDashOutlinedIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Thông tin sân</ListItemText>
+                    </MenuItem>
+                  )}
+                  {user?.role === "ADMIN" && (
+                    <MenuItem onClick={handleDashboard}>
+                      <ListItemIcon>
+                        <LineAxisOutlinedIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Thống kê</ListItemText>
+                    </MenuItem>
+                  )}
                   <Divider sx={{ borderWidth: "1px" }} />
                   <MenuItem onClick={handleReview}>
                     <ListItemIcon>

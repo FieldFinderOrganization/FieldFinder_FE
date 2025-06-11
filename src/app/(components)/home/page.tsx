@@ -1027,112 +1027,114 @@ const Home: React.FC = () => {
           ))}
         </Carousel>
       </div>
-      <div
-        ref={reviewsRef}
-        className={`discounts mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
-      >
-        <div className="flex items-center justify-center mb-[3rem] relative">
-          <Typography
-            variant="h3"
-            sx={{
-              fontWeight: "bold",
-              textAlign: "center",
-            }}
-          >
-            Nhận xét
-          </Typography>
-          <div className="flex items-end icons absolute right-1 gap-[1.5rem]">
-            <div
-              className={`rounded-full bg-gray-200 flex items-center justify-center ${
-                currentPage === 0 ? "opacity-50" : "cursor-pointer"
-              }`}
-              onClick={handlePrevRe}
+      <div className="flex gap-x-[2rem] max-w-7xl w-full px-4 mt-[2rem] flex-col mx-auto">
+        <div
+          ref={reviewsRef}
+          className={`reviews mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0 "}`}
+        >
+          <div className="flex items-center justify-center mb-[2rem] relative">
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: "bold",
+                textAlign: "center",
+              }}
             >
-              <MdKeyboardArrowLeft className="text-[2.5rem]" />
-            </div>
-            <div
-              className={`rounded-full bg-gray-200 flex items-center justify-center  ${
-                endIndex >= reviewsData.length
-                  ? "opacity-50 "
-                  : "cursor-pointer"
-              }`}
-              onClick={handleNextRe}
-            >
-              <MdKeyboardArrowRight className="text-[2.5rem]" />
+              Nhận xét
+            </Typography>
+            <div className="flex items-end icons absolute right-4 gap-[1.5rem]">
+              <div
+                className={`rounded-full bg-gray-200 flex items-center justify-center ${
+                  currentPage === 0 ? "opacity-50" : "cursor-pointer"
+                }`}
+                onClick={handlePrevRe}
+              >
+                <MdKeyboardArrowLeft className="text-[2.5rem]" />
+              </div>
+              <div
+                className={`rounded-full bg-gray-200 flex items-center justify-center  ${
+                  endIndex >= reviewsData.length
+                    ? "opacity-50 "
+                    : "cursor-pointer"
+                }`}
+                onClick={handleNextRe}
+              >
+                <MdKeyboardArrowRight className="text-[2.5rem]" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="reviews-cards space-y-[2rem]">
-          <div className="mx-auto grid grid-cols-4 max-7-xl space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
-            {currentReviews.map((review, index) => (
-              <Card
-                key={index}
-                sx={{
-                  maxWidth: "250px",
-                  height: "250px",
-                  position: "relative",
-                  paddingBottom: "50px",
-                }}
-                className="mx-auto"
-              >
-                <CardContent
+          <div className="reviews-cards space-y-[2rem]">
+            <div className="mx-auto grid grid-cols-4 space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
+              {currentReviews.map((review, index) => (
+                <Card
+                  key={index}
                   sx={{
-                    padding: "1rem",
-                    height: "100%",
-                    display: "flex",
-                    gap: "1rem",
-                    flexDirection: "column",
+                    maxWidth: "250px",
+                    height: "250px",
+                    position: "relative",
+                    paddingBottom: "50px",
                   }}
+                  className="mx-auto"
                 >
-                  <div className="header flex items-center gap-[1rem]">
-                    <img
-                      src={review.avatar}
-                      className="rounded-full h-12 w-12 object-cover"
-                    />
-                    <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
-                      <p className="font-bold text-[1.2rem]">{review.name}</p>
-                      <div className="stars flex items-start gap-x-[0.5rem]">
-                        {renderStars(review.rating)}
-                      </div>
-                    </div>
-                  </div>
-                  <p
-                    className="font-medium text-[0.9rem] text-justify"
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      marginTop: "0.5rem",
+                  <CardContent
+                    sx={{
+                      padding: "1rem",
+                      height: "100%",
+                      display: "flex",
+                      gap: "1rem",
+                      flexDirection: "column",
                     }}
                   >
-                    {review.comment}
-                  </p>
-                </CardContent>
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: "0 1rem 1rem 1rem",
-                  }}
-                >
-                  <Divider
-                    sx={{
-                      borderColor: "#ccc",
-                      borderWidth: "1px",
-                      marginBottom: "0.5rem",
+                    <div className="header flex items-center gap-[1rem]">
+                      <img
+                        src={review.avatar}
+                        className="rounded-full h-12 w-12 object-cover"
+                      />
+                      <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
+                        <p className="font-bold text-[1.2rem]">{review.name}</p>
+                        <div className="stars flex items-start gap-x-[0.5rem]">
+                          {renderStars(review.rating)}
+                        </div>
+                      </div>
+                    </div>
+                    <p
+                      className="font-medium text-[0.9rem] text-justify"
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      {review.comment}
+                    </p>
+                  </CardContent>
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: "0 1rem 1rem 1rem",
                     }}
-                  />
-                  <p className="text-[1rem] text-justify">
-                    Đã đánh giá vào{" "}
-                    <span className="font-bold">{review.time}</span>
-                  </p>
-                </div>
-              </Card>
-            ))}
+                  >
+                    <Divider
+                      sx={{
+                        borderColor: "#ccc",
+                        borderWidth: "1px",
+                        marginBottom: "0.5rem",
+                      }}
+                    />
+                    <p className="text-[1rem] text-justify">
+                      Đã đánh giá vào{" "}
+                      <span className="font-bold">{review.time}</span>
+                    </p>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </div>

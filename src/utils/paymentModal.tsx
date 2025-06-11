@@ -144,14 +144,14 @@ const paymentModal: React.FC<PaymentModalProps> = ({
                 {paymentData.bankAccountNumber || "Chưa cập nhật"}
               </div>
             </div>
-            <div className="flex items-center justify-between w-full">
+            {/* <div className="flex items-center justify-between w-full">
               <div className="field-info text-[1rem] font-bold">
                 Tên tài khỏan:
               </div>
               <div className="field-info text-[1rem] flex-1 text-right">
                 {paymentData.bankAccountName || "Chưa cập nhật"}
               </div>
-            </div>
+            </div> */}
             <div className="flex items-center justify-between w-full">
               <div className="field-info text-[1rem] font-bold">Ngân hàng:</div>
               <div className="field-info text-[1rem] flex-1 text-right">

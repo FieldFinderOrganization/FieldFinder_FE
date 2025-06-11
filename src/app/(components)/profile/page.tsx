@@ -4,7 +4,7 @@ import Header from "@/utils/header";
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { loginSuccess, update, logout } from "@/redux/features/authSlice";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Divider,
   Typography,
@@ -61,15 +61,16 @@ import {
   updateStatus,
 } from "@/services/booking";
 import { getAllPayments } from "@/services/payment";
-import { GridValueGetter } from "@mui/x-data-grid";
 import dayjs from "dayjs";
+
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const user = useSelector((state: any) => state.auth.user);
+  const searchParams = useSearchParams();
   const baseTabs = [
     { label: "Thông tin cá nhân", value: 0 },
-    { label: "Thông báo", value: 2 },
+    // { label: "Thông báo", value: 2 },
   ];
 
   const providerTabs = [
@@ -80,7 +81,10 @@ const Profile: React.FC = () => {
 
   const tabs = user?.role === "PROVIDER" ? providerTabs : baseTabs;
 
-  const [initTab, setInitTab] = useState(tabs[0].value);
+  const initialTab = parseInt(searchParams.get("tab") || "0", 10);
+  const [initTab, setInitTab] = useState(
+    tabs.find((tab) => tab.value === initialTab)?.value || tabs[0].value
+  );
   const [show, setShow] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingProvider, setIsEditingProvider] = useState(false);

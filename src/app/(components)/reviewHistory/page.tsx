@@ -27,9 +27,10 @@ import {
   createReview,
   updateReview,
   deleteReview,
+  getAverageRating,
   reviewRequestDTO,
 } from "@/services/review";
-import { FaStar } from "react-icons/fa";
+import { FaStar, FaStarHalfAlt } from "react-icons/fa";
 import { CiStar } from "react-icons/ci";
 import f from "../../../../public/images/field3.jpg";
 import dayjs from "dayjs";
@@ -45,6 +46,7 @@ interface PitchResponseDTO {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
+  averageRating?: number; // Added to store average rating
 }
 
 interface reviewResponseDTO {
@@ -83,6 +85,9 @@ const reviewHistory: React.FC = () => {
   const [openAddModal, setOpenAddModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [selectedPitchFilter, setSelectedPitchFilter] = useState<string | null>(
+    null
+  );
   const [newReview, setNewReview] = useState<{
     pitchId: string;
     rating: number;
@@ -132,17 +137,28 @@ const reviewHistory: React.FC = () => {
     router.push("/login");
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        i <= rating ? (
-          <FaStar key={i} className="text-green-600 text-[0.7rem]" />
-        ) : (
-          <CiStar key={i} className="text-[0.8rem] text-green-600" />
-        )
-      );
+  const renderStars = (rating: number | null): React.ReactNode[] => {
+    const stars: React.ReactNode[] = [];
+    const starRating = rating ? rating / 2 : 0; // Convert 0-10 scale to 0-5 scale
+    const fullStars = Math.floor(starRating);
+    const hasHalfStar = starRating % 1 >= 0.5;
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
+        );
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
+        );
+      } else {
+        stars.push(
+          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
+        );
+      }
     }
+
     return stars;
   };
 
@@ -164,6 +180,7 @@ const reviewHistory: React.FC = () => {
       const bookRes = await getBookingByUserId(user.userId);
       const uniquePitches = new Map<string, PitchResponseDTO>();
       const userReviews: reviewResponseDTO[] = [];
+      const reviewIds = new Set<string>();
 
       await Promise.all(
         (bookRes || []).map(async (booking) => {
@@ -176,14 +193,22 @@ const reviewHistory: React.FC = () => {
           if (slotInfo?.pitchId && !uniquePitches.has(slotInfo.pitchId)) {
             const pitch = await getPitchById(slotInfo.pitchId);
             if (pitch) {
-              uniquePitches.set(pitch.pitchId, pitch);
+              // Fetch average rating for the pitch
+              const averageRating = await getAverageRating(slotInfo.pitchId);
+              uniquePitches.set(pitch.pitchId, {
+                ...pitch,
+                averageRating: Number(averageRating.toFixed(1)), // Format to one decimal place
+              });
               const pitchReviews = await getReviewByPitch(slotInfo.pitchId);
-              const userReview = pitchReviews.find(
+              const userPitchReviews = pitchReviews.filter(
                 (review) => review.userId === user.userId
               );
-              if (userReview) {
-                userReviews.push(userReview);
-              }
+              userPitchReviews.forEach((review) => {
+                if (!reviewIds.has(review.reviewId)) {
+                  reviewIds.add(review.reviewId);
+                  userReviews.push(review);
+                }
+              });
             }
           }
         })
@@ -193,6 +218,7 @@ const reviewHistory: React.FC = () => {
       setReviews(userReviews);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
+      toast.error("Không thể tải dữ liệu đánh giá");
     } finally {
       setLoading(false);
     }
@@ -203,19 +229,12 @@ const reviewHistory: React.FC = () => {
   }, [user]);
 
   const handlePitchClick = async (pitch: PitchResponseDTO) => {
-    const pitchReviews = await getReviewByPitch(pitch.pitchId);
-    const userReview = pitchReviews.find(
-      (review) => review.userId === user.userId
-    );
-    if (userReview) {
-      setEditReview({ rating: userReview.rating, comment: userReview.comment });
-      setNewReview({ ...newReview, pitchId: pitch.pitchId });
-      setSelectedId(userReview.reviewId);
-      setOpenEditModal(true);
-    } else {
-      setNewReview({ pitchId: pitch.pitchId, rating: 5, comment: "" });
-      setOpenAddModal(true);
-    }
+    setNewReview({
+      pitchId: pitch.pitchId,
+      rating: 5,
+      comment: "",
+    });
+    setOpenAddModal(true);
   };
 
   const handleAddClick = () => {
@@ -313,10 +332,18 @@ const reviewHistory: React.FC = () => {
     pitchPage * ITEMS_PER_PAGE
   );
 
-  const paginatedReviews = reviews.slice(
+  const filteredReviews = selectedPitchFilter
+    ? reviews.filter((review) => review.pitchId === selectedPitchFilter)
+    : reviews;
+
+  const paginatedReviews = filteredReviews.slice(
     (reviewPage - 1) * ITEMS_PER_PAGE,
     reviewPage * ITEMS_PER_PAGE
   );
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [selectedPitchFilter]);
 
   if (loading) {
     return (
@@ -362,11 +389,7 @@ const reviewHistory: React.FC = () => {
                       />
                       <div className="content flex flex-col gap-y-[0.2rem] ml-[1rem]">
                         <div className="ratings flex items-center gap-x-[0.5rem]">
-                          <FaStar className="text-green-600 text-[0.7rem]" />
-                          <FaStar className="text-green-600 text-[0.7rem]" />
-                          <FaStar className="text-green-600 text-[0.7rem]" />
-                          <FaStar className="text-green-600 text-[0.7rem]" />
-                          <CiStar className="text-[0.8rem] text-green-600" />
+                          {renderStars(pitch.averageRating || null)}
                         </div>
                         <Typography fontWeight={700}>
                           Sân {pitch.name} (sân{" "}
@@ -380,7 +403,8 @@ const reviewHistory: React.FC = () => {
                         <Typography>{pitch.price} VNĐ</Typography>
                         <div className="flex items-center gap-x-[0.5rem]">
                           <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
-                            8/10
+                            {pitch.averageRating ? pitch.averageRating : "N/A"}
+                            /10
                           </div>
                           <div className="field-info text-[1rem] flex-1">
                             {pitch.description || "Không có thông tin"}
@@ -414,46 +438,73 @@ const reviewHistory: React.FC = () => {
                   width: "100%",
                 }}
               />
-              <div className="flex items-center gap-x-[2rem] mb-4">
-                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                  Các đánh giá đã thực hiện
-                </Typography>
-                <div className="flex space-x-4">
-                  <Tooltip title="Thêm đánh giá" arrow>
+              <div className="flex flex-col gap-y-[1rem] mb-4">
+                <div className="flex items-center justify-between">
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    Các đánh giá đã thực hiện
+                  </Typography>
+                  <div className="flex space-x-4">
+                    <Tooltip title="Thêm đánh giá" arrow>
+                      <div
+                        className={`${buttonBase} bg-[#e25b43] text-white cursor-pointer`}
+                        onClick={handleAddClick}
+                      >
+                        <AddOutlinedIcon fontSize="medium" />
+                      </div>
+                    </Tooltip>
+                    <Tooltip title="Sửa đánh giá" arrow>
+                      <div
+                        className={`${buttonBase} ${
+                          selectedId
+                            ? "bg-[#e25b43] text-white cursor-pointer"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                        onClick={handleEditClick}
+                      >
+                        <EditOutlinedIcon fontSize="medium" />
+                      </div>
+                    </Tooltip>
+                    <Tooltip title="Xóa đánh giá" arrow>
+                      <div
+                        className={`${buttonBase} ${
+                          selectedId
+                            ? "bg-[#e25b43] text-white cursor-pointer"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                        onClick={handleDeleteClick}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="medium" />
+                      </div>
+                    </Tooltip>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-x-[1rem] gap-y-[0.5rem]">
+                  <div
+                    className={`px-4 py-2 rounded-md cursor-pointer ${
+                      selectedPitchFilter === null
+                        ? "bg-[#e25b43] text-white"
+                        : "bg-gray-200 text-gray-700"
+                    }`}
+                    onClick={() => setSelectedPitchFilter(null)}
+                  >
+                    Tất cả
+                  </div>
+                  {pitches.map((pitch) => (
                     <div
-                      className={`${buttonBase} bg-[#e25b43] text-white cursor-pointer`}
-                      onClick={handleAddClick}
-                    >
-                      <AddOutlinedIcon fontSize="medium" />
-                    </div>
-                  </Tooltip>
-                  <Tooltip title="Sửa đánh giá" arrow>
-                    <div
-                      className={`${buttonBase} ${
-                        selectedId
-                          ? "bg-[#e25b43] text-white cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      key={pitch.pitchId}
+                      className={`px-4 py-2 rounded-md cursor-pointer ${
+                        selectedPitchFilter === pitch.pitchId
+                          ? "bg-[#e25b43] text-white"
+                          : "bg-gray-200 text-gray-700"
                       }`}
-                      onClick={handleEditClick}
+                      onClick={() => setSelectedPitchFilter(pitch.pitchId)}
                     >
-                      <EditOutlinedIcon fontSize="medium" />
+                      Sân {pitch.name}
                     </div>
-                  </Tooltip>
-                  <Tooltip title="Xóa đánh giá" arrow>
-                    <div
-                      className={`${buttonBase} ${
-                        selectedId
-                          ? "bg-[#e25b43] text-white cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      }`}
-                      onClick={handleDeleteClick}
-                    >
-                      <DeleteOutlineOutlinedIcon fontSize="medium" />
-                    </div>
-                  </Tooltip>
+                  ))}
                 </div>
               </div>
-              <div className="reviews grid grid-cols-4 gap-x-[1rem]">
+              <div className="reviews grid grid-cols-4 gap-x-[1rem] gap-y-[2rem]">
                 {paginatedReviews.length > 0 ? (
                   paginatedReviews.map((review, index) => (
                     <Card
@@ -548,9 +599,9 @@ const reviewHistory: React.FC = () => {
                   </Typography>
                 )}
               </div>
-              {reviews.length > ITEMS_PER_PAGE && (
+              {filteredReviews.length > ITEMS_PER_PAGE && (
                 <Pagination
-                  count={Math.ceil(reviews.length / ITEMS_PER_PAGE)}
+                  count={Math.ceil(filteredReviews.length / ITEMS_PER_PAGE)}
                   page={reviewPage}
                   onChange={handleReviewPageChange}
                   sx={{ mt: 2, alignSelf: "center" }}
@@ -593,10 +644,6 @@ const reviewHistory: React.FC = () => {
                   sx={{ mb: 2 }}
                 />
               )}
-              disabled={
-                !!newReview.pitchId &&
-                pitches.some((p) => p.pitchId === newReview.pitchId)
-              }
             />
             <TextField
               select
@@ -609,7 +656,7 @@ const reviewHistory: React.FC = () => {
               sx={{ mb: 2 }}
               SelectProps={{ native: true }}
             >
-              {[1, 2, 3, 4, 5].map((num) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <option key={num} value={num}>
                   {num}
                 </option>

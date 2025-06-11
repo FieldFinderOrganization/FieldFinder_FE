@@ -2,12 +2,13 @@
 
 import Header from "@/utils/header";
 import { Card, Typography } from "@mui/material";
-import { FaSearch, FaStar } from "react-icons/fa";
+import { FaSearch, FaStar, FaStarHalfAlt } from "react-icons/fa";
 import f from "../../../../../public/images/field3.jpg";
 import { CiStar } from "react-icons/ci";
 import { useEffect, useState } from "react";
 import { getAllAddresses } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
+import { getAverageRating } from "@/services/review";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface Address {
@@ -34,6 +35,7 @@ const FieldLists: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filteredAddresses, setFilteredAddresses] = useState<Address[]>([]);
   const [basePitches, setBasePitches] = useState<Pitch[]>([]);
+  const [ratings, setRatings] = useState<{ [key: string]: number }>({});
 
   const searchParams = useSearchParams();
   const pitchIdsParam = searchParams.get("pitchIds");
@@ -59,6 +61,23 @@ const FieldLists: React.FC = () => {
         setFilteredAddresses(
           getAddressesForPitches(addressesData, initialPitches)
         );
+
+        const pitchRatings: { [key: string]: number } = {};
+        await Promise.all(
+          initialPitches.map(async (pitch) => {
+            try {
+              const rating = await getAverageRating(pitch.pitchId);
+              pitchRatings[pitch.pitchId] = rating;
+            } catch (error) {
+              console.error(
+                `Error fetching rating for pitch ${pitch.pitchId}:`,
+                error
+              );
+              pitchRatings[pitch.pitchId] = 0;
+            }
+          })
+        );
+        setRatings(pitchRatings);
 
         updateSelectedAddress(
           getAddressesForPitches(addressesData, initialPitches)
@@ -139,9 +158,29 @@ const FieldLists: React.FC = () => {
         price: pitch.price.toString(),
         description: pitch.description || "Không có mô tả",
         address: address,
-        rating: "4.5",
+        rating: (ratings[pitch.pitchId] || 0).toFixed(1),
       }).toString()}`
     );
+  };
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const starRating = rating / 2; // Convert 10-point scale to 5-star scale
+    const fullStars = Math.floor(starRating);
+    const hasHalfStar = starRating % 1 >= 0.5;
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(<FaStar key={i} className="text-green-600 text-[0.7rem]" />);
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <FaStarHalfAlt key={i} className="text-green-600 text-[0.7rem]" />
+        );
+      } else {
+        stars.push(<CiStar key={i} className="text-[0.8rem] text-green-600" />);
+      }
+    }
+    return stars;
   };
 
   return (
@@ -221,11 +260,7 @@ const FieldLists: React.FC = () => {
                   />
                   <div className="content flex flex-col gap-y-[0.2rem] ml-[1rem]">
                     <div className="ratings flex items-start gap-x-[0.5rem]">
-                      <FaStar className="text-green-600 text-[0.7rem]" />
-                      <FaStar className="text-green-600 text-[0.7rem]" />
-                      <FaStar className="text-green-600 text-[0.7rem]" />
-                      <FaStar className="text-green-600 text-[0.7rem]" />
-                      <CiStar className="text-[0.8rem] text-green-600" />
+                      {renderStars(ratings[pitch.pitchId] || 0)}
                     </div>
                     <Typography fontWeight={700}>
                       Sân {pitch.name} (sân{" "}
@@ -239,7 +274,7 @@ const FieldLists: React.FC = () => {
                     <Typography>{pitch.price} VNĐ</Typography>
                     <div className="flex items-center gap-x-[0.5rem]">
                       <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
-                        8/10
+                        {(ratings[pitch.pitchId] || 0).toFixed(1)}/10
                       </div>
                       <div className="field-info text-[1rem] flex-1">
                         {pitch.description || "Không có thông tin"}

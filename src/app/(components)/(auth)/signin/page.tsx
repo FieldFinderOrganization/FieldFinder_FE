@@ -184,7 +184,7 @@ const Signin: React.FC = () => {
                   sx={{ width: "100%" }}
                 >
                   <MenuItem value={"USER"}>Người dùng</MenuItem>
-                  <MenuItem value={"PROVIDER"}>Nhà cung cấp</MenuItem>
+                  <MenuItem value={"PROVIDER"}>Chủ sân</MenuItem>
                 </Select>
               </FormControl>
             </Box>
