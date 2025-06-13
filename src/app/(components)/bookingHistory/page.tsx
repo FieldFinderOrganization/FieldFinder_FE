@@ -1,27 +1,17 @@
 "use client";
 
-import { logout } from "@/redux/features/authSlice";
-import {
-  BookingResponseDTO,
-  getBookingByUserId,
-  getBookingSlotByDate,
-} from "@/services/booking";
+import { logout, setShowSidebar } from "@/redux/features/authSlice";
+import { BookingResponseDTO, getBookingByUserId } from "@/services/booking";
 import Header from "@/utils/header";
 import Sidebar from "@/utils/sideBar";
 import { Box, Typography } from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers } from "@/services/user";
 import { getAllProviders } from "@/services/provider";
-import { getPitchById } from "@/services/pitch";
-import dayjs from "dayjs";
-
-interface BookingSlot {
-  pitchId: string;
-  bookedSlots: number[];
-}
+import { getAllPitches } from "@/services/pitch";
 
 interface EnhancedBooking extends BookingResponseDTO {
   providerName: string;
@@ -29,17 +19,56 @@ interface EnhancedBooking extends BookingResponseDTO {
   slots: number[];
 }
 
-const bookingHistory: React.FC = () => {
+const slotToTime = (slot: number): string => {
+  const startHour = slot + 5;
+  const endHour = slot + 6;
+  return `${startHour}:00-${endHour}:00`;
+};
+
+const mergeContinuousSlots = (slots: number[]): string => {
+  if (slots.length === 0) return "Không có slot";
+
+  const sortedSlots = [...slots].sort((a, b) => a - b);
+
+  let result: string[] = [];
+  let start = sortedSlots[0];
+  let current = start;
+
+  for (let i = 1; i < sortedSlots.length; i++) {
+    if (sortedSlots[i] === current + 1) {
+      current = sortedSlots[i];
+    } else {
+      if (start === current) {
+        result.push(slotToTime(start));
+      } else {
+        result.push(
+          `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+        );
+      }
+      start = sortedSlots[i];
+      current = start;
+    }
+  }
+
+  if (start === current) {
+    result.push(slotToTime(start));
+  } else {
+    result.push(
+      `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+    );
+  }
+
+  return result.join(", ");
+};
+
+const BookingHistory: React.FC = () => {
   const dispatch = useDispatch();
   const router = useRouter();
   const [bookings, setBookings] = React.useState<EnhancedBooking[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const user = useSelector((state: any) => state.auth.user);
-  const baseTabs = [
-    { label: "Thông tin cá nhân", value: 0 },
-    { label: "Thông báo", value: 2 },
-  ];
+  const baseTabs = [{ label: "Thông tin cá nhân", value: 0 }];
 
   const providerTabs = [
     { label: "Thông tin cá nhân", value: 0 },
@@ -52,12 +81,9 @@ const bookingHistory: React.FC = () => {
   const [initTab, setInitTab] = useState(tabs[0].value);
   const [show, setShow] = useState(false);
 
-  const handleShow = (event: React.MouseEvent<HTMLElement>) => {
-    setShow(!show);
-  };
-
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
+    dispatch(setShowSidebar(true));
   };
 
   const handleLogout = () => {
@@ -70,13 +96,55 @@ const bookingHistory: React.FC = () => {
     { field: "providerName", headerName: "Tên chủ sân", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },
     {
-      field: "slots",
-      headerName: "Slots",
-      width: 150,
-      renderCell: (params) => params.row.slots.join(", ") || "Không có slot",
+      field: "timeRange",
+      headerName: "Khung giờ",
+      width: 200,
+      renderCell: (params: GridRenderCellParams<EnhancedBooking>) => {
+        if (!params.row) return "Không có dữ liệu";
+        return mergeContinuousSlots(params.row.slots);
+      },
     },
-    { field: "status", headerName: "Trạng thái đơn", width: 120 },
-    { field: "paymentStatus", headerName: "Trạng thái thanh toán", width: 200 },
+    {
+      field: "status",
+      headerName: "Trạng thái đặt sân",
+      width: 150,
+      renderCell: (params) => {
+        let typeText = "";
+        switch (params.row.status) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "CONFIRMED":
+            typeText = "Đã xác nhận";
+            break;
+          case "CANCELED":
+            typeText = "Đã hủy";
+            break;
+          default:
+            typeText = params.row.status;
+        }
+        return <span>{typeText}</span>;
+      },
+    },
+    {
+      field: "paymentStatus",
+      headerName: "Trạng thái thanh toán",
+      width: 150,
+      renderCell: (params) => {
+        let typeText = "";
+        switch (params.row.paymentStatus) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "PAID":
+            typeText = "Đã thanh toán";
+            break;
+          default:
+            typeText = params.row.paymentStatus;
+        }
+        return <span>{typeText}</span>;
+      },
+    },
     { field: "totalPrice", headerName: "Tổng giá tiền", width: 120 },
   ];
 
@@ -85,43 +153,42 @@ const bookingHistory: React.FC = () => {
       const fetchData = async () => {
         try {
           setLoading(true);
-          const [bookRes, userRes, providerRes] = await Promise.all([
-            getBookingByUserId(user.userId),
-            getAllUsers(),
-            getAllProviders(),
-          ]);
+          const [bookRes, userRes, providerRes, pitchesRes] = await Promise.all(
+            [
+              getBookingByUserId(user.userId),
+              getAllUsers(),
+              getAllProviders(),
+              getAllPitches(),
+            ]
+          );
 
-          const usersData = (userRes || []).map((u: any) => ({
-            userId: u.userId ?? u.id ?? "",
-            name: u.name,
-            email: u.email,
-            phone: u.phone,
-            role: u.role ?? "USER",
-          }));
+          const pitchMap = new Map(
+            pitchesRes.map((pitch) => [pitch.pitchId, pitch])
+          );
 
-          const enhancedBookings = await Promise.all(
-            (bookRes || []).map(async (booking: BookingResponseDTO) => {
-              const date = dayjs(booking.bookingDate).format("YYYY-MM-DD");
-              const slotData = await getBookingSlotByDate(date);
-              const slotInfo = slotData.find((slot: BookingSlot) =>
-                slot.bookedSlots.includes(booking.bookingDetails[0]?.slot)
-              ) || { pitchId: "", bookedSlots: [] };
-              const provider = providerRes.find(
-                (p: any) => p.providerId === booking.providerId
-              );
-              const user = usersData.find(
-                (u: any) => u.userId === provider?.userId
-              );
-              const pitch = slotInfo.pitchId
-                ? await getPitchById(slotInfo.pitchId)
+          const providerMap = new Map(
+            providerRes.map((provider) => [provider.providerId, provider])
+          );
+
+          const userMap = new Map(userRes.map((user) => [user.userId, user]));
+
+          const enhancedBookings = bookRes.map(
+            (booking: BookingResponseDTO) => {
+              const pitchId = booking.bookingDetails[0]?.pitchId;
+              const pitch = pitchMap.get(pitchId);
+
+              const provider = providerMap.get(booking.providerId);
+              const providerUser = provider
+                ? userMap.get(provider.userId)
                 : null;
+
               return {
                 ...booking,
-                providerName: user?.name || "Không xác định",
+                providerName: providerUser?.name || "Không xác định",
                 pitchName: pitch?.name || "Không xác định",
-                slots: slotInfo.bookedSlots || [],
+                slots: booking.bookingDetails.map((detail) => detail.slot),
               };
-            })
+            }
           );
 
           setBookings(enhancedBookings);
@@ -150,8 +217,6 @@ const bookingHistory: React.FC = () => {
       <div className="main flex items-start justify-center gap-x-[2rem]">
         <Sidebar
           tabs={tabs}
-          show={show}
-          handleShow={handleShow}
           initTab={initTab}
           handleChangeTab={handleChangeTab}
           handleLogout={handleLogout}
@@ -185,4 +250,4 @@ const bookingHistory: React.FC = () => {
   );
 };
 
-export default bookingHistory;
+export default BookingHistory;

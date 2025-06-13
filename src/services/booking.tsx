@@ -25,6 +25,7 @@ export interface BookingResponseDTO {
     slot: number;
     name: string;
     priceDetail: number;
+    pitchId: string;
   }[];
 }
 

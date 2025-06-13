@@ -121,10 +121,8 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
     const formattedDate = date.format("YYYY-MM-DD");
 
     try {
-      // Gọi API một lần với tất cả các slot
       const availablePitchIds = await getAvailablePitches(formattedDate, slots);
 
-      // Tạo query parameters với date, slots và pitchIds
       const queryParams = new URLSearchParams({
         date: formattedDate,
         slots: slots.join(","),

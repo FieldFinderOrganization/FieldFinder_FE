@@ -27,3 +27,13 @@ export const getAllUsers = async (): Promise<User[]> => {
   const response = await axios.get(`${baseURL}/users/users`);
   return response.data;
 };
+
+export const changeUserStatus = async (
+  userId: string,
+  status: string
+): Promise<User> => {
+  const response = await axios.patch(
+    `${baseURL}/users/${userId}/status?status=${status}`
+  );
+  return response.data;
+};

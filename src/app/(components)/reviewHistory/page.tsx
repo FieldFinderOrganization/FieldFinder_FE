@@ -1,6 +1,6 @@
 "use client";
 
-import { logout } from "@/redux/features/authSlice";
+import { logout, setShowSidebar } from "@/redux/features/authSlice";
 import Header from "@/utils/header";
 import Sidebar from "@/utils/sideBar";
 import {
@@ -46,7 +46,7 @@ interface PitchResponseDTO {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
-  averageRating?: number; // Added to store average rating
+  averageRating?: number | null;
 }
 
 interface reviewResponseDTO {
@@ -110,7 +110,7 @@ const reviewHistory: React.FC = () => {
   const user = useSelector((state: any) => state.auth.user);
   const baseTabs = [
     { label: "Thông tin cá nhân", value: 0 },
-    { label: "Thông báo", value: 2 },
+    // { label: "Thông báo", value: 2 },
   ];
 
   const providerTabs = [
@@ -124,12 +124,9 @@ const reviewHistory: React.FC = () => {
   const [initTab, setInitTab] = useState(tabs[0].value);
   const [show, setShow] = useState(false);
 
-  const handleShow = (event: React.MouseEvent<HTMLElement>) => {
-    setShow(!show);
-  };
-
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
+    dispatch(setShowSidebar(true));
   };
 
   const handleLogout = () => {
@@ -139,7 +136,7 @@ const reviewHistory: React.FC = () => {
 
   const renderStars = (rating: number | null): React.ReactNode[] => {
     const stars: React.ReactNode[] = [];
-    const starRating = rating ? rating / 2 : 0; // Convert 0-10 scale to 0-5 scale
+    const starRating = rating ? rating / 2 : 0;
     const fullStars = Math.floor(starRating);
     const hasHalfStar = starRating % 1 >= 0.5;
 
@@ -195,9 +192,15 @@ const reviewHistory: React.FC = () => {
             if (pitch) {
               // Fetch average rating for the pitch
               const averageRating = await getAverageRating(slotInfo.pitchId);
+              // Convert to number and format, or use null if invalid
+              const formattedRating =
+                typeof averageRating === "number" && !isNaN(averageRating)
+                  ? Number(averageRating.toFixed(1))
+                  : null;
+
               uniquePitches.set(pitch.pitchId, {
                 ...pitch,
-                averageRating: Number(averageRating.toFixed(1)), // Format to one decimal place
+                averageRating: formattedRating,
               });
               const pitchReviews = await getReviewByPitch(slotInfo.pitchId);
               const userPitchReviews = pitchReviews.filter(
@@ -359,8 +362,6 @@ const reviewHistory: React.FC = () => {
       <div className="main flex items-start justify-center gap-x-[2rem]">
         <Sidebar
           tabs={tabs}
-          show={show}
-          handleShow={handleShow}
           initTab={initTab}
           handleChangeTab={handleChangeTab}
           handleLogout={handleLogout}
@@ -403,7 +404,7 @@ const reviewHistory: React.FC = () => {
                         <Typography>{pitch.price} VNĐ</Typography>
                         <div className="flex items-center gap-x-[0.5rem]">
                           <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
-                            {pitch.averageRating ? pitch.averageRating : "N/A"}
+                            {pitch.averageRating ? pitch.averageRating : "0.0"}
                             /10
                           </div>
                           <div className="field-info text-[1rem] flex-1">
@@ -562,7 +563,9 @@ const reviewHistory: React.FC = () => {
                             marginTop: "0.5rem",
                           }}
                         >
-                          {review.comment}
+                          {review.comment !== ""
+                            ? review.comment
+                            : "Không có đánh giá"}
                         </p>
                       </CardContent>
                       <div
@@ -701,7 +704,7 @@ const reviewHistory: React.FC = () => {
               sx={{ mb: 2 }}
               SelectProps={{ native: true }}
             >
-              {[1, 2, 3, 4, 5].map((num) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                 <option key={num} value={num}>
                   {num}
                 </option>

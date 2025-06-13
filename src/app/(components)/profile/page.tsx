@@ -3,7 +3,12 @@
 import Header from "@/utils/header";
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { loginSuccess, update, logout } from "@/redux/features/authSlice";
+import {
+  loginSuccess,
+  update,
+  logout,
+  setShowSidebar,
+} from "@/redux/features/authSlice";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Divider,
@@ -38,6 +43,8 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import { toast } from "react-toastify";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+
 import {
   addProvider,
   updateProvider,
@@ -52,6 +59,7 @@ import {
   PitchRequestDTO,
   PitchResponseDTO,
   deletePitch,
+  updatePitch,
 } from "../../../services/pitch";
 import { updateUser } from "@/services/user";
 import {
@@ -178,34 +186,69 @@ const Profile: React.FC = () => {
   const bookingColumns: GridColDef[] = [
     { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
     { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
-    { field: "status", headerName: "Trạng thái", width: 120 },
+    {
+      field: "status",
+      headerName: "Trạng thái đặt sân",
+      width: 150,
+      renderCell: (params) => {
+        let typeText = "";
+        switch (params.row.status) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "CONFIRMED":
+            typeText = "Đã xác nhận";
+            break;
+          case "CANCELED":
+            typeText = "Đã hủy";
+            break;
+          default:
+            typeText = params.row.status;
+        }
+        return <span>{typeText}</span>;
+      },
+    },
     {
       field: "paymentStatus",
       headerName: "Trạng thái thanh toán",
-      width: 200,
+      width: 150,
       renderCell: (params) => {
-        const booking = params.row as BookingResponseDTO & {
-          paymentMethod?: string;
-        };
-        const { paymentMethod, paymentStatus } = booking;
-
-        if (paymentMethod === "BANK") {
-          return (
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              {paymentStatus}{" "}
-              <CreditCardOutlinedIcon
-                fontSize="small"
-                style={{ marginLeft: 4, cursor: "pointer", color: "#0093FF" }}
-                onClick={() => handleOpen(booking)}
-              />
-            </div>
-          );
-        } else {
-          return paymentStatus;
+        let typeText = "";
+        switch (params.row.paymentStatus) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "PAID":
+            typeText = "Đã thanh toán";
+            break;
+          default:
+            typeText = params.row.paymentStatus;
         }
+        return <span>{typeText}</span>;
       },
     },
     { field: "totalPrice", headerName: "Tổng giá", width: 120 },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Thao tác",
+      width: 100,
+      getActions: (params) => {
+        if (!params || !params.row) {
+          return [];
+        }
+        const booking = params.row as BookingResponseDTO & {
+          paymentMethod?: string;
+        };
+        return [
+          <GridActionsCellItem
+            icon={<EditOutlinedIcon />}
+            label="Edit"
+            onClick={() => handleOpen(booking)}
+          />,
+        ];
+      },
+    },
   ];
 
   useEffect(() => {
@@ -355,12 +398,9 @@ const Profile: React.FC = () => {
     loadState();
   }, [dispatch]);
 
-  const handleShow = (event: React.MouseEvent<HTMLElement>) => {
-    setShow(!show);
-  };
-
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
+    dispatch(setShowSidebar(true)); // Mở sidebar khi đổi tab
   };
 
   const handleEdit = () => {
@@ -504,7 +544,25 @@ const Profile: React.FC = () => {
   ) => {
     try {
       if (isEditMode && pitchToEdit) {
+        // Update existing pitch
+        const updatedPitch = await updatePitch(pitchToEdit.pitchId, {
+          ...formData,
+          providerAddressId: pitchToEdit.providerAddressId,
+        });
+        setPitches((prevPitches) =>
+          prevPitches.map((p) =>
+            p.pitchId === updatedPitch.pitchId ? updatedPitch : p
+          )
+        );
+        setPitchesByArea((prev) => ({
+          ...prev,
+          [selectedAreaId]: prev[selectedAreaId].map((p) =>
+            p.pitchId === updatedPitch.pitchId ? updatedPitch : p
+          ),
+        }));
+        toast.success("Cập nhật sân thành công");
       } else if (selectedAreaId) {
+        // Create new pitch
         const isNameDuplicate = pitches.some((p) => p.name === formData.name);
         if (isNameDuplicate) {
           toast.error("Tên sân đã tồn tại trong khu vực này");
@@ -525,6 +583,7 @@ const Profile: React.FC = () => {
         toast.success("Thêm sân thành công");
       }
       setOpenPitchModal(false);
+      setSelectedPitchIds([]);
     } catch (error) {
       console.error("Error saving pitch:", error);
       toast.error("Lỗi khi lưu sân");
@@ -649,8 +708,6 @@ const Profile: React.FC = () => {
       <div className="main flex items-start justify-center gap-x-[2rem]">
         <Sidebar
           tabs={tabs}
-          show={show}
-          handleShow={handleShow}
           initTab={initTab}
           handleChangeTab={handleChangeTab}
           handleLogout={handleLogout}

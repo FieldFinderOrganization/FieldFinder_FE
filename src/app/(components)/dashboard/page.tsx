@@ -4,7 +4,12 @@ import * as React from "react";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { LineChart } from "@mui/x-charts/LineChart";
 import Box from "@mui/material/Box";
-import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridActionsCellItem,
+  GridColDef,
+  GridRenderCellParams,
+} from "@mui/x-data-grid";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import PeopleIcon from "@mui/icons-material/People";
@@ -38,13 +43,17 @@ import {
   getAllBookings,
   updatePaymentStatus,
   updateStatus,
-  getBookingSlotByDate,
 } from "@/services/booking";
-import { getAllProviders, updateProvider } from "@/services/provider";
+import {
+  getAllAddresses,
+  getAllProviders,
+  updateProvider,
+} from "@/services/provider";
 import { getAllPitches, updatePitch, getPitchById } from "@/services/pitch";
-import { getAllUsers, updateUser } from "@/services/user";
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
+import { getAllUsers, updateUser, changeUserStatus } from "@/services/user";
 import dayjs from "dayjs";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
+import { providerAddress } from "../../../services/provider";
 
 export interface PitchData {
   pitchId: string;
@@ -61,6 +70,7 @@ interface UserData {
   email: string;
   phone: string;
   role: "USER" | "PROVIDER";
+  status: string;
 }
 
 interface ProviderData {
@@ -70,10 +80,53 @@ interface ProviderData {
   bank: string;
 }
 
-interface BookingSlot {
-  pitchId: string;
-  bookedSlots: number[];
+interface EnhancedBooking extends BookingResponseDTO {
+  providerName: string;
+  pitchName: string;
+  slots: number[];
 }
+
+const slotToTime = (slot: number): string => {
+  const startHour = slot + 5;
+  const endHour = slot + 6;
+  return `${startHour}:00-${endHour}:00`;
+};
+
+const mergeContinuousSlots = (slots: number[]): string => {
+  if (slots.length === 0) return "Không có slot";
+
+  const sortedSlots = [...slots].sort((a, b) => a - b);
+
+  let result: string[] = [];
+  let start = sortedSlots[0];
+  let current = start;
+
+  for (let i = 1; i < sortedSlots.length; i++) {
+    if (sortedSlots[i] === current + 1) {
+      current = sortedSlots[i];
+    } else {
+      if (start === current) {
+        result.push(slotToTime(start));
+      } else {
+        result.push(
+          `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+        );
+      }
+      start = sortedSlots[i];
+      current = start;
+    }
+  }
+
+  if (start === current) {
+    result.push(slotToTime(start));
+  } else {
+    result.push(
+      `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+    );
+  }
+
+  return result.join(", ");
+};
 
 const Dashboard: React.FC = () => {
   const [users, setUsers] = React.useState<UserData[]>([]);
@@ -86,7 +139,6 @@ const Dashboard: React.FC = () => {
       slots: number[];
     })[]
   >([]);
-  const [bookingSlots, setBookingSlots] = React.useState<BookingSlot[]>([]);
 
   const [loading, setLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState(0);
@@ -109,27 +161,73 @@ const Dashboard: React.FC = () => {
   const pitchTableRef = React.useRef<HTMLDivElement>(null);
   const bookingTableRef = React.useRef<HTMLDivElement>(null);
 
+  const [addresses, setAddresses] = React.useState<providerAddress[] | null>(
+    null
+  );
+
+  React.useEffect(() => {
+    const fetchAddresses = async () => {
+      const data = await getAllAddresses();
+      setAddresses(data);
+    };
+    fetchAddresses();
+  }, []);
+
+  const addressMap = new Map(
+    (addresses ?? []).map((addr) => [addr.providerAddressId, addr.address])
+  );
+
   const weeklyUserData = [0, 1, 2, users.length];
   const weeklyProviderData = [0, 1, 2, providers.length];
   const weeklyPitchData = [0, 2, 3, pitches.length];
   const weeklyInvoiceData = [0, 1, 2, 5];
 
+  const [statusModalOpen, setStatusModalOpen] = React.useState(false);
+  const [selectedUser, setSelectedUser] = React.useState<UserData | null>(null);
+  const [newStatus, setNewStatus] = React.useState<"ACTIVE" | "BLOCKED">(
+    "ACTIVE"
+  );
+
   const userColumns: GridColDef<UserData>[] = [
-    { field: "userId", headerName: "ID Người dùng", width: 250 },
+    // { field: "userId", headerName: "ID Người dùng", width: 250 },
     { field: "name", headerName: "Tên", width: 150 },
     { field: "email", headerName: "Email", width: 200 },
     { field: "phone", headerName: "Số điện thoại", width: 150 },
     { field: "role", headerName: "Vai trò", width: 120 },
     {
+      field: "status",
+      headerName: "Trạng thái",
+      width: 150,
+      renderCell: (params) => {
+        let typeText = "";
+        switch (params.row.status) {
+          case "ACTIVE":
+            typeText = "Đang hoạt động";
+            break;
+          case "BLOCKED":
+            typeText = "Ngưng hoạt động";
+            break;
+          default:
+            typeText = params.row.status;
+        }
+        return <span>{typeText}</span>;
+      },
+    },
+    {
       field: "actions",
       type: "actions",
       headerName: "Thao tác",
-      width: 100,
+      width: 150, // Tăng chiều rộng để chứa thêm nút
       getActions: (params) => [
         <GridActionsCellItem
           icon={<EditOutlinedIcon />}
           label="Edit"
           onClick={() => handleEditUserClick(params.row)}
+        />,
+        <GridActionsCellItem
+          icon={<BlockOutlinedIcon />}
+          label="Thay đổi trạng thái"
+          onClick={() => handleOpenStatusModal(params.row)}
         />,
       ],
     },
@@ -142,7 +240,7 @@ const Dashboard: React.FC = () => {
     { field: "userName", headerName: "Tên", width: 150 },
     { field: "userEmail", headerName: "Email", width: 200 },
     { field: "cardNumber", headerName: "Số thẻ", width: 150 },
-    { field: "bank", headerName: "Ngân hàng", width: 150 },
+    { field: "bank", headerName: "Ngân hàng", width: 120 },
     {
       field: "actions",
       type: "actions",
@@ -159,14 +257,24 @@ const Dashboard: React.FC = () => {
   ];
 
   const pitchColumns: GridColDef<PitchData>[] = [
-    { field: "pitchId", headerName: "ID Sân bóng", width: 250 },
+    // { field: "pitchId", headerName: "ID Sân bóng", width: 250 },
     { field: "providerAddressId", headerName: "ID Địa chỉ", width: 200 },
+    {
+      field: "address",
+      headerName: "Tên khu vực",
+      width: 200,
+      renderCell: (params: GridRenderCellParams<PitchData>) =>
+        addressMap.get(params.row?.providerAddressId) || "Không có địa chỉ",
+    },
     { field: "name", headerName: "Tên sân", width: 150 },
     {
       field: "type",
       headerName: "Loại sân",
       width: 150,
       renderCell: (params) => {
+        if (!params || !params.row) {
+          return <span>Không có dữ liệu</span>;
+        }
         let typeText = "";
         switch (params.row.type) {
           case "FIVE_A_SIDE":
@@ -179,7 +287,7 @@ const Dashboard: React.FC = () => {
             typeText = "11 người";
             break;
           default:
-            typeText = params.row.type;
+            typeText = params.row.type || "Không xác định";
         }
         return <span>{typeText}</span>;
       },
@@ -190,13 +298,18 @@ const Dashboard: React.FC = () => {
       type: "actions",
       headerName: "Thao tác",
       width: 100,
-      getActions: (params) => [
-        <GridActionsCellItem
-          icon={<EditOutlinedIcon />}
-          label="Edit"
-          onClick={() => handleEditPitchClick(params.row)}
-        />,
-      ],
+      getActions: (params) => {
+        if (!params || !params.row) {
+          return [];
+        }
+        return [
+          <GridActionsCellItem
+            icon={<EditOutlinedIcon />}
+            label="Edit"
+            onClick={() => handleEditPitchClick(params.row)}
+          />,
+        ];
+      },
     },
   ];
 
@@ -245,39 +358,73 @@ const Dashboard: React.FC = () => {
 
   const bookingColumns: GridColDef[] = [
     { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
-    { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
+    // { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
     { field: "providerName", headerName: "Tên chủ sân", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },
     {
-      field: "slots",
-      headerName: "Slots",
-      width: 150,
-      renderCell: (params) => params.row.slots.join(", ") || "Không có slot",
+      field: "timeRange",
+      headerName: "Khung giờ",
+      width: 200,
+      renderCell: (params: GridRenderCellParams<EnhancedBooking>) => {
+        if (!params.row) return "Không có dữ liệu";
+        return mergeContinuousSlots(params.row.slots);
+      },
     },
-    { field: "status", headerName: "Trạng thái", width: 120 },
+    {
+      field: "status",
+      headerName: "Trạng thái",
+      width: 150,
+      renderCell: (params) => {
+        let typeText = "";
+        switch (params.row.status) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "CONFIRMED":
+            typeText = "Đã xác nhận";
+            break;
+          case "CANCELED":
+            typeText = "Đã hủy";
+            break;
+          default:
+            typeText = params.row.status;
+        }
+        return <span>{typeText}</span>;
+      },
+    },
     {
       field: "paymentStatus",
       headerName: "Trạng thái thanh toán",
-      width: 200,
+      width: 120,
       renderCell: (params) => {
-        return (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              cursor: "pointer",
-              width: "100%",
-              height: "100%",
-            }}
-            onClick={() => handleOpen(params.row)}
-          >
-            {params.row.paymentStatus}
-          </div>
-        );
+        let typeText = "";
+        switch (params.row.paymentStatus) {
+          case "PENDING":
+            typeText = "Đang chờ";
+            break;
+          case "PAID":
+            typeText = "Đã thanh toán";
+            break;
+          default:
+            typeText = params.row.paymentStatus;
+        }
+        return <span>{typeText}</span>;
       },
     },
     { field: "totalPrice", headerName: "Tổng giá tiền", width: 150 },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Thao tác",
+      width: 100,
+      getActions: (params) => [
+        <GridActionsCellItem
+          icon={<EditOutlinedIcon />}
+          label="Edit"
+          onClick={() => handleOpen(params.row)}
+        />,
+      ],
+    },
   ];
 
   const resetUsers = async () => {
@@ -290,6 +437,7 @@ const Dashboard: React.FC = () => {
           email: user.email,
           phone: user.phone,
           role: user.role ?? "USER",
+          status: user.status,
         }))
       );
       toast.success("Đã đặt lại danh sách người dùng");
@@ -323,41 +471,35 @@ const Dashboard: React.FC = () => {
 
   const resetBookings = async () => {
     try {
-      const bookRes = await getAllBookings();
-      const uniqueDates = [
-        ...new Set(
-          bookRes.map((booking: BookingResponseDTO) =>
-            dayjs(booking.bookingDate).format("YYYY-MM-DD")
-          )
-        ),
-      ];
-      const slotsData = await Promise.all(
-        uniqueDates.map(async (date) => await getBookingSlotByDate(date))
+      const [userRes, providerRes, pitchRes, bookRes] = await Promise.all([
+        getAllUsers(),
+        getAllProviders(),
+        getAllPitches(),
+        getAllBookings(),
+      ]);
+
+      const pitchMap = new Map(pitchRes.map((pitch) => [pitch.pitchId, pitch]));
+
+      const providerMap = new Map(
+        providerRes.map((provider) => [provider.providerId, provider])
       );
-      const allSlots = slotsData.flat();
-      const enhancedBookings = await Promise.all(
-        bookRes.map(async (booking) => {
-          const date = dayjs(booking.bookingDate).format("YYYY-MM-DD");
-          const slotInfo = allSlots.find((slot) =>
-            slot.bookedSlots.includes(booking.bookingDetails[0]?.slot)
-          ) || { pitchId: "", bookedSlots: [] };
-          const provider = providers.find(
-            (p) => p.providerId === booking.providerId
-          );
-          const user = users.find((u) => u.userId === provider?.userId);
-          const pitch = slotInfo.pitchId
-            ? await getPitchById(slotInfo.pitchId)
-            : null;
-          return {
-            ...booking,
-            providerName: user?.name || "Không xác định",
-            pitchName: pitch?.name || "Không xác định",
-            slots: slotInfo.bookedSlots || [],
-          };
-        })
-      );
+
+      const userMap = new Map(userRes.map((user) => [user.userId, user]));
+      const enhancedBookings = bookRes.map((booking: BookingResponseDTO) => {
+        const pitchId = booking.bookingDetails[0]?.pitchId;
+        const pitch = pitchMap.get(pitchId);
+
+        const provider = providerMap.get(booking.providerId);
+        const providerUser = provider ? userMap.get(provider.userId) : null;
+
+        return {
+          ...booking,
+          providerName: providerUser?.name || "Không xác định",
+          pitchName: pitch?.name || "Không xác định",
+          slots: booking.bookingDetails.map((detail) => detail.slot),
+        };
+      });
       setBookings(enhancedBookings || []);
-      setBookingSlots(allSlots);
       toast.success("Đã đặt lại danh sách đơn đặt");
     } catch (error) {
       console.error("Lỗi khi đặt lại đơn đặt:", error);
@@ -383,51 +525,38 @@ const Dashboard: React.FC = () => {
           email: user.email,
           phone: user.phone,
           role: user.role ?? "USER",
+          status: user.status,
         }));
+
+        const pitchMap = new Map(
+          pitchRes.map((pitch) => [pitch.pitchId, pitch])
+        );
+
+        const providerMap = new Map(
+          providerRes.map((provider) => [provider.providerId, provider])
+        );
+
+        const userMap = new Map(userRes.map((user) => [user.userId, user]));
 
         setUsers(usersData);
         setProviders(providerRes || []);
         setPitches(pitchRes || []);
 
-        const uniqueDates = [
-          ...new Set(
-            bookRes.map((booking: BookingResponseDTO) =>
-              dayjs(booking.bookingDate).format("YYYY-MM-DD")
-            )
-          ),
-        ];
+        const enhancedBookings = bookRes.map((booking: BookingResponseDTO) => {
+          const pitchId = booking.bookingDetails[0]?.pitchId;
+          const pitch = pitchMap.get(pitchId);
 
-        const slotsData = await Promise.all(
-          uniqueDates.map(async (date) => await getBookingSlotByDate(date))
-        );
+          const provider = providerMap.get(booking.providerId);
+          const providerUser = provider ? userMap.get(provider.userId) : null;
 
-        const allSlots = slotsData.flat();
+          return {
+            ...booking,
+            providerName: providerUser?.name || "Không xác định",
+            pitchName: pitch?.name || "Không xác định",
+            slots: booking.bookingDetails.map((detail) => detail.slot),
+          };
+        });
 
-        const enhancedBookings = await Promise.all(
-          bookRes.map(async (booking: BookingResponseDTO) => {
-            const date = dayjs(booking.bookingDate).format("YYYY-MM-DD");
-            const slotInfo = allSlots.find((slot) =>
-              slot.bookedSlots.includes(booking.bookingDetails[0]?.slot)
-            ) || { pitchId: "", bookedSlots: [] };
-            const provider = providerRes.find(
-              (p: ProviderData) => p.providerId === booking.providerId
-            );
-            const user = usersData.find(
-              (u: UserData) => u.userId === provider?.userId
-            );
-            const pitch = slotInfo.pitchId
-              ? await getPitchById(slotInfo.pitchId)
-              : null;
-            return {
-              ...booking,
-              providerName: user?.name || "Không xác định",
-              pitchName: pitch?.name || "Không xác định",
-              slots: slotInfo.bookedSlots || [],
-            };
-          })
-        );
-
-        setBookingSlots(allSlots);
         setBookings(enhancedBookings || []);
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
@@ -552,6 +681,38 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleOpenStatusModal = (user: UserData) => {
+    setSelectedUser(user);
+    setNewStatus(user.status as "ACTIVE" | "BLOCKED");
+    setStatusModalOpen(true);
+  };
+
+  const handleCloseStatusModal = () => {
+    setStatusModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const handleSaveStatus = async () => {
+    if (selectedUser) {
+      try {
+        await changeUserStatus(selectedUser.userId, newStatus);
+        toast.success("Thay đổi trạng thái thành công");
+
+        setUsers(
+          users.map((user) =>
+            user.userId === selectedUser.userId
+              ? { ...user, status: newStatus }
+              : user
+          )
+        );
+        handleCloseStatusModal();
+      } catch (error) {
+        console.error("Lỗi khi thay đổi trạng thái:", error);
+        toast.error("Lỗi khi thay đổi trạng thái");
+      }
+    }
+  };
+
   const renderChart = () => {
     const dataMap: Record<string, number[]> = {
       users: weeklyUserData,
@@ -627,6 +788,10 @@ const Dashboard: React.FC = () => {
       );
     }
   };
+
+  const confirmedPaidBookings = bookings.filter(
+    (book) => book.status === "CONFIRMED" && book.paymentStatus === "PAID"
+  );
 
   if (loading) {
     return (
@@ -704,7 +869,7 @@ const Dashboard: React.FC = () => {
               <CardContent className="flex flex-col items-center">
                 <ReceiptIcon className="text-green-500 text-4xl mb-2" />
                 <Typography variant="h5" component="div">
-                  {bookings.length}
+                  {confirmedPaidBookings.length}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Hóa đơn
@@ -712,7 +877,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center mt-2 text-green-600">
                   <ArrowUpwardIcon fontSize="small" />
                   <span>
-                    {bookings.reduce(
+                    {confirmedPaidBookings.reduce(
                       (sum, book) => sum + (book.totalPrice || 0),
                       0
                     )}
@@ -1111,6 +1276,54 @@ const Dashboard: React.FC = () => {
             </Button>
             <Button variant="contained" onClick={handleConfirm}>
               Xác nhận
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+
+      <Modal open={statusModalOpen} onClose={handleCloseStatusModal}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+          }}
+        >
+          <Typography variant="h6" component="h2">
+            Thay đổi trạng thái người dùng
+          </Typography>
+          {selectedUser && (
+            <>
+              <Typography sx={{ mt: 2 }}>
+                Tên người dùng: {selectedUser.name}
+              </Typography>
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel id="status-label">Trạng thái</InputLabel>
+                <Select
+                  labelId="status-label"
+                  value={newStatus}
+                  label="Trạng thái"
+                  onChange={(e) =>
+                    setNewStatus(e.target.value as "ACTIVE" | "BLOCKED")
+                  }
+                >
+                  <MenuItem value="ACTIVE">Đang hoạt động</MenuItem>
+                  <MenuItem value="BLOCKED">Ngưng hoạt động</MenuItem>
+                </Select>
+              </FormControl>
+            </>
+          )}
+          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+            <Button variant="outlined" onClick={handleCloseStatusModal}>
+              Hủy
+            </Button>
+            <Button variant="contained" onClick={handleSaveStatus}>
+              Lưu
             </Button>
           </Box>
         </Box>

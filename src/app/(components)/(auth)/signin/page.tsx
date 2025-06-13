@@ -23,6 +23,7 @@ const Signin: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [role, setRole] = useState<string>("USER");
+  const [status, setStatus] = useState("ACTIVE");
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -36,7 +37,7 @@ const Signin: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    const user = { name, email, phone, password, role };
+    const user = { name, email, phone, password, role, status };
     try {
       const res = await register(user);
       if (res && res.data) {

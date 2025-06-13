@@ -28,6 +28,7 @@ interface RegisterRequest {
   password: string;
   username?: string;
   [key: string]: any;
+  status: string;
 }
 
 interface RegisterResponse {

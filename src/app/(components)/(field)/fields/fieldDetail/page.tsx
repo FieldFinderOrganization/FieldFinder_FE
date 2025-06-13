@@ -516,7 +516,9 @@ const FieldDetail: React.FC = () => {
                           marginTop: "0.5rem",
                         }}
                       >
-                        {review.comment}
+                        {review.comment !== ""
+                          ? review.comment
+                          : "Không có đánh giá"}
                       </p>
                     </CardContent>
                     <div

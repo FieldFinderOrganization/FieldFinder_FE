@@ -16,12 +16,14 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
+  showSidebar: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
   loading: false,
   isAuthenticated: false,
+  showSidebar: false,
 };
 
 const authSlice = createSlice({
@@ -50,9 +52,18 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       localStorage.removeItem("authState");
     },
+    setShowSidebar(state, action: PayloadAction<boolean>) {
+      state.showSidebar = action.payload; // Action để set show
+    },
   },
 });
 
-export const { registerSuccess, loginStart, loginSuccess, update, logout } =
-  authSlice.actions;
+export const {
+  registerSuccess,
+  loginStart,
+  loginSuccess,
+  update,
+  logout,
+  setShowSidebar,
+} = authSlice.actions;
 export default authSlice.reducer;

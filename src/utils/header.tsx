@@ -17,7 +17,7 @@ import {
 import { LuBellRing } from "react-icons/lu";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../redux/store";
-import { logout } from "../redux/features/authSlice";
+import { logout, setShowSidebar } from "../redux/features/authSlice";
 import Divider from "@mui/material/Divider";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import HistoryIcon from "@mui/icons-material/History";
@@ -91,33 +91,37 @@ const Header: React.FC = () => {
 
   const handleProfile = () => {
     handleMenuClose();
-    router.push("/profile");
+    dispatch(setShowSidebar(true));
+    router.push("/profile?tab=0");
   };
 
   const handlePitchInfo = () => {
     handleMenuClose();
+    dispatch(setShowSidebar(true));
     router.push("/profile?tab=1");
   };
 
   const handleReview = () => {
     handleMenuClose();
+    dispatch(setShowSidebar(false));
     router.push("/reviewHistory");
   };
 
   const handleBooking = () => {
     handleMenuClose();
+    dispatch(setShowSidebar(false));
     router.push("/bookingHistory");
   };
 
   const handleDashboard = () => {
     handleMenuClose();
+    dispatch(setShowSidebar(false));
     router.push("/dashboard");
   };
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md h-[80px]
-      flex items-center`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md h-[80px] flex items-center`}
     >
       <div className="header flex items-center justify-between space-x-[1rem] mx-auto sm:space-x-[4rem] max-w-7xl w-full px-4 sm:px-8">
         <div
@@ -251,17 +255,17 @@ const Header: React.FC = () => {
                     </MenuItem>
                   )}
                   <Divider sx={{ borderWidth: "1px" }} />
-                  <MenuItem onClick={handleReview}>
-                    <ListItemIcon>
-                      <RateReviewIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Lịch sử đánh giá</ListItemText>
-                  </MenuItem>
                   <MenuItem onClick={handleBooking}>
                     <ListItemIcon>
                       <HistoryIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Lịch sử đặt sân</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={handleReview}>
+                    <ListItemIcon>
+                      <RateReviewIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Lịch sử đánh giá</ListItemText>
                   </MenuItem>
                   <Divider sx={{ borderWidth: "1px" }} />
                   <MenuItem onClick={handleLogout}>

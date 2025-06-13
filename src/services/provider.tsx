@@ -15,12 +15,12 @@ interface ProviderResponse {
   bank: string;
 }
 
-interface Address {
+export interface Address {
   providerId: string;
   address: string;
 }
 
-interface providerAddress {
+export interface providerAddress {
   providerAddressId: string;
   address: string;
 }

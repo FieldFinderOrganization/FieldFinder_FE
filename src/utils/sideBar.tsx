@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HistoryIcon from "@mui/icons-material/History";
@@ -7,11 +9,12 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { Typography } from "@mui/material";
 import { useRouter, usePathname } from "next/navigation";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "../redux/store";
+import { setShowSidebar } from "../redux/features/authSlice";
 
 interface SidebarProps {
   tabs: { label: string; value: number }[];
-  show: boolean;
-  handleShow: (event: React.MouseEvent<HTMLElement>) => void;
   initTab: number;
   handleChangeTab: (event: React.SyntheticEvent, newValue: number) => void;
   handleLogout: () => void;
@@ -19,16 +22,20 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({
   tabs,
-  show,
-  handleShow,
   initTab,
   handleChangeTab,
   handleLogout,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const dispatch = useDispatch<AppDispatch>();
+  const show = useSelector((state: RootState) => state.auth.showSidebar);
 
   const isActive = (path: string) => pathname === path;
+
+  const handleShow = () => {
+    dispatch(setShowSidebar(!show));
+  };
 
   return (
     <div className="bg-white w-[23%] flex flex-col items-start justify-start rounded-br-lg shadow-md py-6 px-12 left-sidebar gap-y-[2.5rem]">
@@ -38,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <SettingsIcon
           className="text-[1rem]"
-          sx={{ color: isActive("/profile") ? "black" : "gray" }}
+          sx={{ color: isActive("/profile/") ? "black" : "gray" }}
         />
         <Typography
           sx={{

@@ -16,6 +16,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import { update } from "@/redux/features/authSlice";
 import { toast } from "react-toastify";
 import { addAddress, updateAddress, deleteAddress } from "@/services/provider";
+
 import {
   getPitchesByProviderAddressId,
   PitchResponseDTO,
@@ -110,15 +111,24 @@ export default function AddressInfo() {
   const handleDeleteClose = () => setOpenDeleteModal(false);
 
   const handleAddSave = async () => {
-    const existingAddresses =
-      user?.addresses.map((addr: Address) => addr.address.toLowerCase()) || [];
-    if (existingAddresses.includes(tempAddress.toLowerCase())) {
-      toast.error("Địa chỉ đã tồn tại");
+    const trimmedAddress = tempAddress.trim();
+    if (!trimmedAddress) {
+      toast.error("Vui lòng nhập tên khu vực");
       return;
     }
+
+    // Kiểm tra trùng tên (không phân biệt hoa thường)
+    const existingAddresses = (user?.addresses || []).map((addr: Address) =>
+      addr.address.toLowerCase()
+    );
+    if (existingAddresses.includes(trimmedAddress.toLowerCase())) {
+      toast.error("Khu vực này đã tồn tại");
+      return;
+    }
+
     try {
       const newAddr = await addAddress({
-        address: tempAddress,
+        address: trimmedAddress,
         providerId: user?.providerId!,
       });
       dispatch(update({ addresses: [...(user?.addresses || []), newAddr] }));
@@ -131,9 +141,25 @@ export default function AddressInfo() {
 
   const handleEditSave = async () => {
     if (!selectedId) return;
+
+    const trimmedAddress = tempAddress.trim();
+    if (!trimmedAddress) {
+      toast.error("Vui lòng nhập tên khu vực");
+      return;
+    }
+
+    // Kiểm tra trùng tên với các khu vực khác (ngoại trừ khu vực đang chỉnh sửa)
+    const existingAddresses = (user?.addresses || [])
+      .filter((addr: Address) => addr.providerAddressId !== selectedId)
+      .map((addr: Address) => addr.address.toLowerCase());
+    if (existingAddresses.includes(trimmedAddress.toLowerCase())) {
+      toast.error("Khu vực này đã tồn tại");
+      return;
+    }
+
     try {
       const updatedAddr = await updateAddress(
-        { address: tempAddress, providerId: user?.providerId! },
+        { address: trimmedAddress, providerId: user?.providerId! },
         selectedId
       );
       const list: Address[] = (user?.addresses || []).map((addr: Address) =>

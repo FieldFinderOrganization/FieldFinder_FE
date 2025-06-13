@@ -77,11 +77,28 @@ const Login: React.FC = () => {
         dispatch(loginSuccess(userData));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
         toast.success("Đăng nhập thành công");
-        if (userData.role === "ADMIN") {
-          router.push("/dashboard");
-        } else {
-          router.push("/home");
+
+        switch (userData.role) {
+          case "USER": {
+            router.push("/home");
+            break;
+          }
+          case "PROVIDER": {
+            router.push("/profile");
+            break;
+          }
+          case "ADMIN": {
+            router.push("/dashboard");
+            break;
+          }
+          default:
+            router.push("/home");
         }
+        // if (userData.role === "ADMIN") {
+        //   router.push("/dashboard");
+        // } else {
+        //   router.push("/home");
+        // }
       }
     } catch (error) {
       toast.error("Đăng nhập thất bại");
