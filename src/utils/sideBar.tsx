@@ -37,6 +37,16 @@ const Sidebar: React.FC<SidebarProps> = ({
     dispatch(setShowSidebar(!show));
   };
 
+  const handleNonShowTabClick = (path: string) => {
+    dispatch(setShowSidebar(false));
+    router.push(path);
+  };
+
+  const handleLogoutClick = () => {
+    dispatch(setShowSidebar(false));
+    handleLogout();
+  };
+
   return (
     <div className="bg-white w-[23%] flex flex-col items-start justify-start rounded-br-lg shadow-md py-6 px-12 left-sidebar gap-y-[2.5rem]">
       <div
@@ -45,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <SettingsIcon
           className="text-[1rem]"
-          sx={{ color: isActive("/profile/") ? "black" : "gray" }}
+          sx={{ color: isActive("/profile") ? "black" : "gray" }}
         />
         <Typography
           sx={{
@@ -91,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
       <div
         className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
-        onClick={() => router.push("/bookingHistory")}
+        onClick={() => handleNonShowTabClick("/bookingHistory")}
       >
         <HistoryIcon
           className="text-[1rem]"
@@ -110,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
       <div
         className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
-        onClick={() => router.push("/reviewHistory")}
+        onClick={() => handleNonShowTabClick("/reviewHistory")}
       >
         <RateReviewIcon
           className="text-[1rem]"
@@ -130,7 +140,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
       <div
         className="flex items-center justify-start gap-x-[1rem] cursor-pointer"
-        onClick={handleLogout}
+        onClick={handleLogoutClick}
       >
         <LogoutIcon className="text-[1rem]" sx={{ color: "red" }} />
         <Typography

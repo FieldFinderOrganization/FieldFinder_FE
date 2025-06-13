@@ -357,7 +357,14 @@ const Dashboard: React.FC = () => {
   };
 
   const bookingColumns: GridColDef[] = [
-    { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
+    {
+      field: "bookingDate",
+      headerName: "Ngày đặt",
+      width: 150,
+      renderCell: (params) => {
+        return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
+      },
+    },
     // { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
     { field: "providerName", headerName: "Tên chủ sân", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },

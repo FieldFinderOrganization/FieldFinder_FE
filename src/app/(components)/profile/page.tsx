@@ -60,8 +60,9 @@ import {
   PitchResponseDTO,
   deletePitch,
   updatePitch,
+  getAllPitches,
 } from "../../../services/pitch";
-import { updateUser } from "@/services/user";
+import { getAllUsers, updateUser } from "@/services/user";
 import {
   BookingResponseDTO,
   getAllBookings,
@@ -183,9 +184,68 @@ const Profile: React.FC = () => {
     }
   };
 
+  const slotToTime = (slot: number): string => {
+    const startHour = slot + 5;
+    const endHour = slot + 6;
+    return `${startHour}:00-${endHour}:00`;
+  };
+
+  const mergeContinuousSlots = (slots: number[]): string => {
+    if (slots.length === 0) return "Không có slot";
+
+    const sortedSlots = [...slots].sort((a, b) => a - b);
+    let result: string[] = [];
+    let start = sortedSlots[0];
+    let current = start;
+
+    for (let i = 1; i < sortedSlots.length; i++) {
+      if (sortedSlots[i] === current + 1) {
+        current = sortedSlots[i];
+      } else {
+        if (start === current) {
+          result.push(slotToTime(start));
+        } else {
+          result.push(
+            `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+          );
+        }
+        start = sortedSlots[i];
+        current = start;
+      }
+    }
+
+    if (start === current) {
+      result.push(slotToTime(start));
+    } else {
+      result.push(
+        `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+      );
+    }
+
+    return result.join(", ");
+  };
+
   const bookingColumns: GridColDef[] = [
-    { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
-    { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
+    {
+      field: "bookingDate",
+      headerName: "Ngày đặt",
+      width: 150,
+      renderCell: (params) => {
+        return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
+      },
+    },
+    // { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
+    { field: "providerName", headerName: "Tên chủ sân", width: 150 },
+    { field: "pitchName", headerName: "Tên sân", width: 150 },
+    {
+      field: "timeRange",
+      headerName: "Khung giờ",
+      width: 200,
+      renderCell: (params) => {
+        if (!params.row) return "Không có dữ liệu";
+        return mergeContinuousSlots(params.row.slots);
+      },
+    },
     {
       field: "status",
       headerName: "Trạng thái đặt sân",
@@ -251,8 +311,55 @@ const Profile: React.FC = () => {
     },
   ];
 
+  const fetchBooking = async (providerId: string) => {
+    try {
+      const [bookings, payments, users, providers, pitches] = await Promise.all(
+        [
+          getAllBookings(),
+          getAllPayments(),
+          getAllUsers(),
+          getAllProviders(),
+          getAllPitches(),
+        ]
+      );
+
+      const filteredBookings = bookings.filter(
+        (booking) => booking.providerId === providerId
+      );
+
+      const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
+      const providerMap = new Map(
+        providers.map((provider) => [provider.providerId, provider])
+      );
+      const userMap = new Map(users.map((user) => [user.userId, user]));
+
+      const paymentMethod =
+        payments.length > 0 ? payments[0].paymentMethod : null;
+
+      const enhancedBookings = filteredBookings.map((booking) => {
+        const pitchId = booking.bookingDetails[0]?.pitchId;
+        const pitch = pitchMap.get(pitchId);
+        const provider = providerMap.get(booking.providerId);
+        const providerUser = provider ? userMap.get(provider.userId) : null;
+
+        return {
+          ...booking,
+          paymentMethod,
+          providerName: providerUser?.name || "Không xác định",
+          pitchName: pitch?.name || "Không xác định",
+          slots: booking.bookingDetails.map((detail) => detail.slot),
+        };
+      });
+
+      return enhancedBookings;
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
-    fetchAndProcessData(user?.providerId)
+    fetchBooking(user?.providerId)
       .then((data) => {
         const rows = data.map((booking) => ({
           id: booking.bookingId,
@@ -400,7 +507,7 @@ const Profile: React.FC = () => {
 
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
-    dispatch(setShowSidebar(true)); // Mở sidebar khi đổi tab
+    dispatch(setShowSidebar(true));
   };
 
   const handleEdit = () => {
@@ -544,7 +651,6 @@ const Profile: React.FC = () => {
   ) => {
     try {
       if (isEditMode && pitchToEdit) {
-        // Update existing pitch
         const updatedPitch = await updatePitch(pitchToEdit.pitchId, {
           ...formData,
           providerAddressId: pitchToEdit.providerAddressId,
@@ -562,7 +668,6 @@ const Profile: React.FC = () => {
         }));
         toast.success("Cập nhật sân thành công");
       } else if (selectedAreaId) {
-        // Create new pitch
         const isNameDuplicate = pitches.some((p) => p.name === formData.name);
         if (isNameDuplicate) {
           toast.error("Tên sân đã tồn tại trong khu vực này");
