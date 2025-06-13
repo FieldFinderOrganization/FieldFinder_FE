@@ -122,6 +122,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     };
 
     setFieldData(fieldData);
+    console.log(fieldData);
     setIsModalBookingOpen(true);
   };
 

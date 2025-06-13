@@ -30,6 +30,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   onClose,
   fieldData,
 }) => {
+  console.log(fieldData);
   const user = useSelector((state: any) => state.auth.user);
 
   const getPitchType = (pitchType: string) => {
@@ -46,7 +47,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   };
 
   const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-  const dateObj = dayjs(fieldData.date, "DD/MM/YYYY");
+  const dateObj = dayjs(fieldData.date, "YYYY/MM/DD");
   const dayAbbr = daysOfWeek[dateObj.day()];
   const [paymentMethod, setPaymentMethod] = React.useState("CASH");
 
@@ -88,14 +89,10 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
         return;
       }
 
-      const formattedDate = dayjs(fieldData.date, "DD/MM/YYYY").format(
-        "YYYY-MM-DD"
-      );
-
       const payload: BookingRequestDTO = {
         pitchId: fieldData.id,
         userId: user.userId,
-        bookingDate: formattedDate,
+        bookingDate: fieldData.date,
         bookingDetails: bookingDetails,
       };
 
@@ -111,7 +108,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
 
         await createPayment(paymentPayload);
       }
-      toast.success("Đặt sân thành côn!");
+      toast.success("Đặt sân thành công!");
 
       onClose();
     } catch (error) {
@@ -164,7 +161,8 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
             <div className="flex items-center justify-between w-full">
               <EventIcon className="text-[1.5rem]" />
               <div className="field-info text-[1rem] flex-1 text-right">
-                {dayAbbr}, {dateObj.format("DD/MM/YYYY")}
+                {dayAbbr},{" "}
+                {dayjs(fieldData.date, "YYYY/MM/DD").format("DD/MM/YYYY")}
               </div>
             </div>
             <div className="flex items-center justify-between w-full">
