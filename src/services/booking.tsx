@@ -51,13 +51,19 @@ export const getBookingSlotByDate = async (date: string) => {
   return response.data;
 };
 
-export const getAvailablePitches = async (date: string, slots: number[]) => {
+export const getAvailablePitches = async (
+  date: string,
+  slots: number[],
+  type: string
+) => {
   const params = new URLSearchParams();
   params.append("date", date);
 
   slots.forEach((slot) => {
     params.append("slots", slot.toString());
   });
+
+  params.append("pitchType", type);
 
   const response = await axios.get(`${baseURL}/available-pitches`, {
     params,

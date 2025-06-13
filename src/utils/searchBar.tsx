@@ -66,6 +66,13 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
   const [startTime, setStartTime] = useState<string>("6:00");
   const [endTime, setEndTime] = useState<string>("7:00");
   const [timeError, setTimeError] = useState<string | null>(null);
+  const [pitchType, setPitchType] = useState<string>("FIVE_A_SIDE");
+
+  const pitchTypeOptions = [
+    { value: "FIVE_A_SIDE", label: "Sân 5" },
+    { value: "SEVEN_A_SIDE", label: "Sân 7" },
+    { value: "ELEVEN_A_SIDE", label: "Sân 11" },
+  ];
 
   const calculateSlots = () => {
     const startHour = parseInt(startTime.split(":")[0]);
@@ -121,7 +128,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
     const formattedDate = date.format("YYYY-MM-DD");
 
     try {
-      const availablePitchIds = await getAvailablePitches(formattedDate, slots);
+      const availablePitchIds = await getAvailablePitches(
+        formattedDate,
+        slots,
+        pitchType
+      );
 
       const queryParams = new URLSearchParams({
         date: formattedDate,
@@ -181,6 +192,23 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
             disablePast
           />
         </LocalizationProvider>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <FormControl sx={{ width: { xs: "100%", sm: "150px" } }}>
+          <InputLabel>Loại sân</InputLabel>
+          <Select
+            value={pitchType}
+            onChange={(e) => setPitchType(e.target.value as string)}
+            label="Loại sân"
+          >
+            {pitchTypeOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </motion.div>
 
       <motion.div variants={itemVariants}>

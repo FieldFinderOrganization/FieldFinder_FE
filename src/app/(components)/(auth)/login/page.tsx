@@ -94,11 +94,6 @@ const Login: React.FC = () => {
           default:
             router.push("/home");
         }
-        // if (userData.role === "ADMIN") {
-        //   router.push("/dashboard");
-        // } else {
-        //   router.push("/home");
-        // }
       }
     } catch (error) {
       toast.error("Đăng nhập thất bại");

@@ -39,7 +39,9 @@ const FieldLists: React.FC = () => {
 
   const searchParams = useSearchParams();
   const pitchIdsParam = searchParams.get("pitchIds");
-  const availablePitchIds = pitchIdsParam ? pitchIdsParam.split(",") : [];
+  const availablePitchIds = pitchIdsParam
+    ? pitchIdsParam.split(",").filter((id) => id)
+    : [];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,11 +53,13 @@ const FieldLists: React.FC = () => {
 
         setAddresses(addressesData);
 
-        const initialPitches = pitchIdsParam
-          ? pitchesData.filter((pitch) =>
-              availablePitchIds.includes(pitch.pitchId)
-            )
-          : pitchesData;
+        // If pitchIdsParam is empty or contains only empty strings, set initialPitches to []
+        const initialPitches =
+          availablePitchIds.length > 0
+            ? pitchesData.filter((pitch) =>
+                availablePitchIds.includes(pitch.pitchId)
+              )
+            : [];
 
         setBasePitches(initialPitches);
         setFilteredAddresses(
@@ -130,7 +134,7 @@ const FieldLists: React.FC = () => {
       ? filtered.filter(
           (pitch) => pitch.providerAddressId === selectedAddressId
         )
-      : [];
+      : filtered;
 
     setPitches(pitchesForSelectedAddress);
   }, [searchTerm, basePitches, addresses, selectedAddressId]);
@@ -286,7 +290,7 @@ const FieldLists: React.FC = () => {
             </div>
           ) : (
             <Typography variant="body1" color="textSecondary">
-              Không có sân
+              Không có sân khả dụng
             </Typography>
           )}
         </div>
