@@ -30,6 +30,8 @@ import {
   Modal,
   FormControl,
   InputLabel,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { SelectChangeEvent } from "@mui/material/Select";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
@@ -41,6 +43,7 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
+import "../profile/profile.css";
 import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import { toast } from "react-toastify";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
@@ -130,24 +133,11 @@ const Profile: React.FC = () => {
     { code: "CTG", name: "VietinBank" },
   ];
 
-  const fetchAndProcessData = async (providerId: string) => {
-    const bookings = await getAllBookings();
-    const payments = await getAllPayments();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-    const filteredBookings = bookings.filter(
-      (booking) => booking.providerId === providerId
-    );
-
-    const paymentMethod =
-      payments.length > 0 ? payments[0].paymentMethod : null;
-
-    const enhancedBookings = filteredBookings.map((booking) => ({
-      ...booking,
-      paymentMethod,
-    }));
-
-    return enhancedBookings;
-  };
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [bookings, setBookings] = useState<any[]>([]);
 

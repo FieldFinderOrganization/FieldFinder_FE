@@ -13,6 +13,10 @@ interface ChatMessage {
   bookingDate?: string;
   slotList?: number[];
   pitchType?: string;
+  formattedDate?: string;
+  formattedSlots?: string;
+  formattedPitchType?: string;
+  data?: any; // Thêm để lưu dữ liệu bổ sung
 }
 
 interface FieldData {
@@ -28,6 +32,7 @@ interface FieldData {
 interface AIChatProps {
   onClose: () => void;
 }
+
 const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   const [showChat, setShowChat] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -44,6 +49,77 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
   const handleClose = () => setIsModalBookingOpen(false);
+
+  const formatSlotToTime = (slots: number[]): string => {
+    if (!slots || slots.length === 0) return "";
+    const sortedSlots = [...slots].sort((a, b) => a - b);
+    const timeRanges: string[] = [];
+    let startSlot = sortedSlots[0];
+    let prevSlot = startSlot;
+
+    for (let i = 1; i <= sortedSlots.length; i++) {
+      const currentSlot = sortedSlots[i];
+      if (i === sortedSlots.length || currentSlot !== prevSlot + 1) {
+        const startHour = startSlot + 5;
+        const endHour = prevSlot + 6;
+        timeRanges.push(
+          `${startHour.toString().padStart(2, "0")}:00-${endHour
+            .toString()
+            .padStart(2, "0")}:00`
+        );
+        if (i < sortedSlots.length) startSlot = currentSlot;
+      }
+      prevSlot = currentSlot;
+    }
+    return timeRanges.join(", ");
+  };
+
+  const formatDate = (dateStr: string): string => {
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatPitchType = (pitchType: string): string => {
+    switch (pitchType) {
+      case "FIVE_A_SIDE":
+        return "Sân 5";
+      case "SEVEN_A_SIDE":
+        return "Sân 7";
+      case "ELEVEN_A_SIDE":
+        return "Sân 11";
+      case "ALL":
+        return "Tất cả các sân";
+      default:
+        return pitchType;
+    }
+  };
+
+  const formatDataToText = (data: any): string => {
+    if (!data) return "";
+    if (data.prices) {
+      return data.prices
+        .map((p: any) => `Sân ${p.name}: ${p.price} VNĐ`)
+        .join("\n");
+    }
+    if (data.pitchCounts) {
+      return Object.entries(data.pitchCounts)
+        .map(
+          ([type, count]: [string, any]) =>
+            `${formatPitchType(type)}: ${count} sân`
+        )
+        .join("\n");
+    }
+    if (data.name && data.price) {
+      return `Sân: ${data.name}\nLoại: ${formatPitchType(data.type)}\nGiá: ${data.price} VNĐ`;
+    }
+    if (data.pitchTypes) {
+      return `Các loại sân: ${data.pitchTypes.map(formatPitchType).join(", ")}`;
+    }
+    if (data.totalPitches) {
+      return `Tổng số sân: ${data.totalPitches} sân`;
+    }
+    return "";
+  };
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -73,13 +149,24 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           bookingDate: item.bookingDate,
           slotList: item.slotList,
           pitchType: item.pitchType,
+          formattedDate: formatDate(item.bookingDate),
+          formattedSlots: formatSlotToTime(item.slotList),
+          formattedPitchType: formatPitchType(item.pitchType),
         }));
-
         setMessages((prev) => [...prev, ...aiMessages]);
+      } else if (data.message) {
+        const aiMessage: ChatMessage = {
+          sender: "ai",
+          text:
+            data.message +
+            (data.data ? "\n" + formatDataToText(data.data) : ""),
+          data: data.data,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
       } else {
         const aiMessage: ChatMessage = {
           sender: "ai",
-          text: JSON.stringify(data),
+          text: "Phản hồi không hợp lệ từ AI.",
         };
         setMessages((prev) => [...prev, aiMessage]);
       }
@@ -104,21 +191,14 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     const price = textParts[1]?.split(": ")[1] || "0";
     const description = textParts[2]?.split(": ")[1] || "Không có mô tả";
 
-    const timeSlots = (msg.slotList || [])
-      .map((slot) => {
-        const startHour = slot + 5;
-        return `${startHour}:00 - ${startHour + 1}:00`;
-      })
-      .join(", ");
-
     const fieldData: FieldData = {
       id: msg.pitchId || "",
       name,
-      type: msg.pitchType || "",
+      type: msg.formattedPitchType || "",
       price,
       description,
-      date: msg.bookingDate || "",
-      time: timeSlots,
+      date: msg.formattedDate || "",
+      time: msg.formattedSlots || "",
     };
 
     setFieldData(fieldData);
@@ -146,13 +226,13 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                 {msg.sender === "ai" && msg.bookingDate && (
                   <>
                     <div>
-                      <strong>Ngày:</strong> {msg.bookingDate}
+                      <strong>Ngày:</strong> {msg.formattedDate}
                     </div>
                     <div>
-                      <strong>Khung giờ:</strong> {msg.slotList?.join(", ")}
+                      <strong>Khung giờ:</strong> {msg.formattedSlots}
                     </div>
                     <div>
-                      <strong>Loại sân:</strong> {msg.pitchType}
+                      <strong>Loại sân:</strong> {msg.formattedPitchType}
                     </div>
                     <button
                       className="book-button"

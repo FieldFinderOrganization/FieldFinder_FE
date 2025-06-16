@@ -9,10 +9,9 @@ import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 
 interface paymentData {
-  qrCodeUrl?: string;
-  bankAccountNumber: string;
-  bankAccountName: string;
-  bankName: string;
+  transactionId: string;
+  checkoutUrl?: string;
+  status: string;
   amount: number;
 }
 
@@ -136,14 +135,6 @@ const paymentModal: React.FC<PaymentModalProps> = ({
             <Typography variant="h6" fontWeight={700}>
               Thông tin thanh toán
             </Typography>
-            <div className="flex items-center justify-between w-full">
-              <div className="field-info text-[1rem] font-bold">
-                Số tài khoản:
-              </div>
-              <div className="field-info text-[1rem] flex-1 text-right">
-                {paymentData.bankAccountNumber || "Chưa cập nhật"}
-              </div>
-            </div>
             {/* <div className="flex items-center justify-between w-full">
               <div className="field-info text-[1rem] font-bold">
                 Tên tài khỏan:
@@ -152,12 +143,6 @@ const paymentModal: React.FC<PaymentModalProps> = ({
                 {paymentData.bankAccountName || "Chưa cập nhật"}
               </div>
             </div> */}
-            <div className="flex items-center justify-between w-full">
-              <div className="field-info text-[1rem] font-bold">Ngân hàng:</div>
-              <div className="field-info text-[1rem] flex-1 text-right">
-                {paymentData.bankName || "Chưa cập nhật"}
-              </div>
-            </div>
             <Divider
               orientation="horizontal"
               flexItem
@@ -172,13 +157,24 @@ const paymentModal: React.FC<PaymentModalProps> = ({
                 {paymentData.amount} VNĐ
               </div>
             </div>
-            <div className="images">
-              <img
-                src={paymentData.qrCodeUrl}
-                alt="QR Code"
-                style={{ width: 200, height: 200 }}
-              />
-            </div>
+            {paymentData.checkoutUrl && (
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{
+                  mt: 2,
+                  py: 1.5,
+                  fontWeight: "bold",
+                  fontSize: "1rem",
+                }}
+                onClick={() => {
+                  window.open(paymentData.checkoutUrl, "_blank");
+                }}
+              >
+                Thanh toán ngay
+              </Button>
+            )}
           </div>
         </div>
       </Box>

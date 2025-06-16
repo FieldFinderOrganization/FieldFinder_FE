@@ -56,7 +56,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
   const [paymentMethod, setPaymentMethod] = React.useState("CASH");
 
   const [paymentData, setPaymentData] = React.useState<any>({
-    qrCodeUrl: "",
+    checkoutUrl: "",
     bankAccountNumber: "",
     bankAccountName: "",
     bankName: "",
