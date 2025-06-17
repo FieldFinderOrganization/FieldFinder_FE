@@ -165,7 +165,7 @@ const FieldLists: React.FC = () => {
 
   const renderStars = (rating: number) => {
     const stars = [];
-    const starRating = rating / 2; // Convert 10-point scale to 5-star scale
+    const starRating = rating / 2;
     const fullStars = Math.floor(starRating);
     const hasHalfStar = starRating % 1 >= 0.5;
 

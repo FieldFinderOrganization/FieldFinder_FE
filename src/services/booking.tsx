@@ -73,9 +73,7 @@ export const getAvailablePitches = async (
 };
 
 export const getAllBookings = async () => {
-  const response = await axios.get<BookingResponseDTO[]>(
-    `${baseURL}/api/bookings`
-  );
+  const response = await axios.get<BookingResponseDTO[]>(`${baseURL}`);
   return response.data;
 };
 
