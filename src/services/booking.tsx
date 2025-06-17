@@ -1,5 +1,4 @@
 import axios from "axios";
-import { update } from "@/redux/features/authSlice";
 
 const baseURL: string = "http://localhost:8080/api/bookings";
 

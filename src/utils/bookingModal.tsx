@@ -1,5 +1,12 @@
-import React from "react";
-import { Button, Modal, Box, Typography, Divider } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Button,
+  Modal,
+  Box,
+  Typography,
+  Divider,
+  IconButton,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EventIcon from "@mui/icons-material/Event";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -9,6 +16,9 @@ import { BookingRequestDTO, createBooking } from "@/services/booking";
 import { toast } from "react-toastify";
 import { createPayment, PaymentRequestDTO } from "@/services/payment";
 import PaymentModal from "./paymentModal";
+import { discountRes } from "@/services/discount";
+import DiscountModal from "./discountModal";
+import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 
 interface FieldData {
   id: string;
@@ -93,7 +103,16 @@ const BookingModal: React.FC<BookingModalProps> = ({
     (sum, item) => sum + item.priceDetail,
     0
   );
-  const total = temporaryTotal;
+
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [selectedDiscounts, setSelectedDiscounts] = useState<discountRes[]>([]);
+
+  const discountAmount = selectedDiscounts.reduce(
+    (sum, discount) => sum + (temporaryTotal * discount.percentage) / 100,
+    0
+  );
+
+  const total = temporaryTotal - discountAmount;
 
   const handlePayment = async () => {
     try {
@@ -193,14 +212,55 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   {fieldData.time || "Bạn chưa chọn thời gian"}
                 </div>
               </div>
-              {/* <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full">
                 <Typography variant="h6" fontWeight={700}>
                   Mã khuyến mãi
                 </Typography>
-                <div className="bg-[#FE2A00] text-white py-2 px-4 text-[0.8rem] cursor-pointer font-bold rounded-[0.5rem] gap-x-[0.3rem]">
+                <div
+                  className="bg-[#FE2A00] text-white py-2 px-4 text-[0.8rem] cursor-pointer font-bold rounded-[0.5rem] gap-x-[0.3rem]"
+                  onClick={() => setIsDiscountModalOpen(true)}
+                >
                   <p>Chọn mã</p>
                 </div>
-              </div> */}
+              </div>
+
+              {selectedDiscounts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-x-[1rem]">
+                  {selectedDiscounts.map((discount) => (
+                    <div
+                      key={discount.id}
+                      className="p-2 border border-[#FE2A00] rounded flex justify-between items-center w-[125px]"
+                    >
+                      <div>
+                        <div className="flex items-center justify-start gap-x-[0.5rem]">
+                          <CardGiftcardIcon sx={{ color: "#e25b43" }} />
+                          <Typography variant="body2" fontWeight="bold">
+                            {discount.code}
+                          </Typography>
+                        </div>
+
+                        <Typography variant="body2" color="#FE2A00">
+                          -{discount.percentage}%
+                        </Typography>
+                      </div>
+                      <IconButton
+                        size="small"
+                        onClick={() =>
+                          setSelectedDiscounts(
+                            selectedDiscounts.filter(
+                              (d) => d.id !== discount.id
+                            )
+                          )
+                        }
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Typography>Chưa có mã nào được chọn</Typography>
+              )}
             </div>
             <Divider
               orientation="vertical"
@@ -336,6 +396,13 @@ const BookingModal: React.FC<BookingModalProps> = ({
         }}
         paymentData={paymentData}
         fieldData={fieldData}
+      />
+
+      <DiscountModal
+        open={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        selectedDiscounts={selectedDiscounts}
+        setSelectedDiscounts={setSelectedDiscounts}
       />
     </div>
   );

@@ -58,9 +58,9 @@ const Login: React.FC = () => {
                 providerId: providerRes.providerId || "",
               };
             } else {
-              console.log(
-                "Không có thông tin provider hợp lệ, bỏ qua cập nhật."
-              );
+              // console.log(
+              //   "Không có thông tin provider hợp lệ, bỏ qua cập nhật."
+              // );
             }
             const addressRes = await getAddress(providerRes.providerId);
             userData = {

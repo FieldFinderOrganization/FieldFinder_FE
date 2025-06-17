@@ -48,6 +48,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleClose = () => setIsModalBookingOpen(false);
 
   const formatSlotToTime = (slots: number[] | undefined): string => {
@@ -142,6 +144,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
     const newUserMessage: ChatMessage = { sender: "user", text: input };
     setMessages((prev) => [...prev, newUserMessage]);
+    setInput("");
+    setIsLoading(true);
 
     try {
       const headers: Record<string, string> = {
@@ -160,15 +164,10 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       );
 
       const data = response.data;
-      console.log("API Response:", data);
 
-      // Xử lý sessionId nếu server trả về
       if (data.sessionId) {
         setSessionId(data.sessionId);
       }
-
-      // Hiển thị thông tin session trong console để debug
-      console.log(`Current Session ID: ${sessionId}`);
 
       if (Array.isArray(data)) {
         const aiMessages: ChatMessage[] = data.map((item: any) => ({
@@ -192,9 +191,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           data: data.data,
           pitchType: data.pitchType || "ALL",
           formattedPitchType: formatPitchType(data.pitchType || "ALL"),
-
-          // Hiển thị session trong message nếu cần
-          //   ...(sessionId && { sessionInfo: `Session ID: ${sessionId}` }),
         };
         setMessages((prev) => [...prev, aiMessage]);
       } else {
@@ -206,8 +202,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
         };
         setMessages((prev) => [...prev, aiMessage]);
       }
-
-      setInput("");
     } catch (error: any) {
       const errorMessage: ChatMessage = {
         sender: "ai",
@@ -216,6 +210,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
         formattedPitchType: formatPitchType("ALL"),
       };
       setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -290,6 +286,19 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               </div>
             </div>
           ))}
+
+          {isLoading && (
+            <div className="chat-message ai">
+              <div className="message-text">
+                <div className="loading-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="chat-input-area">

@@ -54,7 +54,9 @@ const Header: React.FC = () => {
     { label: "Trang chủ", path: "/home" },
     { label: "Giới thiệu", path: "/about" },
     { label: "Danh sách sân", path: "/fields" },
-    { label: "Mã khuyến mãi", path: "/discount" },
+    ...(user?.role === "ADMIN"
+      ? [{ label: "Mã khuyến mãi", path: "/discount" }]
+      : []),
   ];
 
   const tabItems = isAuthenticated ? authenticatedTabItems : defaultTabItems;

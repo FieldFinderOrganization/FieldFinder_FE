@@ -248,11 +248,11 @@ const Discount: React.FC = () => {
                 key={discount.id}
                 className={`p-4 rounded-lg border cursor-pointer ${
                   selectedDiscount?.id === discount.id
-                    ? "border-[#e25b43] bg-[#fff5f3]" // Khi được chọn
-                    : "border-gray-300 bg-white" // Khi không được chọn
+                    ? "border-[#e25b43] bg-[#fff5f3]"
+                    : "border-gray-300 bg-white"
                 } ${
                   selectedDiscount && selectedDiscount.id !== discount.id
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" // Khi có discount khác đang được chọn
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : ""
                 }`}
                 onClick={() => handleSelectDiscount(discount)}
@@ -347,7 +347,6 @@ const Discount: React.FC = () => {
         )}
       </div>
 
-      {/* Add Discount Modal */}
       <Modal open={openAddModal} onClose={() => setOpenAddModal(false)}>
         <Box
           sx={{
@@ -451,7 +450,6 @@ const Discount: React.FC = () => {
         </Box>
       </Modal>
 
-      {/* Edit Discount Modal */}
       <Modal open={openEditModal} onClose={() => setOpenEditModal(false)}>
         <Box
           sx={{
