@@ -11,6 +11,7 @@ export interface BookingRequestDTO {
     name: string;
     priceDetail: number;
   }[];
+  totalPrice: number;
 }
 
 export interface BookingResponseDTO {

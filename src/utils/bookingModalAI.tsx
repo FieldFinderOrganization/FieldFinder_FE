@@ -122,6 +122,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
         userId: user.userId,
         bookingDate: fieldData.date,
         bookingDetails: bookingDetails,
+        totalPrice: total,
       };
 
       const bookingResponse = await createBooking(payload);
