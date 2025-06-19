@@ -1306,7 +1306,7 @@ const Profile: React.FC = () => {
                         key={pitch.pitchId}
                         sx={{
                           width: "200px",
-                          height: "130px",
+                          height: "150px",
                           padding: "0px",
                         }}
                       >

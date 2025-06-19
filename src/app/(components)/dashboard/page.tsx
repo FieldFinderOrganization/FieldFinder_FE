@@ -829,7 +829,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <div className="flex items-center mt-2 text-green-600">
                   <ArrowUpwardIcon fontSize="small" />
-                  <span>12%</span>
+                  <span>{users.length}</span>
                 </div>
               </CardContent>
             </Card>
@@ -847,7 +847,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <div className="flex items-center mt-2 text-green-600">
                   <ArrowUpwardIcon fontSize="small" />
-                  <span>8%</span>
+                  <span>{providers.length}</span>
                 </div>
               </CardContent>
             </Card>
@@ -865,7 +865,7 @@ const Dashboard: React.FC = () => {
                 </Typography>
                 <div className="flex items-center mt-2 text-green-600">
                   <ArrowUpwardIcon fontSize="small" />
-                  <span>15%</span>
+                  <span>{pitches.length}</span>
                 </div>
               </CardContent>
             </Card>

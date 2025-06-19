@@ -250,7 +250,7 @@ const FieldLists: React.FC = () => {
               {pitches.map((pitch) => (
                 <Card
                   key={pitch.pitchId}
-                  className="w-[250px] h-[220px] bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer"
+                  className="w-[270px] h-[230px] bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer"
                   onClick={() => handlePitchClick(pitch)}
                 >
                   <img
@@ -258,7 +258,7 @@ const FieldLists: React.FC = () => {
                     alt="Field"
                     className="w-full h-[95px] rounded-t-[10px] object-cover"
                   />
-                  <div className="content flex flex-col gap-y-[0.2rem] ml-[1rem]">
+                  <div className="content flex flex-col gap-y-[0.2rem] ml-[1rem] ">
                     <div className="ratings flex items-start gap-x-[0.5rem]">
                       {renderStars(ratings[pitch.pitchId] || 0)}
                     </div>
