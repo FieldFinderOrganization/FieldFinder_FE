@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getAllUsers } from "@/services/user";
 import { getAllProviders } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
+import dayjs from "dayjs";
 
 interface EnhancedBooking extends BookingResponseDTO {
   providerName: string;
@@ -92,7 +93,14 @@ const BookingHistory: React.FC = () => {
   };
 
   const bookingColumns: GridColDef[] = [
-    { field: "bookingDate", headerName: "Ngày đặt", width: 150 },
+    {
+      field: "bookingDate",
+      headerName: "Ngày đặt",
+      width: 150,
+      renderCell: (params) => {
+        return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
+      },
+    },
     { field: "providerName", headerName: "Tên chủ sân", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },
     {

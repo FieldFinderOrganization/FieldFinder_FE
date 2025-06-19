@@ -16,9 +16,9 @@ import { BookingRequestDTO, createBooking } from "@/services/booking";
 import { toast } from "react-toastify";
 import { createPayment, PaymentRequestDTO } from "@/services/payment";
 import PaymentModal from "./paymentModal";
-import { discountRes } from "@/services/discount";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import DiscountModal from "./discountModal";
+import { discountRes } from "@/services/discount";
 
 interface FieldData {
   id: string;
@@ -57,7 +57,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   };
 
   const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-  const dateObj = dayjs(fieldData.date, "YYYY/MM/DD");
+  const dateObj = dayjs(fieldData.date, "DD/MM/YYYY");
   const dayAbbr = daysOfWeek[dateObj.day()];
   const [paymentMethod, setPaymentMethod] = React.useState("CASH");
 
@@ -75,23 +75,33 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   };
 
   const parseTimeSlots = () => {
-    if (!fieldData.time) return [];
+    if (!fieldData.time || fieldData.time.trim() === "") {
+      return []; // Return empty array if time is undefined or empty
+    }
 
-    return fieldData.time.split(", ").flatMap((timeSlot) => {
-      const [startStr, endStr] = timeSlot.split(" - ");
-      const startHour = parseInt(startStr.split(":")[0], 10);
-      const endHour = parseInt(endStr.split(":")[0], 10);
+    try {
+      return fieldData.time.split(", ").flatMap((timeSlot) => {
+        const [startStr, endStr] = timeSlot.split("-");
+        if (!startStr || !endStr) return []; // Handle malformed time slots
+        const startHour = parseInt(startStr.split(":")[0], 10);
+        const endHour = parseInt(endStr.split(":")[0], 10);
 
-      const slots = [];
-      for (let hour = startHour; hour < endHour; hour++) {
-        slots.push({
-          slot: calculateSlotNumber(hour),
-          name: `${hour}:00-${hour + 1}:00`,
-          priceDetail: parseInt(fieldData.price, 10),
-        });
-      }
-      return slots;
-    });
+        if (isNaN(startHour) || isNaN(endHour)) return []; // Handle invalid numbers
+
+        const slots = [];
+        for (let hour = startHour; hour < endHour; hour++) {
+          slots.push({
+            slot: calculateSlotNumber(hour),
+            name: `${hour}:00-${hour + 1}:00`,
+            priceDetail: parseInt(fieldData.price, 10) || 0,
+          });
+        }
+        return slots;
+      });
+    } catch (error) {
+      console.error("Error parsing time slots:", error);
+      return []; // Return empty array on error
+    }
   };
 
   const bookingDetails = parseTimeSlots();
@@ -113,14 +123,14 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
   const handlePayment = async () => {
     try {
       if (bookingDetails.length === 0) {
-        toast.error("Vui lòng chọn khung giờ");
+        toast.error("Vui lòng chọn khung giờ hợp lệ");
         return;
       }
 
       const payload: BookingRequestDTO = {
         pitchId: fieldData.id,
         userId: user.userId,
-        bookingDate: fieldData.date,
+        bookingDate: dayjs(fieldData.date, "DD/MM/YYYY").format("YYYY-MM-DD"),
         bookingDetails: bookingDetails,
         totalPrice: total,
       };
@@ -146,6 +156,8 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
       toast.error("Đặt sân thất bại!");
     }
   };
+
+  console.log(fieldData);
 
   return (
     <div>
@@ -186,16 +198,13 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
                   Loại sân:
                 </div>
                 <div className="field-info text-[1rem] flex-1 text-right">
-                  {fieldData.type
-                    ? getPitchType(fieldData.type as string)
-                    : "Không xác định"}
+                  {fieldData.type}
                 </div>
               </div>
               <div className="flex items-center justify-between w-full">
                 <EventIcon className="text-[1.5rem]" />
                 <div className="field-info text-[1rem] flex-1 text-right">
-                  {dayAbbr},{" "}
-                  {dayjs(fieldData.date, "YYYY/MM/DD").format("DD/MM/YYYY")}
+                  {dayAbbr}, {fieldData.date}
                 </div>
               </div>
               <div className="flex items-center justify-between w-full">

@@ -8,6 +8,7 @@ interface User {
   email: string;
   phone: string;
   role: string;
+  status: string;
 }
 
 interface User1 {

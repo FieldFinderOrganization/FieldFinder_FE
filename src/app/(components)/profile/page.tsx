@@ -44,9 +44,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import "../profile/profile.css";
-import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
 import { toast } from "react-toastify";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 
 import {
   addProvider,
@@ -74,6 +72,7 @@ import {
 } from "@/services/booking";
 import { getAllPayments } from "@/services/payment";
 import dayjs from "dayjs";
+import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
@@ -134,10 +133,6 @@ const Profile: React.FC = () => {
   ];
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [bookings, setBookings] = useState<any[]>([]);
 
@@ -224,7 +219,6 @@ const Profile: React.FC = () => {
         return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
       },
     },
-    // { field: "bookingId", headerName: "ID Đặt chỗ", width: 250 },
     { field: "providerName", headerName: "Tên chủ sân", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },
     {
@@ -348,6 +342,54 @@ const Profile: React.FC = () => {
     }
   };
 
+  const resetBooking = async (providerId: string) => {
+    try {
+      const [bookings, payments, users, providers, pitches] = await Promise.all(
+        [
+          getAllBookings(),
+          getAllPayments(),
+          getAllUsers(),
+          getAllProviders(),
+          getAllPitches(),
+        ]
+      );
+
+      const filteredBookings = bookings.filter(
+        (booking) => booking.providerId === providerId
+      );
+
+      const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
+      const providerMap = new Map(
+        providers.map((provider) => [provider.providerId, provider])
+      );
+      const userMap = new Map(users.map((user) => [user.userId, user]));
+
+      const paymentMethod =
+        payments.length > 0 ? payments[0].paymentMethod : null;
+
+      const enhancedBookings = filteredBookings.map((booking) => {
+        const pitchId = booking.bookingDetails[0]?.pitchId;
+        const pitch = pitchMap.get(pitchId);
+        const provider = providerMap.get(booking.providerId);
+        const providerUser = provider ? userMap.get(provider.userId) : null;
+
+        return {
+          ...booking,
+          paymentMethod,
+          providerName: providerUser?.name || "Không xác định",
+          pitchName: pitch?.name || "Không xác định",
+          slots: booking.bookingDetails.map((detail) => detail.slot),
+        };
+      });
+
+      setBookings(enhancedBookings);
+      toast.success("Đặt lại danh sách đơn đặt thành công!");
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     fetchBooking(user?.providerId)
       .then((data) => {
@@ -396,16 +438,18 @@ const Profile: React.FC = () => {
           }
         }
         setPitchesByArea(pitchesData);
-
         const updatedAreas = user.addresses.map((addr: any) => ({
           id: addr.providerAddressId,
           name: addr.address,
           count: pitchesData[addr.providerAddressId]?.length || 0,
         }));
         setAreas(updatedAreas);
+        // Set initial pitches for the selected area
+        if (selectedAreaId) {
+          setPitches(pitchesData[selectedAreaId] || []);
+        }
       }
     };
-
     fetchPitchesForAllAreas();
   }, [user?.addresses]);
 
@@ -413,10 +457,15 @@ const Profile: React.FC = () => {
     if (selectedAreaId) {
       const fetchPitches = async () => {
         try {
+          // Fetch pitches if not already in pitchesByArea
           const data =
             pitchesByArea[selectedAreaId] ||
             (await getPitchesByProviderAddressId(selectedAreaId));
-          setPitches(data);
+          setPitches(data); // Update pitches state
+          setPitchesByArea((prev) => ({
+            ...prev,
+            [selectedAreaId]: data, // Ensure pitchesByArea is updated
+          }));
         } catch (error) {
           console.error("Error fetching pitches:", error);
           toast.error("Lỗi khi tải danh sách sân");
@@ -424,7 +473,7 @@ const Profile: React.FC = () => {
       };
       fetchPitches();
     }
-  }, [selectedAreaId, pitchesByArea]);
+  }, [selectedAreaId]);
 
   const handleSelect = (index: number) => {
     setSelectedIndex(index);
@@ -467,6 +516,7 @@ const Profile: React.FC = () => {
     name: user?.name || "Nguyễn Văn A",
     email: user?.email || "vittapbay@gmail.com",
     phone: user?.phone || "0000000000",
+    status: "ACTIVE",
   });
 
   useEffect(() => {
@@ -481,6 +531,7 @@ const Profile: React.FC = () => {
               name: state.user.name,
               email: state.user.email,
               phone: state.user.phone,
+              status: "ACTIVE",
             });
             setProviderUser({
               cardNumber: state.user.cardNumber || "Chưa có thông tin",
@@ -510,6 +561,7 @@ const Profile: React.FC = () => {
       name: user?.name || "Nguyễn Văn A",
       email: user?.email || "vittapbay@gmail.com",
       phone: user?.phone || "0000000000",
+      status: "ACTIVE",
     });
   };
 
@@ -645,6 +697,7 @@ const Profile: React.FC = () => {
           ...formData,
           providerAddressId: pitchToEdit.providerAddressId,
         });
+        // Update both pitches and pitchesByArea atomically
         setPitches((prevPitches) =>
           prevPitches.map((p) =>
             p.pitchId === updatedPitch.pitchId ? updatedPitch : p
@@ -667,7 +720,12 @@ const Profile: React.FC = () => {
           ...formData,
           providerAddressId: selectedAreaId,
         });
-        setPitches([...pitches, newPitch]);
+        // Update both pitches and pitchesByArea
+        setPitches((prevPitches) => [...prevPitches, newPitch]);
+        setPitchesByArea((prev) => ({
+          ...prev,
+          [selectedAreaId]: [...(prev[selectedAreaId] || []), newPitch],
+        }));
         setAreas((prevAreas) =>
           prevAreas.map((area) =>
             area.id === selectedAreaId
@@ -1351,10 +1409,20 @@ const Profile: React.FC = () => {
             </div>
           )}
           {initTab === 2 && user?.role === "PROVIDER" && (
-            <div className="flex flex-col items-start justify-start gap-y-[1rem]">
-              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                Danh sách đặt sân
-              </Typography>
+            <div className="flex flex-col gap-y-[1rem]">
+              <div className="flex justify-between items-center mb-4">
+                <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                  Danh sách đặt sân
+                </Typography>
+                <button
+                  type="button"
+                  className="flex items-center gap-x-2 border border-blue-500 text-blue-500 px-4 py-2 rounded hover:bg-blue-50 cursor-pointer"
+                  onClick={() => resetBooking(user?.providerId)}
+                >
+                  <RestartAltOutlinedIcon />
+                  Đặt lại
+                </button>
+              </div>
               <Box sx={{ height: 400, width: "100%" }}>
                 <DataGrid
                   rows={bookings || []}
