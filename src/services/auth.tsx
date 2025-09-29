@@ -13,20 +13,16 @@ interface LoginResponse {
   [key: string]: any;
 }
 
-export const login = (
-  email: string,
-  password: string
-): Promise<LoginResponse> => {
+export const login = (idToken: string): Promise<LoginResponse> => {
   return axios.post(`${baseURL}/users/login`, {
-    email,
-    password,
+    idToken,
   });
 };
 
 interface RegisterRequest {
   email: string;
   password: string;
-  username?: string;
+  name: string;
   [key: string]: any;
   status: string;
 }

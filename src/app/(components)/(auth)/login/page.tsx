@@ -1,30 +1,29 @@
 "use client";
 
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye } from "react-icons/fa";
 import { LuEyeClosed } from "react-icons/lu";
-import { Checkbox } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "../../../../redux/store";
-import {
-  loginStart,
-  loginSuccess,
-  update,
-} from "../../../../redux/features/authSlice";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../../../../redux/store";
+import { loginStart, loginSuccess } from "../../../../redux/features/authSlice";
 import { login } from "../../../../services/auth";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { getAddress, getProvider } from "@/services/provider";
+import {
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/services/firebaseConfig";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const dispatch = useDispatch<AppDispatch>();
-  const { loading } = useSelector((state: RootState) => state.auth);
   const router = useRouter();
-  const user = useSelector((state: RootState) => state.auth.user);
 
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
@@ -33,72 +32,93 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     dispatch(loginStart());
+
     try {
-      const res = await login(email, password);
-      if (res && res.data) {
-        let userData = {
-          userId: res.data.userId,
-          name: res.data.name,
-          email: res.data.email,
-          phone: res.data.phone,
-          role: res.data.role,
+      // console.log("👉 Email:", email, "👉 Password:", password);
+
+      // 🔹 Login với Firebase (Email/Password)
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      // 🔹 Lấy Firebase ID token
+      const idToken = await userCredential.user.getIdToken();
+
+      // 🔹 Gửi idToken sang BE
+      const res = await login(idToken);
+
+      if (res && res.data && res.data.user) {
+        const userData = {
+          userId: res.data.user.userId,
+          name: res.data.user.name,
+          email: res.data.user.email,
+          phone: res.data.user.phone,
+          role: res.data.user.role,
           cardNumber: "",
           bank: "",
           providerId: "",
           addresses: [] as { providerAddressId: string; address: string }[],
         };
-        if (res.data.role === "PROVIDER") {
-          try {
-            const providerRes = await getProvider(res.data.userId);
-            if (providerRes && providerRes.providerId) {
-              userData = {
-                ...userData,
-                cardNumber: providerRes.cardNumber || "",
-                bank: providerRes.bank || "",
-                providerId: providerRes.providerId || "",
-              };
-            } else {
-              // console.log(
-              //   "Không có thông tin provider hợp lệ, bỏ qua cập nhật."
-              // );
-            }
-            const addressRes = await getAddress(providerRes.providerId);
-            userData = {
-              ...userData,
-              addresses: addressRes.map((addr) => ({
-                providerAddressId: addr.providerAddressId,
-                address: addr.address,
-              })),
-            };
-          } catch (providerError) {
-            console.error("Lỗi khi lấy thông tin provider:", providerError);
-          }
-        }
+
+        // 🔹 Lưu vào Redux + localStorage
         dispatch(loginSuccess(userData));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
+
         toast.success("Đăng nhập thành công");
 
+        // 🔹 Redirect theo role
         switch (userData.role) {
-          case "USER": {
+          case "USER":
             router.push("/home");
             break;
-          }
-          case "PROVIDER": {
+          case "PROVIDER":
             router.push("/profile");
             break;
-          }
-          case "ADMIN": {
+          case "ADMIN":
             router.push("/dashboard");
             break;
-          }
           default:
             router.push("/home");
         }
+      } else {
+        toast.error("Phản hồi từ server không hợp lệ");
       }
-    } catch (error) {
-      toast.error("Đăng nhập thất bại");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      if (error.code === "auth/invalid-email") {
+        toast.error("Email không hợp lệ");
+      } else if (error.code === "auth/user-not-found") {
+        toast.error("Tài khoản không tồn tại");
+      } else if (error.code === "auth/wrong-password") {
+        toast.error("Sai mật khẩu");
+      } else {
+        toast.error("Đăng nhập thất bại");
+      }
     }
   };
+
+  const provider = new GoogleAuthProvider();
+
+  const handleGoogleLogin = () => {
+    signInWithRedirect(auth, provider);
+  };
+
+  // Ở useEffect hoặc khi component load
+  useEffect(() => {
+    const checkLogin = async () => {
+      const result = await getRedirectResult(auth);
+      if (result) {
+        const idToken = await result.user.getIdToken();
+        const res = await login(idToken);
+        if (res && res.data) {
+          toast.success("Đăng nhập Google thành công");
+        }
+      }
+    };
+    checkLogin();
+  }, []);
 
   return (
     <motion.div
@@ -160,6 +180,7 @@ const Login: React.FC = () => {
               {" "}
               Đăng nhập
             </motion.button>
+
             <div className="footer mt-[0.4rem] text-center">
               <p className="text-xl">
                 Bạn chưa có tài khoản?{" "}
@@ -173,6 +194,14 @@ const Login: React.FC = () => {
                 </motion.span>
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 w-full justify-center mt-4"
+            >
+              <img src="/GG2.png" alt="Google" className="w-5 h-5" />
+              Continue with Google
+            </button>
           </div>
         </div>
       </form>

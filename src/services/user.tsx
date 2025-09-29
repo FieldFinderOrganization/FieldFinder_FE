@@ -25,7 +25,7 @@ export const updateUser = async (
 };
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const response = await axios.get(`${baseURL}/users/users`);
+  const response = await axios.get(`${baseURL}/users`);
   return response.data;
 };
 
