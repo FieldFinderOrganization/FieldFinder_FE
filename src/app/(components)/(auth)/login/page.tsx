@@ -16,9 +16,12 @@ import {
   getRedirectResult,
 } from "firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { forgotPassword } from "@/services/firebaseAuth";
 import { auth } from "@/services/firebaseConfig";
+import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 
 const Login: React.FC = () => {
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -27,6 +30,27 @@ const Login: React.FC = () => {
 
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Vui lòng nhập email");
+      return;
+    }
+
+    try {
+      await forgotPassword(email);
+      toast.success("Email đặt lại mật khẩu đã được gửi!");
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === "auth/user-not-found") {
+        toast.error("Email này chưa được đăng ký");
+      } else if (err.code === "auth/invalid-email") {
+        toast.error("Email không hợp lệ");
+      } else {
+        toast.error("Gửi email thất bại");
+      }
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -193,18 +217,28 @@ const Login: React.FC = () => {
                   Đăng ký ngay →
                 </motion.span>
               </p>
+              <p
+                className="text-red-500 font-bold cursor-pointer mt-2 text-xl"
+                onClick={() => setIsForgotOpen(true)}
+              >
+                Quên mật khẩu?
+              </p>
             </div>
             <button
               type="button"
               onClick={handleGoogleLogin}
               className="flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 w-full justify-center mt-4"
             >
-              <img src="/GG2.png" alt="Google" className="w-5 h-5" />
+              <img src="/GG.png" alt="Google" className="w-5 h-5" />
               Continue with Google
             </button>
           </div>
         </div>
       </form>
+      <ForgotPasswordModal
+        isOpen={isForgotOpen}
+        onClose={() => setIsForgotOpen(false)}
+      />
 
       <div className="w-1/2 h-screen relative overflow-hidden bg-container">
         <motion.img
