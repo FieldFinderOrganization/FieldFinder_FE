@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { forgotPassword } from "@/services/firebaseAuth";
 import { toast } from "react-toastify";
@@ -13,8 +13,6 @@ interface Props {
 const ForgotPasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState("");
 
-  if (!isOpen) return null;
-
   const handleSendEmail = async () => {
     if (!email) {
       toast.error("Vui lòng nhập email");
@@ -24,7 +22,6 @@ const ForgotPasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
     try {
       await forgotPassword(email);
       toast.success("Email đặt lại mật khẩu đã được gửi!");
-      setEmail("");
       onClose();
     } catch (err: any) {
       //   console.error(err);
@@ -37,6 +34,14 @@ const ForgotPasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
       }
     }
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      setEmail("");
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">

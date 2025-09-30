@@ -16,7 +16,7 @@ import {
   getRedirectResult,
 } from "firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { forgotPassword } from "@/services/firebaseAuth";
+import { forgotPassword, googleLogin } from "@/services/firebaseAuth";
 import { auth } from "@/services/firebaseConfig";
 import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 
@@ -125,24 +125,57 @@ const Login: React.FC = () => {
 
   const provider = new GoogleAuthProvider();
 
-  const handleGoogleLogin = () => {
-    signInWithRedirect(auth, provider);
+  const handleGoogleLogin = async () => {
+    try {
+      const { idToken, user } = await googleLogin();
+      const res = await login(idToken);
+
+      if (res && res.data) {
+        const userData = {
+          userId: res.data.user.userId,
+          name: res.data.user.name,
+          email: res.data.user.email,
+          phone: res.data.user.phone,
+          role: "USER",
+          cardNumber: "",
+          bank: "",
+          providerId: "",
+          addresses: [] as { providerAddressId: string; address: string }[],
+        };
+
+        dispatch(loginSuccess(userData));
+        localStorage.setItem("authState", JSON.stringify({ user: userData }));
+
+        router.push("/home");
+        toast.success("Đăng nhập Google thành công");
+      }
+    } catch (err: any) {
+      console.error("Google login error:", err);
+
+      if (err.code === "auth/popup-closed-by-user") {
+        toast.info("Bạn đã đóng cửa sổ đăng nhập Google.");
+      } else if (err.code === "auth/cancelled-popup-request") {
+        toast.info("Đang có một cửa sổ đăng nhập khác, vui lòng thử lại.");
+      } else {
+        toast.error("Đăng nhập Google thất bại");
+      }
+    }
   };
 
   // Ở useEffect hoặc khi component load
-  useEffect(() => {
-    const checkLogin = async () => {
-      const result = await getRedirectResult(auth);
-      if (result) {
-        const idToken = await result.user.getIdToken();
-        const res = await login(idToken);
-        if (res && res.data) {
-          toast.success("Đăng nhập Google thành công");
-        }
-      }
-    };
-    checkLogin();
-  }, []);
+  // useEffect(() => {
+  //   const checkLogin = async () => {
+  //     const result = await getRedirectResult(auth);
+  //     if (result) {
+  //       const idToken = await result.user.getIdToken();
+  //       const res = await login(idToken);
+  //       if (res && res.data) {
+  //         toast.success("Đăng nhập Google thành công");
+  //       }
+  //     }
+  //   };
+  //   checkLogin();
+  // }, []);
 
   return (
     <motion.div
