@@ -16,7 +16,7 @@ import { addProvider } from "@/services/provider";
 import { useDispatch } from "react-redux";
 import { registerSuccess } from "@/redux/features/authSlice";
 
-const Signin: React.FC = () => {
+const Signup: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
@@ -218,4 +218,4 @@ const Signin: React.FC = () => {
   );
 };
 
-export default Signin;
+export default Signup;

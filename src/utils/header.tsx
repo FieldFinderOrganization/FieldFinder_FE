@@ -47,7 +47,7 @@ const Header: React.FC = () => {
     { label: "Giới thiệu", path: "/about" },
     { label: "Danh sách sân", path: "/fields" },
     { label: "Đăng nhập", path: "/login" },
-    { label: "Đăng ký", path: "/signin" },
+    { label: "Đăng ký", path: "/signup" },
   ];
 
   const authenticatedTabItems: TabItem[] = [

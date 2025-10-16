@@ -6,7 +6,6 @@ export const googleLogin = async () => {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
 
-  // Lấy ID token từ Firebase để gửi về BE
   const idToken = await result.user.getIdToken();
   return {
     idToken,

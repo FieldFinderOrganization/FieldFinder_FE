@@ -19,6 +19,8 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { forgotPassword, googleLogin } from "@/services/firebaseAuth";
 import { auth } from "@/services/firebaseConfig";
 import ForgotPasswordModal from "@/utils/forgotPasswordModal";
+import OtpModal from "@/utils/otpModal";
+import { sendOtp } from "@/services/otpservice";
 
 const Login: React.FC = () => {
   const [isForgotOpen, setIsForgotOpen] = useState(false);
@@ -26,156 +28,61 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const dispatch = useDispatch<AppDispatch>();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error("Vui lòng nhập email");
-      return;
-    }
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
 
+  const handleAfterLogin = async (email: string) => {
     try {
-      await forgotPassword(email);
-      toast.success("Email đặt lại mật khẩu đã được gửi!");
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === "auth/user-not-found") {
-        toast.error("Email này chưa được đăng ký");
-      } else if (err.code === "auth/invalid-email") {
-        toast.error("Email không hợp lệ");
-      } else {
-        toast.error("Gửi email thất bại");
-      }
+      await sendOtp(email);
+      toast.info("OTP đã được gửi tới email của bạn!");
+      setIsOtpOpen(true);
+    } catch (err) {
+      toast.error("Không thể gửi OTP");
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!email || !password) return toast.error("Vui lòng nhập đủ thông tin!");
+
     dispatch(loginStart());
+    setLoading(true);
 
     try {
-      // console.log("👉 Email:", email, "👉 Password:", password);
-
-      // 🔹 Login với Firebase (Email/Password)
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      // 🔹 Lấy Firebase ID token
-      const idToken = await userCredential.user.getIdToken();
-
-      // 🔹 Gửi idToken sang BE
-      const res = await login(idToken);
-
-      if (res && res.data && res.data.user) {
-        const userData = {
-          userId: res.data.user.userId,
-          name: res.data.user.name,
-          email: res.data.user.email,
-          phone: res.data.user.phone,
-          role: res.data.user.role,
-          cardNumber: "",
-          bank: "",
-          providerId: "",
-          addresses: [] as { providerAddressId: string; address: string }[],
-        };
-
-        // 🔹 Lưu vào Redux + localStorage
-        dispatch(loginSuccess(userData));
-        localStorage.setItem("authState", JSON.stringify({ user: userData }));
-
-        toast.success("Đăng nhập thành công");
-
-        // 🔹 Redirect theo role
-        switch (userData.role) {
-          case "USER":
-            router.push("/home");
-            break;
-          case "PROVIDER":
-            router.push("/profile");
-            break;
-          case "ADMIN":
-            router.push("/dashboard");
-            break;
-          default:
-            router.push("/home");
-        }
-      } else {
-        toast.error("Phản hồi từ server không hợp lệ");
-      }
+      await signInWithEmailAndPassword(auth, email, password);
+      await sendOtp(email);
+      toast.info("OTP đã được gửi tới email của bạn!");
+      setIsOtpOpen(true);
     } catch (error: any) {
       console.error("Login error:", error);
-      if (error.code === "auth/invalid-email") {
-        toast.error("Email không hợp lệ");
-      } else if (error.code === "auth/user-not-found") {
-        toast.error("Tài khoản không tồn tại");
-      } else if (error.code === "auth/wrong-password") {
-        toast.error("Sai mật khẩu");
-      } else {
-        toast.error("Đăng nhập thất bại");
-      }
+      toast.error("Sai thông tin đăng nhập!");
+    } finally {
+      setLoading(false);
     }
   };
-
-  const provider = new GoogleAuthProvider();
 
   const handleGoogleLogin = async () => {
     try {
       const { idToken, user } = await googleLogin();
-      const res = await login(idToken);
-
-      if (res && res.data) {
-        const userData = {
-          userId: res.data.user.userId,
-          name: res.data.user.name,
-          email: res.data.user.email,
-          phone: res.data.user.phone,
-          role: "USER",
-          cardNumber: "",
-          bank: "",
-          providerId: "",
-          addresses: [] as { providerAddressId: string; address: string }[],
-        };
-
-        dispatch(loginSuccess(userData));
-        localStorage.setItem("authState", JSON.stringify({ user: userData }));
-
-        router.push("/home");
-        toast.success("Đăng nhập Google thành công");
+      if (!user?.email) {
+        toast.error("Không thể lấy email từ tài khoản Google!");
+        return;
       }
+      await sendOtp(user.email);
+      toast.info("OTP đã được gửi tới email của bạn!");
+      setEmail(user.email);
+      setIsOtpOpen(true);
     } catch (err: any) {
       console.error("Google login error:", err);
-
-      if (err.code === "auth/popup-closed-by-user") {
-        toast.info("Bạn đã đóng cửa sổ đăng nhập Google.");
-      } else if (err.code === "auth/cancelled-popup-request") {
-        toast.info("Đang có một cửa sổ đăng nhập khác, vui lòng thử lại.");
-      } else {
-        toast.error("Đăng nhập Google thất bại");
-      }
+      toast.error("Đăng nhập Google thất bại hoặc không thể gửi OTP!");
     }
   };
-
-  // Ở useEffect hoặc khi component load
-  // useEffect(() => {
-  //   const checkLogin = async () => {
-  //     const result = await getRedirectResult(auth);
-  //     if (result) {
-  //       const idToken = await result.user.getIdToken();
-  //       const res = await login(idToken);
-  //       if (res && res.data) {
-  //         toast.success("Đăng nhập Google thành công");
-  //       }
-  //     }
-  //   };
-  //   checkLogin();
-  // }, []);
 
   return (
     <motion.div
@@ -245,7 +152,7 @@ const Login: React.FC = () => {
                   className="text-purple-600 font-bold cursor-pointer ml-[0.5rem]"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push("/signin")}
+                  onClick={() => router.push("/signup")}
                 >
                   Đăng ký ngay →
                 </motion.span>
@@ -268,6 +175,17 @@ const Login: React.FC = () => {
           </div>
         </div>
       </form>
+
+      <OtpModal
+        email={email}
+        isOpen={isOtpOpen}
+        onClose={() => setIsOtpOpen(false)}
+        onSuccess={(token) => {
+          localStorage.setItem("token", token);
+          toast.success("Đăng nhập thành công!");
+        }}
+      />
+
       <ForgotPasswordModal
         isOpen={isForgotOpen}
         onClose={() => setIsForgotOpen(false)}
