@@ -1,20 +1,32 @@
 import axios from "axios";
+import { UUID } from "crypto";
 
-const baseURL: string = "http://localhost:8080/api";
+const baseURL: string = "http://localhost:8080/api/users";
 
-interface LoginRequest {
+interface UserDTO {
+  id: UUID;
   email: string;
-  password: string;
+  name: string;
+  phone: string | null;
+  role: string; // "USER" | "PROVIDER" | "ADMIN"
+  status: string; // "ACTIVE" | "BLOCKED"
 }
 
 interface LoginResponse {
-  token?: string;
-  message?: string;
-  [key: string]: any;
+  message: string;
+  user: UserDTO;
 }
 
-export const login = (idToken: string): Promise<LoginResponse> => {
-  return axios.post(`${baseURL}/users/login`, {
+export const login = (idToken: string): Promise<{ data: LoginResponse }> => {
+  return axios.post(`${baseURL}/login`, {
+    idToken,
+  });
+};
+
+export const loginSocial = (
+  idToken: string
+): Promise<{ data: LoginResponse }> => {
+  return axios.post(`${baseURL}/login-social`, {
     idToken,
   });
 };
@@ -36,5 +48,5 @@ interface RegisterResponse {
 export const register = (
   registerObj: RegisterRequest
 ): Promise<RegisterResponse> => {
-  return axios.post(`${baseURL}/users/register`, registerObj);
+  return axios.post(`${baseURL}/register`, registerObj);
 };

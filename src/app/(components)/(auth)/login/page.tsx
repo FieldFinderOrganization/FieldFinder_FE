@@ -7,13 +7,14 @@ import { LuEyeClosed } from "react-icons/lu";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../redux/store";
 import { loginStart, loginSuccess } from "../../../../redux/features/authSlice";
-import { login } from "../../../../services/auth";
+import { login, loginSocial } from "../../../../services/auth";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import {
   GoogleAuthProvider,
   signInWithRedirect,
   getRedirectResult,
+  FacebookAuthProvider,
 } from "firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { forgotPassword, googleLogin } from "@/services/firebaseAuth";
@@ -37,52 +38,99 @@ const Login: React.FC = () => {
 
   const [isOtpOpen, setIsOtpOpen] = useState(false);
 
-  const handleAfterLogin = async (email: string) => {
-    try {
-      await sendOtp(email);
-      toast.info("OTP đã được gửi tới email của bạn!");
-      setIsOtpOpen(true);
-    } catch (err) {
-      toast.error("Không thể gửi OTP");
-    }
-  };
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!email || !password) return toast.error("Vui lòng nhập đủ thông tin!");
 
-    dispatch(loginStart());
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+      const idToken = await user.getIdToken();
+
+      await login(idToken);
+
       await sendOtp(email);
       toast.info("OTP đã được gửi tới email của bạn!");
       setIsOtpOpen(true);
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error("Sai thông tin đăng nhập!");
+
+      if (error.response && error.response.status === 401) {
+        toast.error("Tài khoản không tồn tại. Vui lòng đăng ký.");
+      } else if (error.response && error.response.status === 403) {
+        toast.error("Tài khoản của bạn đã bị khóa.");
+      } else if (
+        error.response === "auth/invalid-credential" ||
+        error.code === "auth/wrong-password"
+      ) {
+        toast.error("Sai email hoặc mật khẩu!");
+      } else {
+        toast.error("Đăng nhập thất bại, vui lòng thử lại.");
+      }
     } finally {
-      setLoading(false);
+      if (!isOtpOpen) setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    try {
-      const { idToken, user } = await googleLogin();
-      if (!user?.email) {
-        toast.error("Không thể lấy email từ tài khoản Google!");
-        return;
-      }
-      await sendOtp(user.email);
-      toast.info("OTP đã được gửi tới email của bạn!");
-      setEmail(user.email);
-      setIsOtpOpen(true);
-    } catch (err: any) {
-      console.error("Google login error:", err);
-      toast.error("Đăng nhập Google thất bại hoặc không thể gửi OTP!");
-    }
+    const provider = new GoogleAuthProvider();
+    signInWithRedirect(auth, provider);
   };
+
+  const handleFacebookLogin = async () => {
+    const provider = new FacebookAuthProvider();
+    signInWithRedirect(auth, provider);
+  };
+
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        // ✅ Bước 1: Lấy kết quả redirect (nếu có)
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          const idToken = await result.user.getIdToken();
+          const email = result.user.email;
+
+          await login(idToken);
+          if (email) {
+            await sendOtp(email);
+            toast.info(`OTP đã được gửi tới email ${email}`);
+            setEmail(email);
+            setIsOtpOpen(true);
+          }
+          return; // ✅ Ngừng ở đây nếu đã xử lý redirect
+        }
+
+        // ✅ Bước 2: Nếu không có result (Firebase reload xong)
+        auth.onAuthStateChanged(async (user) => {
+          if (user) {
+            const idToken = await user.getIdToken();
+            const email = user.email;
+
+            // Tránh gửi OTP lại nếu modal đang mở
+            if (!isOtpOpen && email) {
+              await login(idToken);
+              await sendOtp(email);
+              toast.info(`OTP đã được gửi tới email ${email}`);
+              setEmail(email);
+              setIsOtpOpen(true);
+            }
+          }
+        });
+      } catch (err) {
+        console.error("Redirect Login error:", err);
+        toast.error("Đăng nhập thất bại!");
+      }
+    };
+
+    handleRedirectResult();
+  }, []);
 
   return (
     <motion.div
@@ -171,6 +219,14 @@ const Login: React.FC = () => {
             >
               <img src="/GG.png" alt="Google" className="w-5 h-5" />
               Continue with Google
+            </button>
+            <button
+              type="button"
+              onClick={handleFacebookLogin}
+              className="flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 w-full justify-center mt-2"
+            >
+              <img src="/FB.png" alt="Facebook" className="w-5 h-5" />
+              Continue with Facebook
             </button>
           </div>
         </div>

@@ -1,5 +1,9 @@
 import { auth } from "@/services/firebaseConfig";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  FacebookAuthProvider,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 import { sendPasswordResetEmail } from "firebase/auth";
 
 export const googleLogin = async () => {
@@ -11,6 +15,11 @@ export const googleLogin = async () => {
     idToken,
     user: result.user,
   };
+};
+
+export const facebookLogin = async () => {
+  const provider = new FacebookAuthProvider();
+  const result = await signInWithPopup(auth, provider);
 };
 
 export const forgotPassword = async (email: string) => {

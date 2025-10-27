@@ -15,7 +15,7 @@ const firebaseConfig = {
 export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
   const result = await signInWithPopup(auth, provider);
-  const idToken = await result.user.getIdToken(); // <-- lấy token để gửi về BE
+  const idToken = await result.user.getIdToken();
   return { user: result.user, idToken };
 };
 
