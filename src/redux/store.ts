@@ -1,18 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./features/authSlice";
-
-// Định nghĩa kiểu cho trạng thái
-interface AuthState {
-  user: {
-    userId: string;
-    name: string;
-    email: string;
-    phone: string;
-    role: string;
-  } | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-}
+import type { AuthState } from "./features/authSlice"; // 👈 import kiểu từ slice
 
 // Hàm để lưu trạng thái vào localStorage
 const saveState = (state: AuthState) => {

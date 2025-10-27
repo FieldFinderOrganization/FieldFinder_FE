@@ -18,7 +18,7 @@ import {
 } from "firebase/auth";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { forgotPassword, googleLogin } from "@/services/firebaseAuth";
-import { auth } from "@/services/firebaseConfig";
+import { auth } from "@/services/firebaseAuth";
 import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 import OtpModal from "@/utils/otpModal";
 import { sendOtp } from "@/services/otpservice";
@@ -45,6 +45,7 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
+      // ✅ Bước 1: Xác thực Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -53,17 +54,23 @@ const Login: React.FC = () => {
       const user = userCredential.user;
       const idToken = await user.getIdToken();
 
-      await login(idToken);
+      // ✅ Bước 2: Gọi login backend
+      const res = await login(idToken);
 
-      await sendOtp(email);
-      toast.info("OTP đã được gửi tới email của bạn!");
-      setIsOtpOpen(true);
+      if (res?.data?.user) {
+        // ✅ Bước 3: Nếu backend xác nhận thành công → gửi OTP
+        await sendOtp(email);
+        toast.info("OTP đã được gửi tới email của bạn!");
+        setIsOtpOpen(true);
+      } else {
+        toast.error("Đăng nhập không thành công. Vui lòng thử lại!");
+      }
     } catch (error: any) {
       console.error("Login error:", error);
 
-      if (error.response && error.response.status === 401) {
+      if (error.response?.status === 401) {
         toast.error("Tài khoản không tồn tại. Vui lòng đăng ký.");
-      } else if (error.response && error.response.status === 403) {
+      } else if (error.response?.status === 403) {
         toast.error("Tài khoản của bạn đã bị khóa.");
       } else if (
         error.response === "auth/invalid-credential" ||
@@ -89,40 +96,35 @@ const Login: React.FC = () => {
   };
 
   useEffect(() => {
+    // ✅ Nếu vừa logout thì bỏ qua toàn bộ OTP flow
+    const justLoggedOut = sessionStorage.getItem("justLoggedOut");
+    if (justLoggedOut) {
+      console.log("⏹ Vừa đăng xuất — bỏ qua OTP flow");
+      sessionStorage.removeItem("justLoggedOut");
+      return; // Dừng useEffect, không chạy getRedirectResult / onAuthStateChanged
+    }
+
+    let hasHandledRedirect = false;
+
     const handleRedirectResult = async () => {
       try {
-        // ✅ Bước 1: Lấy kết quả redirect (nếu có)
         const result = await getRedirectResult(auth);
+
         if (result?.user) {
+          hasHandledRedirect = true;
+
           const idToken = await result.user.getIdToken();
           const email = result.user.email;
 
           await login(idToken);
+
           if (email) {
             await sendOtp(email);
             toast.info(`OTP đã được gửi tới email ${email}`);
             setEmail(email);
             setIsOtpOpen(true);
           }
-          return; // ✅ Ngừng ở đây nếu đã xử lý redirect
         }
-
-        // ✅ Bước 2: Nếu không có result (Firebase reload xong)
-        auth.onAuthStateChanged(async (user) => {
-          if (user) {
-            const idToken = await user.getIdToken();
-            const email = user.email;
-
-            // Tránh gửi OTP lại nếu modal đang mở
-            if (!isOtpOpen && email) {
-              await login(idToken);
-              await sendOtp(email);
-              toast.info(`OTP đã được gửi tới email ${email}`);
-              setEmail(email);
-              setIsOtpOpen(true);
-            }
-          }
-        });
       } catch (err) {
         console.error("Redirect Login error:", err);
         toast.error("Đăng nhập thất bại!");
@@ -130,6 +132,23 @@ const Login: React.FC = () => {
     };
 
     handleRedirectResult();
+
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (!hasHandledRedirect && user) {
+        const idToken = await user.getIdToken();
+        const email = user.email;
+
+        if (email) {
+          await login(idToken);
+          await sendOtp(email);
+          toast.info(`OTP đã được gửi tới email ${email}`);
+          setEmail(email);
+          setIsOtpOpen(true);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

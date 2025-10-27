@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { verifyOtp } from "@/services/otpservice";
 import { toast } from "react-toastify";
 import { login } from "@/services/auth";
-import { auth } from "@/services/firebaseConfig";
+import { auth } from "@/services/firebaseAuth";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "@/redux/features/authSlice";
 import { useRouter } from "next/navigation";
@@ -48,7 +48,15 @@ const OtpModal: React.FC<OtpModalProps> = ({
       const res = await login(idToken);
 
       if (res.data && res.data.user) {
-        const userData = res.data.user;
+        const u = res.data.user;
+
+        const userData = {
+          userId: u.id || "",
+          name: u.name || "",
+          email: u.email || "",
+          phone: u.phone || "",
+          role: u.role || "",
+        };
 
         dispatch(loginSuccess(userData));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
@@ -88,7 +96,7 @@ const OtpModal: React.FC<OtpModalProps> = ({
           disabled={loading}
           className={`${
             loading ? "bg-gray-400" : "bg-red-600 hover:bg-red-700"
-          } text-white px-4 py-2 rounded-lg w-full`}
+          } text-white px-4 py-2 rounded-lg w-full cursor-pointer`}
         >
           {loading ? "Đang xác thực..." : "Xác nhận"}
         </button>
