@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FormEvent, useEffect, useState } from "react";
+import React, { FormEvent, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye } from "react-icons/fa";
 import { LuEyeClosed } from "react-icons/lu";
@@ -23,6 +23,13 @@ import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 import OtpModal from "@/utils/otpModal";
 import { sendOtp } from "@/services/otpservice";
 
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const MIN_PASSWORD_LENGTH = 6;
+
 const Login: React.FC = () => {
   const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
@@ -32,6 +39,39 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (!value) {
+      setEmailError("Email không được để trống.");
+    } else if (!isValidEmail(value)) {
+      setEmailError("Định dạng email không hợp lệ.");
+    } else {
+      setEmailError(null);
+    }
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (!value) {
+      setPasswordError("Mật khẩu không được để trống.");
+    } else if (value.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(
+        `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`
+      );
+    } else {
+      setPasswordError(null);
+    }
+  };
+
+  const isFormInvalid = useMemo(() => {
+    const hasError = emailError !== null || passwordError !== null;
+    const isMissingField = !email || !password;
+    return hasError || isMissingField;
+  }, [email, password, emailError, passwordError]);
+
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
   };
@@ -40,12 +80,19 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email || !password) return toast.error("Vui lòng nhập đủ thông tin!");
+
+    if (isFormInvalid) {
+      if (!email || !password) {
+        toast.error("Vui lòng nhập đủ Email và Mật khẩu!");
+      } else if (emailError || passwordError) {
+        toast.error("Vui lòng sửa các lỗi trong form.");
+      }
+      return;
+    }
 
     setLoading(true);
 
     try {
-      // ✅ Bước 1: Xác thực Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -54,11 +101,9 @@ const Login: React.FC = () => {
       const user = userCredential.user;
       const idToken = await user.getIdToken();
 
-      // ✅ Bước 2: Gọi login backend
       const res = await login(idToken);
 
       if (res?.data?.user) {
-        // ✅ Bước 3: Nếu backend xác nhận thành công → gửi OTP
         await sendOtp(email);
         toast.info("OTP đã được gửi tới email của bạn!");
         setIsOtpOpen(true);
@@ -68,15 +113,20 @@ const Login: React.FC = () => {
     } catch (error: any) {
       console.error("Login error:", error);
 
-      if (error.response?.status === 401) {
+      if (
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/user-not-found"
+      ) {
+        toast.error("Sai email hoặc mật khẩu!");
+      } else if (error.code === "auth/too-many-requests") {
+        toast.error(
+          "Tài khoản bị tạm khóa do quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau."
+        );
+      } else if (error.response?.status === 401) {
         toast.error("Tài khoản không tồn tại. Vui lòng đăng ký.");
       } else if (error.response?.status === 403) {
         toast.error("Tài khoản của bạn đã bị khóa.");
-      } else if (
-        error.response === "auth/invalid-credential" ||
-        error.code === "auth/wrong-password"
-      ) {
-        toast.error("Sai email hoặc mật khẩu!");
       } else {
         toast.error("Đăng nhập thất bại, vui lòng thử lại.");
       }
@@ -86,8 +136,49 @@ const Login: React.FC = () => {
   };
 
   const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
+    try {
+      const { idToken, user } = await googleLogin();
+      const res = await login(idToken);
+
+      if (res && res.data) {
+        const userData = {
+          userId: res.data.user.id,
+          name: res.data.user.name,
+          email: res.data.user.email,
+          phone: res.data.user.phone || null,
+          role: "USER",
+          cardNumber: "",
+          bank: "",
+          providerId: "",
+          addresses: [] as { providerAddressId: string; address: string }[],
+        };
+
+        const email = userData.email;
+
+        if (email) {
+          await sendOtp(email);
+          toast.info(`OTP đã được gửi tới email ${email}`);
+          setEmail(email);
+          setIsOtpOpen(true);
+        }
+
+        dispatch(loginSuccess(userData));
+        localStorage.setItem("authState", JSON.stringify({ user: userData }));
+
+        router.push("/home");
+        toast.success("Đăng nhập Google thành công");
+      }
+    } catch (err: any) {
+      console.error("Google login error:", err);
+
+      if (err.code === "auth/popup-closed-by-user") {
+        toast.info("Bạn đã đóng cửa sổ đăng nhập Google.");
+      } else if (err.code === "auth/cancelled-popup-request") {
+        toast.info("Đang có một cửa sổ đăng nhập khác, vui lòng thử lại.");
+      } else {
+        toast.error("Đăng nhập Google thất bại");
+      }
+    }
   };
 
   const handleFacebookLogin = async () => {
@@ -95,61 +186,60 @@ const Login: React.FC = () => {
     signInWithRedirect(auth, provider);
   };
 
-  useEffect(() => {
-    // ✅ Nếu vừa logout thì bỏ qua toàn bộ OTP flow
-    const justLoggedOut = sessionStorage.getItem("justLoggedOut");
-    if (justLoggedOut) {
-      console.log("⏹ Vừa đăng xuất — bỏ qua OTP flow");
-      sessionStorage.removeItem("justLoggedOut");
-      return; // Dừng useEffect, không chạy getRedirectResult / onAuthStateChanged
-    }
+  // useEffect(() => {
+  //   const justLoggedOut = sessionStorage.getItem("justLoggedOut");
+  //   if (justLoggedOut) {
+  //     console.log("⏹ Vừa đăng xuất — bỏ qua OTP flow");
+  //     sessionStorage.removeItem("justLoggedOut");
+  //     return;
+  //   }
 
-    let hasHandledRedirect = false;
+  //   let hasHandledRedirect = false;
 
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
+  //   const handleRedirectResult = async () => {
+  //     try {
+  //       const result = await getRedirectResult(auth);
 
-        if (result?.user) {
-          hasHandledRedirect = true;
+  //       if (result?.user) {
+  //         hasHandledRedirect = true;
 
-          const idToken = await result.user.getIdToken();
-          const email = result.user.email;
+  //         const idToken = await result.user.getIdToken();
+  //         const email = result.user.email;
 
-          await login(idToken);
+  //         await login(idToken);
 
-          if (email) {
-            await sendOtp(email);
-            toast.info(`OTP đã được gửi tới email ${email}`);
-            setEmail(email);
-            setIsOtpOpen(true);
-          }
-        }
-      } catch (err) {
-        console.error("Redirect Login error:", err);
-        toast.error("Đăng nhập thất bại!");
-      }
-    };
+  //         if (email) {
+  //           await sendOtp(email);
+  //           toast.info(`OTP đã được gửi tới email ${email}`);
+  //           setEmail(email);
+  //           setIsOtpOpen(true);
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Redirect Login error:", err);
+  //       toast.error("Đăng nhập thất bại!");
+  //     }
+  //   };
 
-    handleRedirectResult();
+  //   handleRedirectResult();
 
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!hasHandledRedirect && user) {
-        const idToken = await user.getIdToken();
-        const email = user.email;
+  //   const unsubscribe = auth.onAuthStateChanged(async (user) => {
+  //     if (!hasHandledRedirect && user) {
+  //       const idToken = await user.getIdToken();
+  //       const email = user.email;
 
-        if (email) {
-          await login(idToken);
-          await sendOtp(email);
-          toast.info(`OTP đã được gửi tới email ${email}`);
-          setEmail(email);
-          setIsOtpOpen(true);
-        }
-      }
-    });
+  //       if (email) {
+  //         await login(idToken);
+  //         await sendOtp(email);
+  //         toast.info(`OTP đã được gửi tới email ${email}`);
+  //         setEmail(email);
+  //         setIsOtpOpen(true);
+  //       }
+  //     }
+  //   });
 
-    return () => unsubscribe();
-  }, []);
+  //   return () => unsubscribe();
+  // }, []);
 
   return (
     <motion.div
@@ -177,30 +267,40 @@ const Login: React.FC = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="Điền email của bạn"
-                className="w-full px-5 py-2 border rounded-lg"
+                className={`w-full px-5 py-2 border rounded-lg ${
+                  emailError ? "border-red-500" : ""
+                }`}
               />
+              {emailError && (
+                <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              )}
             </div>
             <div className="pass relative">
               <label className="block text-sm font-medium mb-2">Mật khẩu</label>
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="Điền mật khẩu của bạn"
-                className="w-full px-5 py-2 border rounded-lg"
+                className={`w-full px-5 py-2 border rounded-lg ${
+                  passwordError ? "border-red-500" : ""
+                }`}
               />
               {showPassword ? (
                 <LuEyeClosed
-                  className="absolute top-[70%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className="absolute top-[52%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
                   onClick={handleShowPassword}
                 />
               ) : (
                 <FaEye
-                  className="absolute top-[70%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className="absolute top-[52%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
                   onClick={handleShowPassword}
                 />
+              )}
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-1">{passwordError}</p>
               )}
             </div>
             <motion.button

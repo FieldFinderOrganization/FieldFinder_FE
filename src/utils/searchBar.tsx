@@ -79,7 +79,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
     const endHour = parseInt(endTime.split(":")[0]);
 
     if (endHour <= startHour) {
-      setTimeError("Giờ kết thúc phải sau giờ bắt đầu");
+      setTimeError("End time must be after start time.");
       return [];
     }
 
@@ -103,14 +103,14 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
 
   const handleSearch = async () => {
     if (!date) {
-      alert("Vui lòng chọn ngày đặt sân");
+      alert("Please choose a date!");
       return;
     }
 
     // Kiểm tra giờ bắt đầu có trong quá khứ không
     if (date.isSame(now, "day") && isPastTime(date, startTime)) {
       alert(
-        "Không thể đặt sân trong quá khứ. Vui lòng chọn giờ bắt đầu sau giờ hiện tại."
+        "Cannot book a time in the past. Please choose a valid start time!"
       );
       return;
     }
@@ -120,7 +120,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
 
     if (slots.length === 0) {
       if (!timeError) {
-        alert("Vui lòng chọn khoảng thời gian hợp lệ");
+        alert("Please choose a timeslot!");
       }
       return;
     }
