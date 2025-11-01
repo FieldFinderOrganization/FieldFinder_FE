@@ -4,6 +4,8 @@ import React from "react";
 import { useCart, CartItem } from "@/context/CartContext";
 import { FiTrash2, FiHeart } from "react-icons/fi";
 import Link from "next/link";
+import { useFavourite } from "@/context/FavouriteContext";
+import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
 
 const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
   const formattedPrice = new Intl.NumberFormat("vi-VN", {
@@ -12,6 +14,9 @@ const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
   }).format(item.product.price);
 
   const { updateQuantity, removeFromCart } = useCart();
+
+  const { toggleFavourite, isFavourited } = useFavourite();
+  const isFav = isFavourited(item.product.id);
 
   return (
     <div className="flex gap-4 border-b border-gray-200 py-6">
@@ -52,10 +57,20 @@ const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
             </button>
           </div>
           <button onClick={() => removeFromCart(item.id)} title="Remove item">
-            <FiTrash2 className="text-gray-600 hover:text-red-600" size={20} />
+            <FiTrash2
+              className="text-gray-600 hover:text-red-600 cursor-pointer"
+              size={20}
+            />
           </button>
-          <button title="Move to favorites">
-            <FiHeart className="text-gray-600 hover:text-black" size={20} />
+          <button
+            onClick={() => toggleFavourite(item.product)}
+            title={isFav ? "Xóa khỏi Yêu thích" : "Thêm vào Yêu thích"}
+          >
+            {isFav ? (
+              <IoMdHeart size={24} className="text-red-500 cursor-pointer" />
+            ) : (
+              <IoMdHeartEmpty size={24} className="cursor-pointer" />
+            )}
           </button>
         </div>
       </div>

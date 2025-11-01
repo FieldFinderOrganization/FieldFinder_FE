@@ -49,6 +49,9 @@ interface ProductContextType {
   currentState: AppState;
   selectedFilters: Record<string, string[]>;
 
+  searchTerm: string;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+
   // Actions
   navigateToItem: (item: string) => void;
   navigateToHistory: (index: number) => void;
@@ -66,7 +69,7 @@ export const ProductProvider = ({
 }) => {
   const router = useRouter(); // Dùng router để điều hướng
 
-  // --- TẤT CẢ STATE TỪ Product.tsx ĐƯỢC CHUYỂN VÀO ĐÂY ---
+  const [searchTerm, setSearchTerm] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([
     { title: "All Products", state: INITIAL_STATE, isLeaf: false },
   ]);
@@ -308,6 +311,7 @@ export const ProductProvider = ({
 
   // navigateToItem (SỬA LẠI ĐỂ CÓ router.push)
   const navigateToItem = (item: string) => {
+    setSearchTerm("");
     // 1. Logic cũ (chặn click trùng)
     if (item === selectedCategory) {
       router.push("/sportShop/product"); // Vẫn navigate về trang product
@@ -412,6 +416,8 @@ export const ProductProvider = ({
 
   // navigateToHistory
   const navigateToHistory = (index: number) => {
+    setSearchTerm("");
+
     setHistory((prevHistory) => prevHistory.slice(0, index + 1));
     router.push("/sportShop/product"); // Cũng navigate về /sportShop/product
   };
@@ -439,6 +445,8 @@ export const ProductProvider = ({
     navigateToItem,
     navigateToHistory,
     handleFilterToggle,
+    searchTerm,
+    setSearchTerm,
   };
 
   return (

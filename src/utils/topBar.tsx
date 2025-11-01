@@ -10,6 +10,8 @@ import { IoIosArrowUp } from "react-icons/io";
 import { useCart } from "@/context/CartContext";
 import { useFavourite } from "@/context/FavouriteContext";
 import Link from "next/link";
+import { useProductContext } from "@/context/ProductContext";
+import { useRouter } from "next/navigation";
 import { IoMdHeart } from "react-icons/io";
 
 interface TopBarProps {
@@ -23,7 +25,8 @@ const TopBar: React.FC<TopBarProps> = ({
   groupedBrands,
   onCategoryClick,
 }) => {
-  const [searchInput, setSearchInput] = React.useState("");
+  const { searchTerm, setSearchTerm } = useProductContext();
+  const router = useRouter();
 
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
@@ -54,6 +57,11 @@ const TopBar: React.FC<TopBarProps> = ({
   const handleMenuItemClick = (item: string) => {
     onCategoryClick(item);
     setActiveMenu(null);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push("/sportShop/product");
   };
 
   return (
@@ -183,17 +191,22 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        {/* ... Phần search, icons ... */}
-        <div className="hidden lg:flex items-center gap-2 border border-gray-300 rounded-md px-4 py-2 min-w-[280px] max-w-[600px] flex-1">
-          <CiSearch size={20} className="cursor-pointer" />
+        <form
+          onSubmit={handleSearch} // Thêm form và onSubmit
+          className="hidden lg:flex items-center gap-2 border border-gray-300 rounded-md px-4 py-2 min-w-[280px] max-w-[600px] flex-1"
+        >
+          <button type="submit" onClick={handleSearch}>
+            <CiSearch size={20} className="cursor-pointer" />
+          </button>
           <input
             type="text"
             placeholder="Search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            // 👈 SỬA: Dùng state từ context
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="outline-none bg-transparent text-sm flex-1"
           />
-        </div>
+        </form>
       </div>
 
       <div className="flex items-center gap-4">
@@ -234,17 +247,6 @@ const TopBar: React.FC<TopBarProps> = ({
             className="object-cover w-full h-full"
           />
         </div>
-      </div>
-
-      <div className="flex lg:hidden items-center w-full mt-4 border border-gray-300 rounded-md px-3 py-2">
-        <CiSearch size={20} className="cursor-pointer" />
-        <input
-          type="text"
-          placeholder="Search"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="outline-none bg-transparent ml-2 flex-1 text-sm"
-        />
       </div>
     </div>
   );

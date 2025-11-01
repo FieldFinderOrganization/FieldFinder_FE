@@ -43,7 +43,7 @@ const FavouriteCard: React.FC<{ product: productRes }> = ({ product }) => {
           <h3 className="font-bold text-lg truncate">{product.name}</h3>
           <p className="text-gray-600">{product.description}</p>
         </div>
-        <p className="font-semibold text-base ml-2">VND {formattedPrice}</p>
+        <p className="font-semibold text-base ml-2">{formattedPrice}</p>
       </div>
 
       {/* Nút Added (như trong ảnh) */}

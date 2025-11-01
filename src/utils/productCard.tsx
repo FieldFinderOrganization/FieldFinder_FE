@@ -2,7 +2,6 @@
 
 import React from "react";
 import { productRes } from "@/services/product";
-import { FiPlus } from "react-icons/fi";
 import { useFavourite } from "@/context/FavouriteContext";
 import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
 import Link from "next/link";
@@ -43,7 +42,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <p className="font-semibold text-base mt-1">{formattedPrice}</p>
       </div>
 
-      {/* Nút Plus */}
       <button
         onClick={() => toggleFavourite(product)}
         title={isFav ? "Xóa khỏi Yêu thích" : "Thêm vào Yêu thích"}

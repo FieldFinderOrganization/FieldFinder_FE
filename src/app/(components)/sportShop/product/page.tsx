@@ -44,6 +44,7 @@ const Product = () => {
     navigateToItem,
     navigateToHistory,
     handleFilterToggle,
+    searchTerm,
   } = useProductContext();
 
   const { selectedCategory, subCategories } = currentState;
@@ -78,26 +79,15 @@ const Product = () => {
     return map;
   }, [categories]);
 
-  // Lọc sản phẩm (filteredProducts) - Giữ nguyên logic này
   const filteredProducts = useMemo(() => {
-    // 1. Tự động build 2 Set (tập hợp) lớn
     const ALL_SHOE_TYPES = new Set<string>();
     const ALL_CLOTHING_TYPES = new Set<string>();
-
-    // Lấy con của "Shoes" (e.g., Lifestyle, All Shoes, Athletic Shoes, ...)
     getDescendants(categories, "Shoes").forEach((c) => ALL_SHOE_TYPES.add(c));
-
-    // Lấy con của "Clothing" (e.g., All Clothing, Tops, Shorts, ...)
     getDescendants(categories, "Clothing").forEach((c) =>
       ALL_CLOTHING_TYPES.add(c)
     );
-
-    // Lấy con của "Shop By Sport" (e.g., Running, Football, ...)
-    // và thêm các "cháu" (Running Shoes, Running Clothing) vào 2 Set lớn
     const sports = getDescendants(categories, "Shop By Sport");
     sports.forEach((sport) => {
-      // Lặp qua "Running", "Football", ...
-      // Lấy con của từng sport (e.g., Running Shoes, Running Clothing)
       getDescendants(categories, sport).forEach((sportChild) => {
         if (sportChild.includes("Shoes")) {
           ALL_SHOE_TYPES.add(sportChild);
@@ -108,29 +98,24 @@ const Product = () => {
       });
     });
 
-    // 2. Lọc Category
     let categoryFiltered = [];
-
     if (selectedCategory === "All Products") {
       categoryFiltered = allProducts;
-    }
-    // NẾU CLICK "All Shoes" hoặc "Shoes" -> Dùng Set Lớn
-    else if (selectedCategory === "All Shoes" || selectedCategory === "Shoes") {
+    } else if (
+      selectedCategory === "All Shoes" ||
+      selectedCategory === "Shoes"
+    ) {
       categoryFiltered = allProducts.filter((p) =>
         ALL_SHOE_TYPES.has(p.categoryName)
       );
-    }
-    // NẾU CLICK "All Clothing" hoặc "Clothing" -> Dùng Set Lớn
-    else if (
+    } else if (
       selectedCategory === "All Clothing" ||
       selectedCategory === "Clothing"
     ) {
       categoryFiltered = allProducts.filter((p) =>
         ALL_CLOTHING_TYPES.has(p.categoryName)
       );
-    }
-    // LOGIC CŨ (Dùng cho "Running", "Running Shoes", "Lifestyle", v.v.)
-    else {
+    } else {
       categoryFiltered = allProducts.filter((product) => {
         let currentCatName: string | null | undefined = product.categoryName;
         while (currentCatName) {
@@ -139,43 +124,28 @@ const Product = () => {
         }
         return false;
       });
-    } // 3. Lọc Checkbox (Giữ nguyên logic cũ của bạn)
+    }
+
+    let searchFiltered = categoryFiltered;
+    if (searchTerm) {
+      const lowerCaseSearch = searchTerm.toLowerCase();
+      searchFiltered = categoryFiltered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(lowerCaseSearch) ||
+          product.description.toLowerCase().includes(lowerCaseSearch) ||
+          product.brand.toLowerCase().includes(lowerCaseSearch)
+      );
+    }
 
     const isFilterActive = Object.values(selectedFilters).some(
       (arr) => arr.length > 0
     );
+
     if (!isFilterActive) {
-      return categoryFiltered;
+      return searchFiltered;
     }
-    return categoryFiltered.filter((product) => {
-      for (const [filterKey, selectedOptions] of Object.entries(
-        selectedFilters
-      )) {
-        if (selectedOptions.length === 0) continue;
-        if (filterKey === "Gender") {
-          const productSex = product.sex;
-          const targetGenders = new Set(selectedOptions);
-          if (targetGenders.has("Men") && targetGenders.has("Women")) {
-            targetGenders.add("Unisex");
-          }
-          if (!targetGenders.has(productSex)) {
-            return false;
-          }
-        } else if (filterKey === "Brand") {
-          if (!selectedOptions.includes(product.brand)) {
-            return false;
-          }
-        } else if (filterKey === "Shop By Price") {
-          const passes = selectedOptions.some((option) => {
-            if (option === "Under 1.000.000₫") return product.price < 1000000;
-            if (option === "1.000.000₫ - 3.000.000₫")
-              return product.price >= 1000000 && product.price <= 3000000;
-            if (option === "Over 3.000.000₫") return product.price > 3000000;
-            return false;
-          });
-          if (!passes) return false;
-        }
-      }
+
+    return searchFiltered.filter((product) => {
       return true;
     });
   }, [
@@ -184,6 +154,7 @@ const Product = () => {
     categoryParentMap,
     selectedFilters,
     categories,
+    searchTerm,
   ]);
 
   return (
