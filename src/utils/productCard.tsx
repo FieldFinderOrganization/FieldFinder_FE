@@ -3,6 +3,8 @@
 import React from "react";
 import { productRes } from "@/services/product";
 import { FiPlus } from "react-icons/fi";
+import { useFavourite } from "@/context/FavouriteContext";
+import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
 import Link from "next/link";
 
 interface ProductCardProps {
@@ -14,6 +16,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     style: "currency",
     currency: "VND",
   }).format(product.price);
+
+  const { toggleFavourite, isFavourited } = useFavourite();
+  const isFav = isFavourited(product.id);
 
   return (
     <div className="flex flex-col gap-2 relative">
@@ -40,11 +45,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
       {/* Nút Plus */}
       <button
-        title="Thêm sản phẩm vào mục yêu thích"
-        className="absolute bottom-0 right-0 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg 
-                   transition-all duration-200 hover:scale-110 hover:bg-black hover:text-white cursor-pointer"
+        onClick={() => toggleFavourite(product)}
+        title={isFav ? "Xóa khỏi Yêu thích" : "Thêm vào Yêu thích"}
+        className="absolute bottom-0 right-0 bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 hover:bg-black hover:text-white cursor-pointer"
       >
-        <FiPlus size={24} />
+        {isFav ? (
+          <IoMdHeart size={24} className="text-red-500" />
+        ) : (
+          <IoMdHeartEmpty size={24} />
+        )}
       </button>
     </div>
   );

@@ -5,7 +5,8 @@ import { ToastContainer } from "react-toastify";
 import { ReduxProvider } from "../provider";
 import { ProductProvider } from "@/context/ProductContext";
 import { CartProvider } from "@/context/CartContext";
-import ClientLayout from "./ClientLayout"; // ClientLayout chứa TopBar + {children}
+import ClientLayout from "./ClientLayout";
+import { FavouriteProvider } from "@/context/FavouriteContext"; // ClientLayout chứa TopBar + {children}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,22 +35,24 @@ export default function RootLayout({
       >
         <CartProvider>
           <ProductProvider>
-            <ReduxProvider>
-              <ClientLayout>{children}</ClientLayout>
-              {/* 4. ToastContainer nên nằm ngoài ClientLayout nhưng bên trong Provider */}
-              <ToastContainer
-                position="top-right"
-                autoClose={2000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="colored"
-              />
-            </ReduxProvider>
+            <FavouriteProvider>
+              <ReduxProvider>
+                <ClientLayout>{children}</ClientLayout>
+                {/* 4. ToastContainer nên nằm ngoài ClientLayout nhưng bên trong Provider */}
+                <ToastContainer
+                  position="top-right"
+                  autoClose={2000}
+                  hideProgressBar={false}
+                  newestOnTop={false}
+                  closeOnClick
+                  rtl={false}
+                  pauseOnFocusLoss
+                  draggable
+                  pauseOnHover
+                  theme="colored"
+                />
+              </ReduxProvider>
+            </FavouriteProvider>
           </ProductProvider>
         </CartProvider>
       </body>

@@ -8,8 +8,9 @@ import { BsCart2 } from "react-icons/bs";
 import ava from "../../public/images/20.png";
 import { IoIosArrowUp } from "react-icons/io";
 import { useCart } from "@/context/CartContext";
-
+import { useFavourite } from "@/context/FavouriteContext";
 import Link from "next/link";
+import { IoMdHeart } from "react-icons/io";
 
 interface TopBarProps {
   groupedCategories: Record<string, string[]>;
@@ -30,6 +31,9 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const { getCartCount } = useCart();
   const cartCount = getCartCount();
+
+  const { getFavouriteCount, isFavourited } = useFavourite();
+  const favCount = getFavouriteCount();
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -193,21 +197,29 @@ const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="flex items-center gap-4">
-        <Tooltip title="Favorites">
-          <Button>
-            <GoHeart size={22} className="cursor-pointer text-gray-700" />
-          </Button>
-        </Tooltip>
+        <Link href="/sportShop/favourites">
+          <Tooltip title="Favourites">
+            <Button className="relative">
+              {isMounted && favCount > 0 ? (
+                <IoMdHeart size={22} className="cursor-pointer text-red-600" />
+              ) : (
+                <GoHeart size={22} className="cursor-pointer text-gray-700" />
+              )}
+              {isMounted && favCount > 0 && (
+                <span className="absolute top-0 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-xs font-medium text-white">
+                  {favCount}
+                </span>
+              )}
+            </Button>
+          </Tooltip>
+        </Link>
 
         <Link href="/sportShop/cart">
           <Tooltip title="Cart">
             <Button className="relative">
-              {" "}
-              {/* Thêm relative */}
               <BsCart2 size={22} className="cursor-pointer text-gray-700" />
-              {/* 👈 THÊM BADGE (SỐ NHỎ) */}
               {cartCount > 0 && (
-                <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                <span className="absolute top-0 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-600 text-xs font-medium text-white">
                   {cartCount}
                 </span>
               )}

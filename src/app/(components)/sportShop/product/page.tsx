@@ -2,17 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import FilterSection from "@/utils/filterSection";
-// ⛔ Xoá: TopBar, InforBar, getAllCategory
 import { IoOptionsOutline } from "react-icons/io5";
 import { getAllProducts, productRes } from "@/services/product";
+import ProductCard from "@/utils/productCard";
+import { useProductContext } from "@/context/ProductContext";
 
 interface Category {
   name: string;
   parentName: string | null;
 }
-import ProductCard from "@/utils/productCard";
-
-import { useProductContext } from "@/context/ProductContext";
 
 const getDescendants = (
   categories: Category[],
@@ -53,6 +51,7 @@ const Product = () => {
   const [isFilterVisible, setIsFilterVisible] = useState(true);
 
   const [allProducts, setAllProducts] = useState<productRes[]>([]);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -187,18 +186,6 @@ const Product = () => {
     categories,
   ]);
 
-  // ⛔ Xoá: useState(selectedFilters)
-  // ⛔ Xoá: useEffect(fetchCategories)
-  // ⛔ Xoá: useMemo(groupedCategories)
-  // ⛔ Xoá: useMemo(groupedBrands)
-  // ⛔ Xoá: useMemo(filterConfig)
-  // ⛔ Xoá: hàm getNextState
-  // ⛔ Xoá: hàm navigateToItem
-  // ⛔ Xoá: hàm navigateToHistory
-  // ⛔ Xoá: hàm handleFilterToggle
-  // ⛔ Xoá: const filterConfig = [...]
-
-  // --- 4. JSX (RETURN) ---
   return (
     <div className="flex-col">
       {/* Breadcrumbs (Layout gốc) */}

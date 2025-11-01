@@ -9,6 +9,8 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useCart } from "@/context/CartContext";
+import { useFavourite } from "@/context/FavouriteContext";
+import { IoMdHeart } from "react-icons/io";
 import { toast } from "react-toastify";
 
 const MOCK_SIZES = [
@@ -61,6 +63,8 @@ const ProductDetailPage = () => {
   const [nav2, setNav2] = useState<Slider | null>(null);
 
   const { addToCart } = useCart();
+
+  const { toggleFavourite, isFavourited } = useFavourite();
 
   const mockImageGallery = product
     ? [
@@ -129,6 +133,8 @@ const ProductDetailPage = () => {
       </div>
     );
   }
+
+  const isFav = product ? isFavourited(product.id) : false;
 
   return (
     <div className="flex-col">
@@ -218,8 +224,16 @@ const ProductDetailPage = () => {
               >
                 Add to Cart
               </button>
-              <button className="border border-gray-300 p-4 rounded-full text-lg font-medium hover:border-black transition-colors flex items-center justify-center gap-2 cursor-pointer">
-                Add to Favorite <IoMdHeartEmpty size={22} />{" "}
+              <button
+                onClick={() => product && toggleFavourite(product)} // 👈 Thêm onClick
+                className="border border-gray-300 p-4 rounded-full text-lg font-medium hover:border-black transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isFav ? "Remove from Favourite" : "Add to Favorite"}
+                {isFav ? (
+                  <IoMdHeart size={22} className="text-red-500" />
+                ) : (
+                  <IoMdHeartEmpty size={22} />
+                )}
               </button>
             </div>
           </div>
