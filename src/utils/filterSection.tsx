@@ -5,19 +5,19 @@ import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 interface FilterSectionProps {
   title: string;
   options: string[];
+  selectedOptions: string[]; // 👈 THÊM: Nhận state từ Cha
+  onToggleOption: (option: string) => void; // 👈 THÊM: Nhận hàm xử lý từ Cha
 }
 
-const FilterSection: React.FC<FilterSectionProps> = ({ title, options }) => {
+const FilterSection: React.FC<FilterSectionProps> = ({
+  title,
+  options,
+  selectedOptions, // 👈 THÊM
+  onToggleOption, // 👈 THÊM
+}) => {
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggleOption = (option: string) => {
-    setSelected((prev) =>
-      prev.includes(option)
-        ? prev.filter((item) => item !== option)
-        : [...prev, option]
-    );
-  };
+  // ⛔ XOÁ: const [selected, setSelected] = useState<string[]>([]);
+  // ⛔ XOÁ: const toggleOption = ...
 
   return (
     <div className="border-b border-gray-300 py-3">
@@ -33,7 +33,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, options }) => {
       {/* Options */}
       <div
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? "max-h-40 mt-2" : "max-h-0"
+          open ? "max-h-60 mt-2 overflow-y-auto" : "max-h-0" // Tăng max-h, thêm overflow-y
         }`}
       >
         {options.map((option) => (
@@ -43,8 +43,9 @@ const FilterSection: React.FC<FilterSectionProps> = ({ title, options }) => {
           >
             <input
               type="checkbox"
-              checked={selected.includes(option)}
-              onChange={() => toggleOption(option)}
+              // 👈 SỬA: Dùng state và hàm từ props
+              checked={selectedOptions.includes(option)}
+              onChange={() => onToggleOption(option)}
               className="cursor-pointer accent-blue-600"
             />
             {option}

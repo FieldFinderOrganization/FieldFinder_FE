@@ -7,16 +7,12 @@ import { GoHeart } from "react-icons/go";
 import { BsCart2 } from "react-icons/bs";
 import ava from "../../public/images/20.png";
 import { IoIosArrowUp } from "react-icons/io";
-// 🚨 Xoá: import { getAllCategory } from "@/services/category";
 
 interface TopBarProps {
-  // Nhận props từ cha
   groupedCategories: Record<string, string[]>;
   groupedBrands: Record<string, string[]>;
   onCategoryClick: (item: string) => void;
 }
-
-// 🚨 Xoá: interface Category
 
 const TopBar: React.FC<TopBarProps> = ({
   groupedCategories,
@@ -25,17 +21,10 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const [searchInput, setSearchInput] = React.useState("");
 
-  // 🚨 Xoá: categories state
-
-  // ✅ Giữ: state UI của riêng TopBar
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
   >(null);
 
-  // 🚨 Xoá: groupedCategories useMemo
-  // 🚨 Xoá: groupedBrands useMemo
-
-  // ✅ Giữ: useEffect để đóng menu khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -47,21 +36,13 @@ const TopBar: React.FC<TopBarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🚨 Xoá: currentSport state
-  // 🚨 Xoá: activeSport state
-
-  // --- Handler mới đơn giản ---
   const handleMenuItemClick = (item: string) => {
-    onCategoryClick(item); // 1. Gọi handler của cha
-    setActiveMenu(null); // 2. Đóng menu
+    onCategoryClick(item);
+    setActiveMenu(null);
   };
-
-  // 🚨 Xoá: Logic handleItemClick cũ
-  // 🚨 Xoá: fetchCategories useEffect
 
   return (
     <div className="flex flex-wrap items-center px-6 py-6 lg:px-10 lg:py-8 justify-between">
-      {/* ... Phần logo, v.v... */}
       <div className="flex items-center md:gap-[10rem] gap-[5rem]">
         <Typography variant="h4" className="font-bold text-xl md:text-2xl">
           MTKICKs
@@ -74,7 +55,6 @@ const TopBar: React.FC<TopBarProps> = ({
               setActiveMenu((prev) => (prev === "product" ? null : "product"))
             }
           >
-            {/* ... Typography Product ... */}
             <Typography
               variant="h6"
               className={`text-[1rem] whitespace-nowrap transition-all duration-200 ${
@@ -101,7 +81,6 @@ const TopBar: React.FC<TopBarProps> = ({
               setActiveMenu((prev) => (prev === "brand" ? null : "brand"))
             }
           >
-            {/* ... Typography Brand ... */}
             <Typography
               variant="h6"
               className={`text-[1rem] whitespace-nowrap transition-all duration-200 ${
