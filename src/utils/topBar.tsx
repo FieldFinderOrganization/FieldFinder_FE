@@ -1,12 +1,15 @@
 "use client";
 import { Button, Tooltip, Typography } from "@mui/material";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { CiSearch } from "react-icons/ci";
 import { GoHeart } from "react-icons/go";
 import { BsCart2 } from "react-icons/bs";
 import ava from "../../public/images/20.png";
 import { IoIosArrowUp } from "react-icons/io";
+import { useCart } from "@/context/CartContext";
+
+import Link from "next/link";
 
 interface TopBarProps {
   groupedCategories: Record<string, string[]>;
@@ -24,6 +27,14 @@ const TopBar: React.FC<TopBarProps> = ({
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
   >(null);
+
+  const { getCartCount } = useCart();
+  const cartCount = getCartCount();
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -188,11 +199,21 @@ const TopBar: React.FC<TopBarProps> = ({
           </Button>
         </Tooltip>
 
-        <Tooltip title="Cart">
-          <Button>
-            <BsCart2 size={22} className="cursor-pointer text-gray-700" />
-          </Button>
-        </Tooltip>
+        <Link href="/sportShop/cart">
+          <Tooltip title="Cart">
+            <Button className="relative">
+              {" "}
+              {/* Thêm relative */}
+              <BsCart2 size={22} className="cursor-pointer text-gray-700" />
+              {/* 👈 THÊM BADGE (SỐ NHỎ) */}
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Button>
+          </Tooltip>
+        </Link>
 
         <div className="rounded-full overflow-hidden w-10 h-10 cursor-pointer">
           <img
