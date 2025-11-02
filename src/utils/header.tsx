@@ -14,7 +14,6 @@ import {
   ListItemIcon,
   MenuList,
 } from "@mui/material";
-import { LuBellRing } from "react-icons/lu";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../redux/store";
 import { logout, setShowSidebar } from "../redux/features/authSlice";
@@ -23,7 +22,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import HistoryIcon from "@mui/icons-material/History";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
-import f from "../../public/images/field3.jpg";
+import ava from "../../public/images/20.png";
 import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
 
@@ -48,10 +47,12 @@ const Header: React.FC = () => {
     { label: "Danh sách sân", path: "/fields" },
     { label: "Đăng nhập", path: "/login" },
     { label: "Đăng ký", path: "/signup" },
+    { label: "Cửa hàng", path: "sportShop/product" },
   ];
 
   const authenticatedTabItems: TabItem[] = [
     { label: "Trang chủ", path: "/home" },
+    { label: "Cửa hàng", path: "/sportShop/product" },
     { label: "Giới thiệu", path: "/about" },
     { label: "Danh sách sân", path: "/fields" },
     ...(user?.role === "ADMIN"
@@ -193,7 +194,7 @@ const Header: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-gray-500 text-[1.2rem]">Xin chào,</span>
                   <img
-                    src={f.src}
+                    src={ava.src}
                     alt="Avatar"
                     className="w-8 h-8 rounded-full"
                   />
@@ -224,7 +225,7 @@ const Header: React.FC = () => {
               >
                 <MenuList>
                   <div className="header-content flex items-center px-4 gap-x-[1.5rem] mb-[0.5rem]">
-                    <img src={f.src} className="w-10 h-10 rounded-full" />
+                    <img src={ava.src} className="w-10 h-10 rounded-full" />
                     <div className="flex items-start flex-col">
                       <span className="text-gray-700 text-[1rem] font-bold">
                         {user?.name}

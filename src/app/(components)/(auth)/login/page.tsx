@@ -109,6 +109,7 @@ const Login: React.FC = () => {
         setIsOtpOpen(true);
       } else {
         toast.error("Đăng nhập không thành công. Vui lòng thử lại!");
+        setLoading(false);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -130,43 +131,27 @@ const Login: React.FC = () => {
       } else {
         toast.error("Đăng nhập thất bại, vui lòng thử lại.");
       }
-    } finally {
-      if (!isOtpOpen) setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
       const { idToken, user } = await googleLogin();
       const res = await login(idToken);
 
       if (res && res.data) {
-        const userData = {
-          userId: res.data.user.id,
-          name: res.data.user.name,
-          email: res.data.user.email,
-          phone: res.data.user.phone || null,
-          role: "USER",
-          cardNumber: "",
-          bank: "",
-          providerId: "",
-          addresses: [] as { providerAddressId: string; address: string }[],
-        };
-
-        const email = userData.email;
+        const email = res.data.user.email;
 
         if (email) {
           await sendOtp(email);
           toast.info(`OTP đã được gửi tới email ${email}`);
           setEmail(email);
           setIsOtpOpen(true);
+        } else {
+          toast.error("Không tìm thấy email từ Google.");
+          setLoading(false);
         }
-
-        dispatch(loginSuccess(userData));
-        localStorage.setItem("authState", JSON.stringify({ user: userData }));
-
-        router.push("/home");
-        toast.success("Đăng nhập Google thành công");
       }
     } catch (err: any) {
       console.error("Google login error:", err);
@@ -178,6 +163,9 @@ const Login: React.FC = () => {
       } else {
         toast.error("Đăng nhập Google thất bại");
       }
+
+      toast.error("Đăng nhập Google thất bại");
+      setLoading(false);
     }
   };
 
@@ -185,61 +173,6 @@ const Login: React.FC = () => {
     const provider = new FacebookAuthProvider();
     signInWithRedirect(auth, provider);
   };
-
-  // useEffect(() => {
-  //   const justLoggedOut = sessionStorage.getItem("justLoggedOut");
-  //   if (justLoggedOut) {
-  //     console.log("⏹ Vừa đăng xuất — bỏ qua OTP flow");
-  //     sessionStorage.removeItem("justLoggedOut");
-  //     return;
-  //   }
-
-  //   let hasHandledRedirect = false;
-
-  //   const handleRedirectResult = async () => {
-  //     try {
-  //       const result = await getRedirectResult(auth);
-
-  //       if (result?.user) {
-  //         hasHandledRedirect = true;
-
-  //         const idToken = await result.user.getIdToken();
-  //         const email = result.user.email;
-
-  //         await login(idToken);
-
-  //         if (email) {
-  //           await sendOtp(email);
-  //           toast.info(`OTP đã được gửi tới email ${email}`);
-  //           setEmail(email);
-  //           setIsOtpOpen(true);
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Redirect Login error:", err);
-  //       toast.error("Đăng nhập thất bại!");
-  //     }
-  //   };
-
-  //   handleRedirectResult();
-
-  //   const unsubscribe = auth.onAuthStateChanged(async (user) => {
-  //     if (!hasHandledRedirect && user) {
-  //       const idToken = await user.getIdToken();
-  //       const email = user.email;
-
-  //       if (email) {
-  //         await login(idToken);
-  //         await sendOtp(email);
-  //         toast.info(`OTP đã được gửi tới email ${email}`);
-  //         setEmail(email);
-  //         setIsOtpOpen(true);
-  //       }
-  //     }
-  //   });
-
-  //   return () => unsubscribe();
-  // }, []);
 
   return (
     <motion.div
@@ -290,12 +223,12 @@ const Login: React.FC = () => {
               />
               {showPassword ? (
                 <LuEyeClosed
-                  className="absolute top-[52%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className="absolute top-[68%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
                   onClick={handleShowPassword}
                 />
               ) : (
                 <FaEye
-                  className="absolute top-[52%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className="absolute top-[68%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
                   onClick={handleShowPassword}
                 />
               )}
@@ -325,7 +258,7 @@ const Login: React.FC = () => {
                 </motion.span>
               </p>
               <p
-                className="text-red-500 font-bold cursor-pointer mt-2 text-xl"
+                className="text-red-500 font-bold cursor-pointer mt-1 text-xl"
                 onClick={() => setIsForgotOpen(true)}
               >
                 Quên mật khẩu?
@@ -339,14 +272,6 @@ const Login: React.FC = () => {
               <img src="/GG.png" alt="Google" className="w-5 h-5" />
               Continue with Google
             </button>
-            <button
-              type="button"
-              onClick={handleFacebookLogin}
-              className="flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 w-full justify-center mt-2"
-            >
-              <img src="/FB.png" alt="Facebook" className="w-5 h-5" />
-              Continue with Facebook
-            </button>
           </div>
         </div>
       </form>
@@ -354,7 +279,10 @@ const Login: React.FC = () => {
       <OtpModal
         email={email}
         isOpen={isOtpOpen}
-        onClose={() => setIsOtpOpen(false)}
+        onClose={() => {
+          setIsOtpOpen(false);
+          setLoading(false);
+        }}
         onSuccess={(token) => {
           localStorage.setItem("token", token);
           toast.success("Đăng nhập thành công!");

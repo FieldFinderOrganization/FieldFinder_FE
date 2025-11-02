@@ -1,18 +1,16 @@
+// src/app/layout.tsx
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "react-toastify";
 import { ReduxProvider } from "../provider";
-import { ProductProvider } from "@/context/ProductContext";
-import { CartProvider } from "@/context/CartContext";
-import ClientLayout from "./ClientLayout";
-import { FavouriteProvider } from "@/context/FavouriteContext"; // ClientLayout chứa TopBar + {children}
+// ⛔ Xóa: ProductProvider, CartProvider, ClientLayout, FavouriteProvider
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -33,28 +31,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <CartProvider>
-          <ProductProvider>
-            <FavouriteProvider>
-              <ReduxProvider>
-                <ClientLayout>{children}</ClientLayout>
-                {/* 4. ToastContainer nên nằm ngoài ClientLayout nhưng bên trong Provider */}
-                <ToastContainer
-                  position="top-right"
-                  autoClose={2000}
-                  hideProgressBar={false}
-                  newestOnTop={false}
-                  closeOnClick
-                  rtl={false}
-                  pauseOnFocusLoss
-                  draggable
-                  pauseOnHover
-                  theme="colored"
-                />
-              </ReduxProvider>
-            </FavouriteProvider>
-          </ProductProvider>
-        </CartProvider>
+        <ReduxProvider>
+          {children}
+          <ToastContainer
+            position="top-right"
+            autoClose={2000}
+            theme="colored"
+          />
+        </ReduxProvider>
       </body>
     </html>
   );

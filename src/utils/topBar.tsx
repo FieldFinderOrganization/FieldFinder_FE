@@ -1,5 +1,15 @@
 "use client";
-import { Button, Tooltip, Typography } from "@mui/material";
+import {
+  Button,
+  Tooltip,
+  Typography,
+  Menu,
+  MenuItem,
+  MenuList,
+  ListItemIcon,
+  ListItemText,
+  Divider,
+} from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { CiSearch } from "react-icons/ci";
@@ -13,11 +23,20 @@ import Link from "next/link";
 import { useProductContext } from "@/context/ProductContext";
 import { useRouter } from "next/navigation";
 import { IoMdHeart } from "react-icons/io";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "@/redux/store";
+import { logout, setShowSidebar } from "@/redux/features/authSlice";
+import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import HistoryIcon from "@mui/icons-material/History";
+import RateReviewIcon from "@mui/icons-material/RateReview";
+import LogoutIcon from "@mui/icons-material/Logout";
+import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
+import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
 
 interface TopBarProps {
-  groupedCategories: Record<string, string[]>;
-  groupedBrands: Record<string, string[]>;
-  onCategoryClick: (item: string) => void;
+  groupedCategories?: Record<string, string[]>; // 👈 Đã sửa (optional)
+  groupedBrands?: Record<string, string[]>; // 👈 Đã sửa (optional)
+  onCategoryClick?: (item: string) => void; // 👈 Đã sửa (optional)
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -27,15 +46,22 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const { searchTerm, setSearchTerm } = useProductContext();
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+
+  const { user, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
   >(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
 
   const { getCartCount } = useCart();
   const cartCount = getCartCount();
 
-  const { getFavouriteCount, isFavourited } = useFavourite();
+  const { getFavouriteCount } = useFavourite();
   const favCount = getFavouriteCount();
 
   const [isMounted, setIsMounted] = useState(false);
@@ -55,13 +81,52 @@ const TopBar: React.FC<TopBarProps> = ({
   }, []);
 
   const handleMenuItemClick = (item: string) => {
-    onCategoryClick(item);
+    if (onCategoryClick) {
+      onCategoryClick(item);
+    }
     setActiveMenu(null);
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     router.push("/sportShop/product");
+  };
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  const handleLogout = () => {
+    dispatch(logout());
+    handleMenuClose();
+    router.push("/login"); // Giả sử trang login ở /login
+  };
+  const handleProfile = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(true));
+    router.push("/profile?tab=0");
+  };
+  const handlePitchInfo = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(true));
+    router.push("/profile?tab=1");
+  };
+  const handleReview = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(false));
+    router.push("/reviewHistory");
+  };
+  const handleBooking = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(false));
+    router.push("/bookingHistory");
+  };
+  const handleDashboard = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(false));
+    router.push("/dashboard");
   };
 
   return (
@@ -126,7 +191,7 @@ const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         {/* --- Product Menu --- */}
-        {activeMenu === "product" && (
+        {activeMenu === "product" && groupedCategories && (
           <div
             className={`absolute left-0 top-[6rem] w-full bg-white shadow-lg border-t border-gray-200 px-[8rem] py-8 flex justify-between gap-10 z-50 menu-content transition-all duration-300 ease-out ${
               activeMenu === "product"
@@ -159,7 +224,7 @@ const TopBar: React.FC<TopBarProps> = ({
         )}
 
         {/* --- Brand Menu --- */}
-        {activeMenu === "brand" && (
+        {activeMenu === "brand" && groupedBrands && (
           <div
             className={`absolute left-0 top-[6rem] w-full bg-white shadow-lg border-t border-gray-200 px-[8rem] py-8 flex justify-between gap-10 z-50 menu-content transition-all duration-300 ease-out ${
               activeMenu === "brand"
@@ -192,7 +257,7 @@ const TopBar: React.FC<TopBarProps> = ({
         )}
 
         <form
-          onSubmit={handleSearch} // Thêm form và onSubmit
+          onSubmit={handleSearch}
           className="hidden lg:flex items-center gap-2 border border-gray-300 rounded-md px-4 py-2 min-w-[280px] max-w-[600px] flex-1"
         >
           <button type="submit" onClick={handleSearch}>
@@ -201,7 +266,6 @@ const TopBar: React.FC<TopBarProps> = ({
           <input
             type="text"
             placeholder="Search"
-            // 👈 SỬA: Dùng state từ context
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="outline-none bg-transparent text-sm flex-1"
@@ -240,13 +304,123 @@ const TopBar: React.FC<TopBarProps> = ({
           </Tooltip>
         </Link>
 
-        <div className="rounded-full overflow-hidden w-10 h-10 cursor-pointer">
-          <img
-            src={ava.src}
-            alt="avatar"
-            className="object-cover w-full h-full"
-          />
-        </div>
+        {isAuthenticated ? (
+          <div>
+            <Tooltip title="Tài khoản">
+              <Button
+                id="user-menu-button"
+                aria-controls={open ? "user-menu" : undefined}
+                aria-haspopup="true"
+                aria-expanded={open ? "true" : undefined}
+                onClick={handleMenuClick}
+                sx={{ padding: 0, minWidth: 0, borderRadius: "50%" }}
+              >
+                <img
+                  src={ava.src}
+                  alt="Avatar"
+                  className="rounded-full overflow-hidden w-10 h-10 cursor-pointer object-cover"
+                />
+              </Button>
+            </Tooltip>
+            <Menu
+              id="user-menu"
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleMenuClose}
+              disableScrollLock={true}
+              MenuListProps={{
+                "aria-labelledby": "user-menu-button",
+              }}
+              sx={{
+                borderRadius: "8px",
+                padding: "0.3rem",
+                "& .MuiMenuItem-root": {
+                  "&:hover": {
+                    "& .MuiMenuItem-root": {
+                      "&:hover": { backgroundColor: "#E5E9FF" },
+                    },
+                    "& .MuiListItemIcon-root": { color: "#6922FF" },
+                    "& .MuiListItemText-primary": { color: "#6922FF" },
+                  },
+                },
+              }}
+            >
+              <MenuList>
+                <div className="header-content flex items-center px-4 gap-x-[1.5rem] mb-[0.5rem]">
+                  <img src={ava.src} className="w-10 h-10 rounded-full" />
+                  <div className="flex items-start flex-col">
+                    <span className="text-gray-700 text-[1rem] font-bold">
+                      {user?.name}
+                    </span>
+                    <span className="text-gray-500 text-[0.8rem]">
+                      {user?.email}
+                    </span>
+                  </div>
+                </div>
+                <Divider sx={{ borderWidth: "1px" }} />
+                <MenuItem onClick={handleProfile}>
+                  <ListItemIcon>
+                    <PersonOutlineIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Thông tin cá nhân</ListItemText>
+                </MenuItem>
+                {user?.role === "PROVIDER" && (
+                  <MenuItem onClick={handlePitchInfo}>
+                    <ListItemIcon>
+                      <FlutterDashOutlinedIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Thông tin sân</ListItemText>
+                  </MenuItem>
+                )}
+                {user?.role === "ADMIN" && (
+                  <MenuItem onClick={handleDashboard}>
+                    <ListItemIcon>
+                      <LineAxisOutlinedIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Thống kê</ListItemText>
+                  </MenuItem>
+                )}
+                <Divider sx={{ borderWidth: "1px" }} />
+                <MenuItem onClick={handleBooking}>
+                  <ListItemIcon>
+                    <HistoryIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Lịch sử đặt sân</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleReview}>
+                  <ListItemIcon>
+                    <RateReviewIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Lịch sử đánh giá</ListItemText>
+                </MenuItem>
+                <Divider sx={{ borderWidth: "1px" }} />
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Đăng xuất</ListItemText>
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </div>
+        ) : (
+          <Button
+            variant="contained"
+            onClick={() => router.push("/login")}
+            sx={{
+              backgroundColor: "black",
+              color: "white",
+              borderRadius: "20px",
+              padding: "6px 20px",
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "#333",
+              },
+            }}
+          >
+            Đăng nhập
+          </Button>
+        )}
       </div>
     </div>
   );

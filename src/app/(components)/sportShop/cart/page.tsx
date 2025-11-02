@@ -75,9 +75,8 @@ const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
         </div>
       </div>
 
-      {/* Giá tiền */}
       <div className="text-lg font-semibold">
-        <p>VND {formattedPrice}</p>
+        <p>{formattedPrice}</p>
       </div>
     </div>
   );
@@ -92,8 +91,8 @@ const CartPage = () => {
     <div className="container mx-auto max-w-6xl p-6">
       {cartItems.length === 0 ? (
         // --- GIỎ HÀNG RỖNG ---
-        <div className="text-center py-20">
-          <h2 className="text-2xl font-medium mb-4">Your cart is empty.</h2>
+        <div className="text-center">
+          <h2 className="text-2xl font-medium mb-8">Your cart is empty.</h2>
           <Link
             href="sportShop/product"
             className="bg-black text-white px-6 py-3 rounded-full font-medium"
@@ -102,9 +101,7 @@ const CartPage = () => {
           </Link>
         </div>
       ) : (
-        // --- GIỎ HÀNG CÓ ĐỒ ---
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
-          {/* CỘT TRÁI: CART (2/3) */}
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-semibold mb-6">Cart</h2>
             <div className="flex flex-col gap-8">
@@ -114,7 +111,6 @@ const CartPage = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI: SUMMARY (1/3) */}
           <div className="lg:col-span-1">
             <h2 className="text-2xl font-semibold mb-6">Summary</h2>
 

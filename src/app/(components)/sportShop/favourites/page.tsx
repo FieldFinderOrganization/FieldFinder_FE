@@ -68,8 +68,8 @@ const FavouritesPage = () => {
 
       {favourites.length === 0 ? (
         // --- DANH SÁCH RỖNG ---
-        <div className="text-center py-20">
-          <h2 className="text-2xl font-medium mb-4">
+        <div className="text-center ">
+          <h2 className="text-2xl font-medium mb-8">
             Your favourites list is empty.
           </h2>
           <Link
