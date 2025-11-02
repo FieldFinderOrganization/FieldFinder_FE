@@ -59,7 +59,7 @@ const CartItemRow: React.FC<{ item: cartItemRes }> = ({ item }) => {
       </div>
 
       <div className="text-lg font-semibold">
-         <p>{formattedPrice}</p>
+         <p>{formattedPrice} VND</p>
       </div>
     </div>
   );
@@ -79,9 +79,9 @@ const CartPage = () => {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl p-6 mt-10">
+    <div className="container mx-auto max-w-6xl p-6">
       {cartItems.length === 0 ? (
-        <div className="text-center py-20">
+        <div className="text-center py-6">
           <h2 className="text-2xl font-medium mb-8">Your cart is empty.</h2>   
           <Link
             href="/sportShop/product"
@@ -93,7 +93,7 @@ const CartPage = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-semibold mb-6">Cart</h2>   
+            <h2 className="text-2xl font-semibold">Cart</h2>   
             <div className="flex flex-col gap-8">
               {cartItems.map((item) => (
                 <CartItemRow key={item.id} item={item} />
@@ -109,14 +109,14 @@ const CartPage = () => {
                 <p>Subtotal</p>
                 <p>{formattedSubtotal}</p>
               </div>
-              <div className="flex justify-between items-center mb-6 text-gray-600">
+              <div className="flex justify-between items-center mb-6 text-gray-600 w-full">
                 <p>Estimated Delivery</p>
-                <p>Free</p> 
+                <p className="text-right">Free</p> 
               </div>
               <div className="border-t border-gray-300 pt-4">
                 <div className="flex justify-between items-center font-bold text-lg">
                   <p>Total</p>
-                  <p>VND {formattedSubtotal}</p>
+                  <p>{formattedSubtotal} VND</p>
                 </div>
               </div>
               <div className="flex flex-col gap-3 mt-8">

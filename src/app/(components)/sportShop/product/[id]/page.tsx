@@ -44,7 +44,7 @@ const NextArrow = (props: any) => {
       onClick={onClick}
       className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/50 rounded-full hover:bg-white transition"
     >
-            <MdArrowForwardIos className="text-black" />
+        <MdArrowForwardIos className="text-black" />
     </button>
   );
 };
