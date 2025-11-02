@@ -9,7 +9,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useCart } from "@/context/CartContext";
-import { useFavourite } from "@/context/FavouriteContext";
+import { useFavourite } from "@/context/FavouriteContext"; // 👈 Đã thêm
 import { IoMdHeart } from "react-icons/io";
 import { toast } from "react-toastify";
 
@@ -25,7 +25,6 @@ const MOCK_SIZES = [
   "Size 44",
 ];
 
-// Mũi tên custom cho slider
 const PrevArrow = (props: any) => {
   const { onClick } = props;
   return (
@@ -45,7 +44,7 @@ const NextArrow = (props: any) => {
       onClick={onClick}
       className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/50 rounded-full hover:bg-white transition"
     >
-      <MdArrowForwardIos className="text-black" />
+            <MdArrowForwardIos className="text-black" />
     </button>
   );
 };
@@ -63,7 +62,6 @@ const ProductDetailPage = () => {
   const [nav2, setNav2] = useState<Slider | null>(null);
 
   const { addToCart } = useCart();
-
   const { toggleFavourite, isFavourited } = useFavourite();
 
   const mockImageGallery = product
@@ -118,7 +116,6 @@ const ProductDetailPage = () => {
   if (loading) {
     return (
       <div className="flex-col">
-        {" "}
         <p className="text-center p-10">Loading...</p>
       </div>
     );
@@ -127,8 +124,9 @@ const ProductDetailPage = () => {
   if (error || !product) {
     return (
       <div className="flex-col">
+               {" "}
         <p className="text-center p-10 text-red-600">
-          {error || "Product not found."}
+           {error || "Product not found."}
         </p>
       </div>
     );
@@ -150,12 +148,11 @@ const ProductDetailPage = () => {
               >
                 {mockImageGallery.map((img, index) => (
                   <div key={index} className="p-1 cursor-pointer">
-                    {" "}
                     <img
                       src={img}
                       alt={`Thumb ${index + 1}`}
                       className="w-full h-auto object-cover rounded-md border border-gray-200"
-                    />{" "}
+                    />
                   </div>
                 ))}
               </Slider>
@@ -169,20 +166,17 @@ const ProductDetailPage = () => {
               >
                 {mockImageGallery.map((img, index) => (
                   <div key={index} className="bg-gray-100 rounded-lg">
-                    {" "}
                     <img
                       src={img}
                       alt={product.name}
                       className="w-full h-auto object-cover aspect-square rounded-lg"
-                    />{" "}
+                    />
                   </div>
                 ))}
               </Slider>
             </div>
           </div>
-
           <div className="flex flex-col gap-4">
-            {/* ... (Tên, giá, sizes, buttons code) ... */}
             <h1 className="text-3xl font-bold">{product.name}</h1>
             <p className="text-gray-600 text-lg">{product.description}</p>
             <p className="text-2xl font-semibold">VND {formattedPrice}</p>
@@ -193,10 +187,9 @@ const ProductDetailPage = () => {
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`border rounded-md p-3 text-center transition-colors ${selectedSize === size ? "bg-black text-white border-black" : "border-gray-300 hover:border-black"}`}
+                    className={`border rounded-md p-3 text-center transition-colors ${selectedSize === size ? "bg-black text-white border-black" : "border-gray-300 hover:border-black cursor-pointer"}`}
                   >
-                    {" "}
-                    {size}{" "}
+                    {size}
                   </button>
                 ))}
               </div>
@@ -204,19 +197,18 @@ const ProductDetailPage = () => {
                 href="#"
                 className="text-sm text-gray-500 mt-2 block underline"
               >
-                Can't find your size? Click here{" "}
+                Can't find your size? Click here
               </a>
             </div>
             <div className="flex flex-col gap-3 mt-4">
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!selectedSize) {
-                    alert("Please select a size.");
+                    toast.warn("Please select a size.");
                     return;
                   }
                   if (product) {
-                    addToCart(product, selectedSize);
-                    toast.success("Thêm sản phẩm vào giỏ hàng thành công!");
+                    await addToCart(product, selectedSize);
                   }
                 }}
                 disabled={!selectedSize}
@@ -225,10 +217,10 @@ const ProductDetailPage = () => {
                 Add to Cart
               </button>
               <button
-                onClick={() => product && toggleFavourite(product)} // 👈 Thêm onClick
-                className="border border-gray-300 p-4 rounded-full text-lg font-medium hover:border-black transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => product && toggleFavourite(product)}
+                className="border border-gray-300 p-4 rounded-full text-lg font-medium hover:border-black transition-colors flex items-center justify-center cursor-pointer"
               >
-                {isFav ? "Remove from Favourite" : "Add to Favorite"}
+                {isFav ? "Remove from Favourite" : "Add to Favorite"}           
                 {isFav ? (
                   <IoMdHeart size={22} className="text-red-500" />
                 ) : (

@@ -15,8 +15,8 @@ export interface cartItemRes {
   productId: number;
   productName: string;
   imageUrl: string;
-  quantity: number;
   size: string;
+  quantity: number;
   priceAtTime: number;
 }
 

@@ -19,7 +19,7 @@ export const createCart = async (payload: cartReq) => {
 };
 
 export const getCartByUserId = async (userId: string) => {
-  const response = await axios.get<cartRes>(`${base_url}/user/${userId}`);
+  const response = await axios.get<cartRes[]>(`${base_url}/user/${userId}`);
   return response.data;
 };
 

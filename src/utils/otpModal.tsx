@@ -51,7 +51,7 @@ const OtpModal: React.FC<OtpModalProps> = ({
         const u = res.data.user;
 
         const userData = {
-          userId: u.id || "",
+          userId: u.userId || "",
           name: u.name || "",
           email: u.email || "",
           phone: u.phone || "",

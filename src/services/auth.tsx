@@ -4,7 +4,7 @@ import { UUID } from "crypto";
 const baseURL: string = "http://localhost:8080/api/users";
 
 interface UserDTO {
-  id: UUID;
+  userId: UUID;
   email: string;
   name: string;
   phone: string | null;

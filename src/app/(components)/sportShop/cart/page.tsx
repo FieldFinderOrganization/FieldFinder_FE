@@ -1,54 +1,46 @@
 "use client";
 
 import React from "react";
-import { useCart, CartItem } from "@/context/CartContext";
-import { FiTrash2, FiHeart } from "react-icons/fi";
+import { useCart } from "@/context/CartContext";
+import { cartItemRes } from "@/services/cartItem"; // 👈 Sửa 1: Import type DTO
+import { FiTrash2 } from "react-icons/fi";
 import Link from "next/link";
-import { useFavourite } from "@/context/FavouriteContext";
-import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
 
-const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
-  const formattedPrice = new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(item.product.price);
-
+const CartItemRow: React.FC<{ item: cartItemRes }> = ({ item }) => {
   const { updateQuantity, removeFromCart } = useCart();
 
-  const { toggleFavourite, isFavourited } = useFavourite();
-  const isFav = isFavourited(item.product.id);
+  const formattedPrice = new Intl.NumberFormat("vi-VN").format(
+    item.priceAtTime
+  );
 
   return (
     <div className="flex gap-4 border-b border-gray-200 py-6">
-      {/* Ảnh */}
-      <Link href={`product/${item.product.id}`}>
+      <Link href={`/sportShop/product/${item.productId}`}>
         <img
-          src={item.product.imageUrl}
-          alt={item.product.name}
+          src={item.imageUrl}
+          alt={item.productName}
           className="w-32 h-32 object-cover rounded-lg bg-gray-100"
         />
       </Link>
-
-      {/* Thông tin */}
       <div className="flex-grow flex flex-col justify-between">
         <div>
-          <h3 className="text-xl font-medium">{item.product.name}</h3>
-          <p className="text-gray-500">{item.product.description}</p>
+          <h3 className="text-xl font-medium">{item.productName}</h3> 
           <p className="text-gray-500">{item.size}</p>
         </div>
 
-        {/* Nút bấm (Số lượng, Xóa, Tim) */}
         <div className="flex items-center gap-6">
-          <div className="flex items-center border border-gray-300 rounded-md">
+          <div className="flex items-center border border-gray-300 rounded-md cursor-pointer">
             <button
               onClick={() => updateQuantity(item.id, item.quantity - 1)}
               className="px-3 py-1 text-lg"
             >
               -
             </button>
+
             <span className="px-4 py-1 border-x border-gray-300">
               {item.quantity}
             </span>
+
             <button
               onClick={() => updateQuantity(item.id, item.quantity + 1)}
               className="px-3 py-1 text-lg"
@@ -56,45 +48,43 @@ const CartItemRow: React.FC<{ item: CartItem }> = ({ item }) => {
               +
             </button>
           </div>
+
           <button onClick={() => removeFromCart(item.id)} title="Remove item">
             <FiTrash2
               className="text-gray-600 hover:text-red-600 cursor-pointer"
               size={20}
             />
           </button>
-          <button
-            onClick={() => toggleFavourite(item.product)}
-            title={isFav ? "Xóa khỏi Yêu thích" : "Thêm vào Yêu thích"}
-          >
-            {isFav ? (
-              <IoMdHeart size={24} className="text-red-500 cursor-pointer" />
-            ) : (
-              <IoMdHeartEmpty size={24} className="cursor-pointer" />
-            )}
-          </button>
         </div>
       </div>
 
       <div className="text-lg font-semibold">
-        <p>{formattedPrice}</p>
+         <p>{formattedPrice}</p>
       </div>
     </div>
   );
 };
 
 const CartPage = () => {
-  const { cartItems, getSubtotal } = useCart();
+  const { cartItems, getSubtotal, loadingCart } = useCart();
   const subtotal = getSubtotal();
   const formattedSubtotal = new Intl.NumberFormat("vi-VN").format(subtotal);
 
+  if (loadingCart) {
+    return (
+      <div className="container mx-auto max-w-6xl p-6 mt-10 text-center">
+        <h1 className="text-3xl font-semibold mb-8">Loading Cart...</h1>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-6xl p-6 mt-10">
       {cartItems.length === 0 ? (
-        // --- GIỎ HÀNG RỖNG ---
-        <div className="text-center">
-          <h2 className="text-2xl font-medium mb-8">Your cart is empty.</h2>
+        <div className="text-center py-20">
+          <h2 className="text-2xl font-medium mb-8">Your cart is empty.</h2>   
           <Link
-            href="sportShop/product"
+            href="/sportShop/product"
             className="bg-black text-white px-6 py-3 rounded-full font-medium"
           >
             Continue Shopping
@@ -103,7 +93,7 @@ const CartPage = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-semibold mb-6">Cart</h2>
+            <h2 className="text-2xl font-semibold mb-6">Cart</h2>   
             <div className="flex flex-col gap-8">
               {cartItems.map((item) => (
                 <CartItemRow key={item.id} item={item} />
@@ -117,26 +107,24 @@ const CartPage = () => {
             <div className="bg-gray-50 p-6 rounded-lg sticky top-28">
               <div className="flex justify-between items-center mb-2 text-gray-600">
                 <p>Subtotal</p>
-                <p>VND {formattedSubtotal}</p>
+                <p>{formattedSubtotal}</p>
               </div>
               <div className="flex justify-between items-center mb-6 text-gray-600">
                 <p>Estimated Delivery</p>
-                <p>Free</p>
+                <p>Free</p> 
               </div>
-
               <div className="border-t border-gray-300 pt-4">
                 <div className="flex justify-between items-center font-bold text-lg">
                   <p>Total</p>
                   <p>VND {formattedSubtotal}</p>
                 </div>
               </div>
-
               <div className="flex flex-col gap-3 mt-8">
                 <button className="bg-black text-white p-3 rounded-md text-md font-medium hover:bg-gray-800 transition cursor-pointer">
-                  Guest Checkout
+                   Guest Checkout
                 </button>
                 <button className="bg-black text-white p-3 rounded-md text-md font-semibold hover:bg-gray-800 transition cursor-pointer">
-                  Member Checkout
+                   Member Checkout
                 </button>
               </div>
             </div>

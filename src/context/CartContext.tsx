@@ -1,111 +1,196 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { productRes } from "@/services/product"; // Import type sản phẩm của bạn
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { productRes } from "@/services/product";
+import { toast } from "react-toastify";
 
-// 1. Định nghĩa 1 item trong giỏ hàng
-export interface CartItem {
-  id: string; // ID duy nhất (sẽ là `product.id-size`)
-  product: productRes;
-  size: string;
-  quantity: number;
-}
+import { getCartByUserId, createCart } from "@/services/cart";
+import {
+  getItemsByCartId,
+  addItemToCart,
+  updateCartItem,
+  deleteCartItem,
+  cartItemRes,
+  cartItemReq,
+} from "@/services/cartItem";
 
-// 2. Định nghĩa Context sẽ chia sẻ những gì
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+
 interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: productRes, size: string) => void;
-  removeFromCart: (itemId: string) => void;
-  updateQuantity: (itemId: string, newQuantity: number) => void;
+  cartItems: cartItemRes[];
+  cartId: number | null;
+  loadingCart: boolean;
+  addToCart: (product: productRes, size: string) => Promise<void>;
+  removeFromCart: (cartItemId: number) => Promise<void>;
+  updateQuantity: (cartItemId: number, newQuantity: number) => Promise<void>;
   getCartCount: () => number;
   getSubtotal: () => number;
 }
 
-// 3. Tạo Context
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// 4. Tạo Provider (Component Cha)
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<cartItemRes[]>([]);
+  const [cartId, setCartId] = useState<number | null>(null);
+  const [loadingCart, setLoadingCart] = useState(true);
 
-  // 5. Load giỏ hàng từ localStorage khi app khởi động (chỉ chạy ở client)
-  useEffect(() => {
-    const storedCart = localStorage.getItem("mtkicks_cart");
-    if (storedCart) {
-      setCartItems(JSON.parse(storedCart));
+  const { user } = useSelector((state: RootState) => state.auth);
+  const userId = user?.userId;
+  console.log("User Info:", user);
+
+  // 🔹 Hàm tìm hoặc tạo giỏ hàng
+  const findOrCreateCart = useCallback(async (currentUserId: string) => {
+    if (!currentUserId) return;
+    setLoadingCart(true);
+    try {
+      const existingCarts = await getCartByUserId(currentUserId);
+      if (existingCarts && existingCarts.length > 0) {
+        setCartId(existingCarts[0].cartId);
+      } else {
+        const newCart = await createCart({ userId: currentUserId });
+        setCartId(newCart.cartId);
+      }
+    } catch (error) {
+      console.error("Failed to find or create cart:", error);
+      toast.error("Không thể khởi tạo giỏ hàng.");
+    } finally {
+      setLoadingCart(false);
     }
   }, []);
 
-  // 6. Lưu giỏ hàng vào localStorage mỗi khi nó thay đổi
+  // 🔹 Hàm load các items trong giỏ
+  const loadCartItems = useCallback(async (currentCartId: number) => {
+    try {
+      const items = await getItemsByCartId(currentCartId);
+      setCartItems(items);
+    } catch (error) {
+      console.error("Failed to load cart items:", error);
+    } finally {
+      setLoadingCart(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (cartItems.length > 0) {
-      localStorage.setItem("mtkicks_cart", JSON.stringify(cartItems));
+    if (userId) {
+      findOrCreateCart(userId);
     } else {
-      // Xóa key nếu giỏ hàng rỗng
-      localStorage.removeItem("mtkicks_cart");
+      setCartId(null);
+      setCartItems([]);
+      setLoadingCart(false);
     }
-  }, [cartItems]);
+  }, [userId, findOrCreateCart]);
 
-  // --- CÁC HÀM XỬ LÝ GIỎ HÀNG ---
+  useEffect(() => {
+    if (cartId) {
+      loadCartItems(cartId);
+    }
+  }, [cartId, loadCartItems]);
 
-  const addToCart = (product: productRes, size: string) => {
-    const itemId = `${product.id}-${size}`; // Tạo ID duy nhất
+  const addToCart = async (product: productRes, size: string) => {
+    if (!userId) {
+      toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
+      return;
+    }
 
-    setCartItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === itemId);
-
-      if (existingItem) {
-        // Nếu đã có -> Tăng số lượng
-        return prevItems.map((item) =>
-          item.id === itemId ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      } else {
-        // Nếu chưa có -> Thêm mới
-        const newItem: CartItem = {
-          id: itemId,
-          product,
-          size,
-          quantity: 1,
-        };
-        return [...prevItems, newItem];
+    let currentCartId = cartId;
+    if (!currentCartId) {
+      setLoadingCart(true);
+      try {
+        const newCart = await createCart({ userId });
+        setCartId(newCart.cartId);
+        currentCartId = newCart.cartId;
+      } catch (err) {
+        console.error("Failed to create cart before adding item:", err);
+        toast.error("Không thể tạo giỏ hàng. Vui lòng thử lại.");
+        setLoadingCart(false);
+        return;
+      } finally {
+        setLoadingCart(false);
       }
-    });
-    // (Bạn có thể thêm toast "Đã thêm vào giỏ" ở đây)
-  };
+    }
 
-  const removeFromCart = (itemId: string) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-  };
+    if (!currentCartId) {
+      toast.error("Giỏ hàng chưa sẵn sàng. Vui lòng thử lại.");
+      return;
+    }
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
-      // Nếu giảm về 0, hãy xóa
-      removeFromCart(itemId);
-    } else {
-      setCartItems((prevItems) =>
-        prevItems.map((item) =>
-          item.id === itemId ? { ...item, quantity: newQuantity } : item
-        )
-      );
+    const payload: cartItemReq = {
+      cartId: currentCartId,
+      productId: product.id,
+      quantity: 1,
+      size: size,
+    };
+
+    try {
+      await addItemToCart(payload);
+      toast.success("Đã thêm vào giỏ hàng!");
+      await loadCartItems(currentCartId);
+    } catch (error: any) {
+      console.error("Failed to add item:", error);
+      if (error?.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Thêm vào giỏ hàng thất bại.");
+      }
     }
   };
 
-  // Lấy tổng số lượng (cho cái badge)
+  const removeFromCart = async (cartItemId: number) => {
+    if (!cartId) return;
+    try {
+      await deleteCartItem(cartItemId);
+      toast.info("Đã xóa sản phẩm khỏi giỏ hàng.");
+      await loadCartItems(cartId);
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+      toast.error("Không thể xóa sản phẩm.");
+    }
+  };
+
+  const updateQuantity = async (cartItemId: number, newQuantity: number) => {
+    if (!cartId) return;
+
+    if (newQuantity < 1) {
+      await removeFromCart(cartItemId);
+      return;
+    }
+
+    try {
+      await updateCartItem(cartItemId, newQuantity);
+      await loadCartItems(cartId);
+      toast.success("Cập nhật số lượng thành công!");
+    } catch (error: any) {
+      console.error("Failed to update quantity:", error);
+      if (error?.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Không thể cập nhật số lượng.");
+      }
+    }
+  };
+
   const getCartCount = () => {
     return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // Lấy tổng tiền
   const getSubtotal = () => {
     return cartItems.reduce(
-      (total, item) => total + item.product.price * item.quantity,
+      (total, item) => total + item.priceAtTime * item.quantity,
       0
     );
   };
 
-  // 7. Cung cấp state và hàm cho các component con
   const value = {
     cartItems,
+    cartId,
+    loadingCart,
     addToCart,
     removeFromCart,
     updateQuantity,
@@ -116,7 +201,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
 
-// 8. Tạo Hook (để dễ xài)
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
