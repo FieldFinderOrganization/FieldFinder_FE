@@ -94,67 +94,84 @@ const Product = () => {
       "Socks",
       "Hats And Headwears",
       "Bags And Backpacks",
-    ]; // 2. Tạo Map chứa các "Siêu-Set" (Super-Set Map)
+    ];
 
-    const categorySuperSetMap = new Map<string, Set<string>>();
+    // 2. 👈 SỬA: Map "Siêu-Set" giờ sẽ lưu ID sản phẩm (number)
+    const categorySuperSetMap = new Map<string, Set<number>>();
     functionalCategories.forEach((catName) => {
-      categorySuperSetMap.set(catName, new Set<string>([catName]));
-    }); // 3. Tạo các "Siêu-Set" cho các mục "All"
+      categorySuperSetMap.set(catName, new Set<number>()); // 👈 Set rỗng chứa number
+    });
 
-    const ALL_SHOE_TYPES = getDescendants(categories, "Shoes");
-    const ALL_CLOTHING_TYPES = getDescendants(categories, "Clothing");
-    const ALL_ACCESSORIES_TYPES = getDescendants(categories, "Accessories");
+    // 3. 👈 SỬA: "Siêu-Set" cho "All" cũng lưu ID sản phẩm (number)
+    const ALL_SHOE_TYPES = new Set<number>();
+    const ALL_CLOTHING_TYPES = new Set<number>();
+    const ALL_ACCESSORIES_TYPES = new Set<number>(); // 4. "Dạy" cho logic lọc (PHẦN SỬA LỖI NẰM Ở ĐÂY)
+
+    // ⛔⛔⛔
+    // KHỐI LỒNG NHAU (Dòng 128-139) ĐÃ BỊ XOÁ KHỎI ĐÂY
+    // ⛔⛔⛔
 
     allProducts.forEach((product) => {
       const catName = product.categoryName;
       const productName = product.name.toLowerCase();
+      const productId = product.id; // 👈 Lấy ID
+      // 4a. Học từ category của sport (ví dụ: "Football Clothing" -> "Clothing")
+      // Dùng logic phân cấp (cha-con) để xác định
 
-      if (catName.includes("Shoes")) ALL_SHOE_TYPES.add(catName);
-      if (catName.includes("Clothing")) ALL_CLOTHING_TYPES.add(catName);
-      if (catName.includes("Accessories")) ALL_ACCESSORIES_TYPES.add(catName);
+      let currentCat: string | null | undefined = catName;
+      while (currentCat) {
+        if (currentCat === "Shoes") ALL_SHOE_TYPES.add(productId);
+        if (currentCat === "Clothing") ALL_CLOTHING_TYPES.add(productId);
+        if (currentCat === "Accessories") ALL_ACCESSORIES_TYPES.add(productId);
+        // Dùng categoryParentMap (từ bên ngoài, đã được truyền vào dependency)
+        currentCat = categoryParentMap.get(currentCat);
+      } // Check Shorts / Skirts
 
-      for (const [funcCat, catSet] of categorySuperSetMap.entries()) {
-        let found = false;
-
-        if (funcCat === "Shorts") {
-          const hasShorts = productName.includes("shorts");
-          const hasShort = productName.includes("short");
-          const isShortSleeve = productName.includes("short sleeve");
-
-          if ((hasShorts || hasShort) && !isShortSleeve) {
-            found = true;
-          }
-        } else if (funcCat === "Tops And T-Shirts") {
-          if (
-            productName.includes("shirt") ||
-            productName.includes("top") ||
-            productName.includes("tee")
-          ) {
-            found = true;
-          }
-        } else if (funcCat === "Hoodies And Sweatshirts") {
-          if (
-            productName.includes("hoodie") ||
-            productName.includes("sweatshirt")
-          ) {
-            found = true;
-          }
-        } else {
-          // Fallback logic cũ (ít rủi ro hơn)
-          const simplifiedFuncCat = funcCat
-            .toLowerCase()
-            .split(" ")[0]
-            .replace(/s$/, "");
-          if (productName.includes(simplifiedFuncCat)) {
-            found = true;
-          }
+      // 4b. Học từ tên sản phẩm (Logic tường minh)
+      if (categorySuperSetMap.has("Shorts")) {
+        const shortsRegex = /\bshort(s)?\b/i;
+        const skirtRegex = /\b(skirt|skirts)\b/i;
+        const isShortSleeve = productName.includes("short sleeve");
+        if (
+          (shortsRegex.test(productName) && !isShortSleeve) ||
+          skirtRegex.test(productName)
+        ) {
+          categorySuperSetMap.get("Shorts")!.add(productId);
         }
+      } // Check Tops / T-Shirts
 
-        if (found) {
-          catSet.add(catName);
+      if (categorySuperSetMap.has("Tops And T-Shirts")) {
+        if (
+          productName.includes("shirt") ||
+          productName.includes("top") ||
+          productName.includes("tee") ||
+          productName.includes("jersey")
+        ) {
+          categorySuperSetMap.get("Tops And T-Shirts")!.add(productId);
+        }
+      } // Check Hoodies / Sweatshirts
+
+      if (categorySuperSetMap.has("Hoodies And Sweatshirts")) {
+        if (
+          productName.includes("hoodie") ||
+          productName.includes("sweatshirt")
+        ) {
+          categorySuperSetMap.get("Hoodies And Sweatshirts")!.add(productId);
+        }
+      } // Check Pants / Leggings
+
+      if (categorySuperSetMap.has("Pants And Leggings")) {
+        if (productName.includes("pant") || productName.includes("legging")) {
+          categorySuperSetMap.get("Pants And Leggings")!.add(productId);
+        }
+      } // Check Jackets
+
+      if (categorySuperSetMap.has("Jackets And Gilets")) {
+        if (productName.includes("jacket") || productName.includes("gilet")) {
+          categorySuperSetMap.get("Jackets And Gilets")!.add(productId);
         }
       }
-    });
+    }); // 5. Bắt đầu Lọc (Filtering) - (SỬA LẠI HOÀN TOÀN)
 
     let categoryFiltered = [];
 
@@ -164,34 +181,30 @@ const Product = () => {
       selectedCategory === "All Shoes" ||
       selectedCategory === "Shoes"
     ) {
-      categoryFiltered = allProducts.filter((p) =>
-        ALL_SHOE_TYPES.has(p.categoryName)
-      );
+      // Lọc theo "All" (dùng Siêu-Set ID)
+      categoryFiltered = allProducts.filter((p) => ALL_SHOE_TYPES.has(p.id));
     } else if (
       selectedCategory === "All Clothing" ||
       selectedCategory === "Clothing"
     ) {
       categoryFiltered = allProducts.filter((p) =>
-        ALL_CLOTHING_TYPES.has(p.categoryName)
+        ALL_CLOTHING_TYPES.has(p.id)
       );
     } else if (categorySuperSetMap.has(selectedCategory)) {
-      const matchingCategories = categorySuperSetMap.get(selectedCategory)!;
+      // Lọc theo "Chức năng" (dùng Siêu-Set Map ID)
+      const matchingProductIds = categorySuperSetMap.get(selectedCategory)!;
+      categoryFiltered = allProducts.filter((p) =>
+        matchingProductIds.has(p.id)
+      );
+    } // Lọc theo Phân cấp (Fallback cho "Running", "Football", v.v.)
+    else {
+      const matchingCategories = getDescendants(categories, selectedCategory);
       categoryFiltered = allProducts.filter((p) =>
         matchingCategories.has(p.categoryName)
       );
     }
-    // Lọc theo Phân cấp (Fallback cho "Running", "Football", v.v.)
-    else {
-      categoryFiltered = allProducts.filter((product) => {
-        let currentCatName: string | null | undefined = product.categoryName;
-        while (currentCatName) {
-          if (currentCatName === selectedCategory) return true;
-          currentCatName = categoryParentMap.get(currentCatName);
-        }
-        return false;
-      });
-    } // 6. Lọc theo Search Term
 
+    // 6. Lọc theo Search Term
     let searchFiltered = categoryFiltered;
     if (searchTerm) {
       const lowerCaseSearch = searchTerm.toLowerCase();
@@ -201,8 +214,9 @@ const Product = () => {
           product.description.toLowerCase().includes(lowerCaseSearch) ||
           product.brand.toLowerCase().includes(lowerCaseSearch)
       );
-    } // 7. Lọc theo Checkbox (Filters)
+    }
 
+    // 7. Lọc theo Checkbox (Filters)
     const isFilterActive = Object.values(selectedFilters).some(
       (arr) => arr.length > 0
     );
@@ -218,13 +232,10 @@ const Product = () => {
         if (selectedOptions.length === 0) continue;
         if (filterKey === "Gender") {
           const productSex = product.sex;
-
           const targetGenders = new Set(selectedOptions);
-
           if (targetGenders.has("Men") || targetGenders.has("Women")) {
             targetGenders.add("Unisex");
           }
-
           if (!targetGenders.has(productSex)) {
             return false;
           }
@@ -237,7 +248,8 @@ const Product = () => {
             if (option === "Under 1.000.000₫") return product.price < 1000000;
             if (option === "1.000.000₫ - 3.000.000₫")
               return product.price >= 1000000 && product.price <= 3000000;
-            if (option === "Over 3.000.000₫") return product.price > 3000000;
+            section: if (option === "Over 3.000.000₫")
+              return product.price > 3000000;
             return false;
           });
           if (!passes) return false;
