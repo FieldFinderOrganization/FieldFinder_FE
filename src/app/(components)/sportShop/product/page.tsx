@@ -80,11 +80,13 @@ const Product = () => {
   }, [categories]);
 
   const filteredProducts = useMemo(() => {
-    // 1. Định nghĩa các "danh mục chức năng" (từ Clothing, Shoes, Accessories)
+    // 1. Định nghĩa các "danh mục chức năng"
     const functionalCategories = [
       "Lifestyle",
       "Athletic Shoes",
       "Dress Shoes",
+      "Gym And Training",
+      "Sandals And Slides",
       "Tops And T-Shirts",
       "Shorts",
       "Pants And Leggings",
@@ -94,40 +96,38 @@ const Product = () => {
       "Socks",
       "Hats And Headwears",
       "Bags And Backpacks",
-    ];
+    ]; // 2. Map "Siêu-Set" (lưu ID sản phẩm)
 
-    // 2. 👈 SỬA: Map "Siêu-Set" giờ sẽ lưu ID sản phẩm (number)
     const categorySuperSetMap = new Map<string, Set<number>>();
     functionalCategories.forEach((catName) => {
-      categorySuperSetMap.set(catName, new Set<number>()); // 👈 Set rỗng chứa number
-    });
+      categorySuperSetMap.set(catName, new Set<number>());
+    }); // 3. "Siêu-Set" cho "All" (lưu ID sản phẩm)
 
-    // 3. 👈 SỬA: "Siêu-Set" cho "All" cũng lưu ID sản phẩm (number)
     const ALL_SHOE_TYPES = new Set<number>();
     const ALL_CLOTHING_TYPES = new Set<number>();
-    const ALL_ACCESSORIES_TYPES = new Set<number>(); // 4. "Dạy" cho logic lọc (PHẦN SỬA LỖI NẰM Ở ĐÂY)
+    const ALL_ACCESSORIES_TYPES = new Set<number>(); // 4. "Dạy" cho logic lọc
 
-    // ⛔⛔⛔
-    // KHỐI LỒNG NHAU (Dòng 128-139) ĐÃ BỊ XOÁ KHỎI ĐÂY
-    // ⛔⛔⛔
+    // ⛔ (KHỐI useMemo lồng nhau đã bị xóa) ⛔
 
     allProducts.forEach((product) => {
       const catName = product.categoryName;
       const productName = product.name.toLowerCase();
-      const productId = product.id; // 👈 Lấy ID
-      // 4a. Học từ category của sport (ví dụ: "Football Clothing" -> "Clothing")
-      // Dùng logic phân cấp (cha-con) để xác định
+      const productId = product.id; // 4a. Học từ phân cấp (cha-con)
 
       let currentCat: string | null | undefined = catName;
       while (currentCat) {
         if (currentCat === "Shoes") ALL_SHOE_TYPES.add(productId);
         if (currentCat === "Clothing") ALL_CLOTHING_TYPES.add(productId);
         if (currentCat === "Accessories") ALL_ACCESSORIES_TYPES.add(productId);
-        // Dùng categoryParentMap (từ bên ngoài, đã được truyền vào dependency)
+        // Dùng `categoryParentMap` (từ cấp cao nhất)
         currentCat = categoryParentMap.get(currentCat);
-      } // Check Shorts / Skirts
+      } // 4b. Học từ category CHÍNH XÁC
 
-      // 4b. Học từ tên sản phẩm (Logic tường minh)
+      if (categorySuperSetMap.has(catName)) {
+        categorySuperSetMap.get(catName)!.add(productId);
+      } // 4c. Học từ tên sản phẩm (Logic "thông minh" hơn)
+
+      // (Logic "học" cho Shoes, Clothing, Accessories... giữ nguyên)
       if (categorySuperSetMap.has("Shorts")) {
         const shortsRegex = /\bshort(s)?\b/i;
         const skirtRegex = /\b(skirt|skirts)\b/i;
@@ -138,8 +138,7 @@ const Product = () => {
         ) {
           categorySuperSetMap.get("Shorts")!.add(productId);
         }
-      } // Check Tops / T-Shirts
-
+      }
       if (categorySuperSetMap.has("Tops And T-Shirts")) {
         if (
           productName.includes("shirt") ||
@@ -149,8 +148,7 @@ const Product = () => {
         ) {
           categorySuperSetMap.get("Tops And T-Shirts")!.add(productId);
         }
-      } // Check Hoodies / Sweatshirts
-
+      }
       if (categorySuperSetMap.has("Hoodies And Sweatshirts")) {
         if (
           productName.includes("hoodie") ||
@@ -158,30 +156,117 @@ const Product = () => {
         ) {
           categorySuperSetMap.get("Hoodies And Sweatshirts")!.add(productId);
         }
-      } // Check Pants / Leggings
-
+      }
       if (categorySuperSetMap.has("Pants And Leggings")) {
         if (productName.includes("pant") || productName.includes("legging")) {
           categorySuperSetMap.get("Pants And Leggings")!.add(productId);
         }
-      } // Check Jackets
-
+      }
       if (categorySuperSetMap.has("Jackets And Gilets")) {
         if (productName.includes("jacket") || productName.includes("gilet")) {
           categorySuperSetMap.get("Jackets And Gilets")!.add(productId);
         }
       }
-    }); // 5. Bắt đầu Lọc (Filtering) - (SỬA LẠI HOÀN TOÀN)
+      if (categorySuperSetMap.has("Gym And Training")) {
+        if (productName.includes("gym") || productName.includes("training")) {
+          categorySuperSetMap.get("Gym And Training")!.add(productId);
+        }
+      }
+      if (categorySuperSetMap.has("Sandals And Slides")) {
+        if (productName.includes("sandal") || productName.includes("slide")) {
+          categorySuperSetMap.get("Sandals And Slides")!.add(productId);
+        }
+      }
+      if (categorySuperSetMap.has("Gloves")) {
+        if (productName.includes("glove")) {
+          categorySuperSetMap.get("Gloves")!.add(productId);
+        }
+      }
+      if (categorySuperSetMap.has("Socks")) {
+        const sockRegex = /\bsock(s)?\b/i;
+        if (sockRegex.test(productName)) {
+          categorySuperSetMap.get("Socks")!.add(productId);
+        }
+      }
+      if (categorySuperSetMap.has("Hats And Headwears")) {
+        if (
+          productName.includes("hat") ||
+          productName.includes("cap") ||
+          productName.includes("headwear") ||
+          productName.includes("beanie")
+        ) {
+          categorySuperSetMap.get("Hats And Headwears")!.add(productId);
+        }
+      }
+      if (categorySuperSetMap.has("Bags And Backpacks")) {
+        const hasBag = productName.includes("bag");
+        const hasBackpack = productName.includes("backpack");
+        const packRegex = /\bpack\b/i;
+        const multiPackRegex = /\b\d+\s*pack\b/i;
+        if (
+          hasBag ||
+          hasBackpack ||
+          (packRegex.test(productName) && !multiPackRegex.test(productName))
+        ) {
+          categorySuperSetMap.get("Bags And Backpacks")!.add(productId);
+        }
+      }
+    });
+
+    // 5. Hợp nhất (Logic này đúng, giữ nguyên)
+    categorySuperSetMap
+      .get("Gloves")!
+      .forEach((id) => ALL_ACCESSORIES_TYPES.add(id));
+    categorySuperSetMap
+      .get("Socks")!
+      .forEach((id) => ALL_ACCESSORIES_TYPES.add(id));
+    categorySuperSetMap
+      .get("Hats And Headwears")!
+      .forEach((id) => ALL_ACCESSORIES_TYPES.add(id));
+    categorySuperSetMap
+      .get("Bags And Backpacks")!
+      .forEach((id) => ALL_ACCESSORIES_TYPES.add(id));
+    // (Hợp nhất Shoes)
+    categorySuperSetMap
+      .get("Lifestyle")!
+      .forEach((id) => ALL_SHOE_TYPES.add(id));
+    categorySuperSetMap
+      .get("Gym And Training")!
+      .forEach((id) => ALL_SHOE_TYPES.add(id));
+    categorySuperSetMap
+      .get("Sandals And Slides")!
+      .forEach((id) => ALL_SHOE_TYPES.add(id));
+    categorySuperSetMap
+      .get("Athletic Shoes")!
+      .forEach((id) => ALL_SHOE_TYPES.add(id));
+    categorySuperSetMap
+      .get("Dress Shoes")!
+      .forEach((id) => ALL_SHOE_TYPES.add(id));
+    // (Hợp nhất Clothing)
+    categorySuperSetMap
+      .get("Tops And T-Shirts")!
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id));
+    categorySuperSetMap
+      .get("Shorts")!
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id));
+    categorySuperSetMap
+      .get("Pants And Leggings")!
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id));
+    categorySuperSetMap
+      .get("Hoodies And Sweatshirts")!
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id));
+    categorySuperSetMap
+      .get("Jackets And Gilets")!
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id)); // 6. Bắt đầu Lọc (Filtering)
 
     let categoryFiltered = [];
-
+    // ... (Toàn bộ logic lọc Step 6, 7, 8 của bạn giữ nguyên) ...
     if (selectedCategory === "All Products") {
       categoryFiltered = allProducts;
     } else if (
       selectedCategory === "All Shoes" ||
       selectedCategory === "Shoes"
     ) {
-      // Lọc theo "All" (dùng Siêu-Set ID)
       categoryFiltered = allProducts.filter((p) => ALL_SHOE_TYPES.has(p.id));
     } else if (
       selectedCategory === "All Clothing" ||
@@ -190,39 +275,47 @@ const Product = () => {
       categoryFiltered = allProducts.filter((p) =>
         ALL_CLOTHING_TYPES.has(p.id)
       );
+    } else if (
+      selectedCategory === "All Accessories" ||
+      selectedCategory === "Accessories"
+    ) {
+      categoryFiltered = allProducts.filter((p) =>
+        ALL_ACCESSORIES_TYPES.has(p.id)
+      );
     } else if (categorySuperSetMap.has(selectedCategory)) {
-      // Lọc theo "Chức năng" (dùng Siêu-Set Map ID)
       const matchingProductIds = categorySuperSetMap.get(selectedCategory)!;
       categoryFiltered = allProducts.filter((p) =>
         matchingProductIds.has(p.id)
       );
-    } // Lọc theo Phân cấp (Fallback cho "Running", "Football", v.v.)
-    else {
+    } else {
       const matchingCategories = getDescendants(categories, selectedCategory);
       categoryFiltered = allProducts.filter((p) =>
         matchingCategories.has(p.categoryName)
       );
-    }
+    } // 7. Lọc theo Search Term
 
-    // 6. Lọc theo Search Term
     let searchFiltered = categoryFiltered;
     if (searchTerm) {
-      const lowerCaseSearch = searchTerm.toLowerCase();
-      searchFiltered = categoryFiltered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(lowerCaseSearch) ||
-          product.description.toLowerCase().includes(lowerCaseSearch) ||
-          product.brand.toLowerCase().includes(lowerCaseSearch)
-      );
-    }
+      const searchWords = searchTerm
+        .toLowerCase()
+        .split(" ")
+        .filter((w) => w.length > 0);
+      searchFiltered = categoryFiltered.filter((product) => {
+        const productName = product.name.toLowerCase();
+        const productBrand = product.brand.toLowerCase();
+        return searchWords.every((word) => {
+          const regex = new RegExp(`\\b${word}`, "i");
+          return regex.test(productName) || regex.test(productBrand);
+        });
+      });
+    } // 8. Lọc theo Checkbox (Filters)
 
-    // 7. Lọc theo Checkbox (Filters)
     const isFilterActive = Object.values(selectedFilters).some(
       (arr) => arr.length > 0
     );
 
     if (!isFilterActive) {
-      return searchFiltered;
+      section: return searchFiltered;
     }
 
     return searchFiltered.filter((product) => {
@@ -233,9 +326,11 @@ const Product = () => {
         if (filterKey === "Gender") {
           const productSex = product.sex;
           const targetGenders = new Set(selectedOptions);
+
           if (targetGenders.has("Men") || targetGenders.has("Women")) {
             targetGenders.add("Unisex");
           }
+
           if (!targetGenders.has(productSex)) {
             return false;
           }

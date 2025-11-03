@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import TopBar from "@/utils/topBar";
-import InforBar from "@/utils/infoBar";
+import TopBar from "@/utils/topBar"; // 👈 Sửa đường dẫn nếu cần
+import InforBar from "@/utils/infoBar"; // 👈 Sửa đường dẫn nếu cần
 import { useProductContext } from "@/context/ProductContext";
 import { usePathname } from "next/navigation";
 
@@ -11,8 +11,13 @@ export default function ClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { groupedCategories, groupedBrands, navigateToItem } =
-    useProductContext();
+  const {
+    groupedCategories,
+    groupedBrands,
+    navigateToItem,
+    handleBrandNavigation,
+  } = useProductContext();
+
   const pathname = usePathname();
 
   return (
@@ -20,11 +25,10 @@ export default function ClientLayout({
       <TopBar
         groupedCategories={groupedCategories}
         groupedBrands={groupedBrands}
-        onCategoryClick={navigateToItem}
+        onProductClick={navigateToItem}
+        onBrandClick={handleBrandNavigation}
       />
-      <InforBar />
-
-      {children}
+        <InforBar />   {children} 
     </>
   );
 }

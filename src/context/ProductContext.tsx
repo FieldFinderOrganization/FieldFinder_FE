@@ -6,6 +6,7 @@ import React, {
   useState,
   useMemo,
   useEffect,
+  useCallback,
 } from "react";
 import { getAllCategory } from "@/services/category"; // Import service
 import { useRouter } from "next/navigation"; // Import router
@@ -39,6 +40,14 @@ const INITIAL_STATE: AppState = {
   activeSport: null,
 };
 
+const INITIAL_FILTERS: Record<string, string[]> = {
+  Gender: [],
+  "Shop By Price": [],
+  "Sale & Offers": [],
+  Size: [],
+  Brand: [],
+};
+
 interface ProductContextType {
   categories: Category[];
   groupedCategories: Record<string, string[]>;
@@ -48,14 +57,13 @@ interface ProductContextType {
   history: HistoryItem[];
   currentState: AppState;
   selectedFilters: Record<string, string[]>;
-
   searchTerm: string;
-  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
 
-  // Actions
   navigateToItem: (item: string) => void;
   navigateToHistory: (index: number) => void;
+  handleBrandNavigation: (brand: string, subCategory: string) => void;
   handleFilterToggle: (filterKey: string, option: string) => void;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
 }
 
 // --- Tạo Context ---
@@ -78,15 +86,8 @@ export const ProductProvider = ({
 
   const [categories, setCategories] = React.useState<Category[]>([]);
 
-  const [selectedFilters, setSelectedFilters] = useState<
-    Record<string, string[]>
-  >({
-    Gender: ["Men"],
-    "Shop By Price": [],
-    "Sale & Offers": [],
-    Size: [],
-    Brand: [],
-  });
+  const [selectedFilters, setSelectedFilters] =
+    useState<Record<string, string[]>>(INITIAL_FILTERS);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -137,10 +138,8 @@ export const ProductProvider = ({
 
   // groupedBrands
   const groupedBrands = useMemo(() => {
+    // 👈 SỬA: Đã thêm data hardcode cho menu brand
     const brandNames = ["Nike", "Adidas", "Puma", "Converse", "K-Swiss"];
-    const brands = categories.filter(
-      (c) => brandNames.includes(c.name) && c.parentName === null
-    );
     const defaultSubItems = [
       "Shoes",
       "Clothing",
@@ -153,13 +152,12 @@ export const ProductProvider = ({
         .filter((c) => c.parentName === "Featured")
         .map((c) => c.name),
     };
-    brands.forEach((b) => {
-      groups[b.name] = defaultSubItems;
+    brandNames.forEach((b) => {
+      groups[b] = defaultSubItems;
     });
     return groups;
   }, [categories]);
 
-  // filterConfig (Đã sửa lại, dùng `categories` thay vì `base...` nếu cần)
   const filterConfig = useMemo(() => {
     const baseFilterConfig = [
       {
@@ -202,8 +200,6 @@ export const ProductProvider = ({
     });
   }, [selectedFilters, categories]);
 
-  // --- TẤT CẢ HÀM LOGIC (getNextState, navigateToItem, ...) ---
-
   // getNextState
   const getNextState = (
     item: string,
@@ -211,8 +207,18 @@ export const ProductProvider = ({
     currentSubCategories: string[]
   ): AppState => {
     const uiGroupMap: Record<string, string[]> = {
-      Shoes: ["All Shoes", "Lifestyle", "Athletic Shoes", "Dress Shoes"],
-      "All Shoes": ["All Shoes", "Lifestyle", "Athletic Shoes", "Dress Shoes"],
+      Shoes: [
+        "All Shoes",
+        "Lifestyle",
+        "Gym And Training",
+        "Sandals And Slides",
+      ],
+      "All Shoes": [
+        "All Shoes",
+        "Lifestyle",
+        "Gym And Training",
+        "Sandals And Slides",
+      ],
       Clothing: [
         "All Clothing",
         "Tops And T-Shirts",
@@ -309,28 +315,14 @@ export const ProductProvider = ({
     };
   };
 
-  // navigateToItem (SỬA LẠI ĐỂ CÓ router.push)
-  const navigateToItem = (item: string) => {
-    setSearchTerm("");
-    // 1. Logic cũ (chặn click trùng)
-    if (item === selectedCategory) {
-      router.push("/sportShop/product"); // Vẫn navigate về trang product
-      return;
-    }
-    // 2. Logic cũ (tính state mới)
-    const nextState = getNextState(item, activeSport, subCategories);
-    const isNewItemLeaf = !categories.some(
-      (c) => c.parentName === nextState.selectedCategory
-    );
-    const newHistoryItem: HistoryItem = {
-      title: nextState.selectedCategory,
-      state: nextState,
-      isLeaf: isNewItemLeaf,
-    };
-
-    // 3. Logic cũ (build map)
+  const buildChildToParentMap = useCallback(() => {
     const uiGroupMap: Record<string, string[]> = {
-      Shoes: ["All Shoes", "Lifestyle", "Athletic Shoes", "Dress Shoes"],
+      Shoes: [
+        "All Shoes",
+        "Lifestyle",
+        "Gym And Training",
+        "Sandals And Slides",
+      ],
       Clothing: [
         "All Clothing",
         "Tops And T-Shirts",
@@ -373,21 +365,28 @@ export const ProductProvider = ({
     for (const group of Object.keys(uiGroupMap)) {
       childToParentMap[group] = "All Products";
     }
+    return childToParentMap;
+  }, [categories]);
 
-    // 4. Logic cũ (lấy state hiện tại)
+  const buildNewHistory = (
+    item: string,
+    nextState: AppState,
+    newHistoryItem: HistoryItem
+  ) => {
+    const childToParentMap = buildChildToParentMap();
     const currentHistoryItem = history[history.length - 1];
     const isCurrentItemLeaf = currentHistoryItem.isLeaf;
     const isSiblingClick = subCategories.includes(item);
+
     const clickedItemParent = childToParentMap[nextState.selectedCategory];
 
-    // 5. Logic cũ (3 case)
     if (isCurrentItemLeaf && isSiblingClick) {
-      setHistory((prevHistory) => [
+      return (prevHistory: HistoryItem[]) => [
         ...prevHistory.slice(0, -1),
         newHistoryItem,
-      ]);
+      ];
     } else if (clickedItemParent && clickedItemParent === selectedCategory) {
-      setHistory((prevHistory) => [...prevHistory, newHistoryItem]);
+      return (prevHistory: HistoryItem[]) => [...prevHistory, newHistoryItem];
     } else {
       const newHistory: HistoryItem[] = [];
       newHistory.push(history[0]);
@@ -407,19 +406,97 @@ export const ProductProvider = ({
         newHistory.push(parentHistoryItem);
       }
       newHistory.push(newHistoryItem);
-      setHistory(newHistory);
+      return newHistory;
+    }
+  };
+
+  // navigateToItem (SỬA LẠI ĐỂ CÓ router.push)
+  const navigateToItem = (item: string) => {
+    if (item === selectedCategory && !searchTerm) {
+      // Nếu click lại category và không search -> không làm gì
+      router.push("/sportShop/product");
+      return;
     }
 
-    // 6. 👈 HÀNH ĐỘNG MỚI: Điều hướng
+    // 1. Reset search và filter
+    setSearchTerm("");
+    setSelectedFilters(INITIAL_FILTERS); // 👈 RESET FILTER
+
+    // 2. Tính toán History/State mới
+    const nextState = getNextState(item, activeSport, subCategories);
+    const isNewItemLeaf = !categories.some(
+      (c) => c.parentName === nextState.selectedCategory
+    );
+    const newHistoryItem: HistoryItem = {
+      title: nextState.selectedCategory,
+      state: nextState,
+      isLeaf: isNewItemLeaf,
+    };
+
+    // 3. Build History mới
+    const newHistory = buildNewHistory(item, nextState, newHistoryItem);
+    setHistory(newHistory);
+
     router.push("/sportShop/product");
   };
 
   // navigateToHistory
   const navigateToHistory = (index: number) => {
     setSearchTerm("");
-
+    setSelectedFilters(INITIAL_FILTERS); // 👈 RESET FILTER
     setHistory((prevHistory) => prevHistory.slice(0, index + 1));
-    router.push("/sportShop/product"); // Cũng navigate về /sportShop/product
+    router.push("/sportShop/product");
+  };
+
+  const handleBrandNavigation = (brand: string, subCategory: string) => {
+    // 1. Xác định category và filter
+    let targetCategory = "All Products";
+
+    // 🚨 SỬA LỖI Ở ĐÂY 🚨
+    // Thêm kiểu `Record<string, string[]>` để TypeScript hiểu
+    const newFilters: Record<string, string[]> = {
+      ...INITIAL_FILTERS,
+      Brand: [brand],
+    };
+
+    if (
+      subCategory === "Men" ||
+      subCategory === "Women" ||
+      subCategory === "Unisex"
+    ) {
+      newFilters.Gender = [subCategory];
+      targetCategory = "All Clothing"; // Giả sử Men/Women là Clothing
+    } else if (
+      subCategory === "Shoes" ||
+      subCategory === "Clothing" ||
+      subCategory === "Accessories"
+    ) {
+      targetCategory = subCategory; // Target là "Shoes", "Clothing",...
+    }
+
+    // 2. Lấy state/history cho category
+    const nextState = getNextState(targetCategory, activeSport, subCategories);
+    const isNewItemLeaf = !categories.some(
+      (c) => c.parentName === nextState.selectedCategory
+    );
+    const newHistoryItem: HistoryItem = {
+      title: nextState.selectedCategory,
+      state: nextState,
+      isLeaf: isNewItemLeaf,
+    };
+    const newHistory = buildNewHistory(
+      targetCategory,
+      nextState,
+      newHistoryItem
+    );
+
+    // 3. Set CẢ HAI state
+    setHistory(newHistory);
+    setSelectedFilters(newFilters);
+    setSearchTerm("");
+
+    // 4. Navigate
+    router.push("/sportShop/product");
   };
 
   // handleFilterToggle
@@ -442,10 +519,11 @@ export const ProductProvider = ({
     history,
     currentState,
     selectedFilters,
+    searchTerm,
     navigateToItem,
     navigateToHistory,
+    handleBrandNavigation,
     handleFilterToggle,
-    searchTerm,
     setSearchTerm,
   };
 

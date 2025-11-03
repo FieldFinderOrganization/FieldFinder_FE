@@ -34,15 +34,17 @@ import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
 
 interface TopBarProps {
-  groupedCategories?: Record<string, string[]>; // 👈 Đã sửa (optional)
-  groupedBrands?: Record<string, string[]>; // 👈 Đã sửa (optional)
-  onCategoryClick?: (item: string) => void; // 👈 Đã sửa (optional)
+  groupedCategories?: Record<string, string[]>;
+  groupedBrands?: Record<string, string[]>;
+  onProductClick?: (item: string) => void;
+  onBrandClick?: (brand: string, subCategory: string) => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
   groupedCategories,
   groupedBrands,
-  onCategoryClick,
+  onProductClick,
+  onBrandClick,
 }) => {
   const { searchTerm, setSearchTerm } = useProductContext();
   const router = useRouter();
@@ -79,13 +81,6 @@ const TopBar: React.FC<TopBarProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleMenuItemClick = (item: string) => {
-    if (onCategoryClick) {
-      onCategoryClick(item);
-    }
-    setActiveMenu(null);
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,7 +208,10 @@ const TopBar: React.FC<TopBarProps> = ({
                     variant="body2"
                     className="text-gray-700 hover:text-blue-600 cursor-pointer"
                     // 🚨 Dùng handler mới
-                    onClick={() => handleMenuItemClick(item)}
+                    onClick={() => {
+                      if (onProductClick) onProductClick(item);
+                      setActiveMenu(null);
+                    }}
                   >
                     {item}
                   </Typography>
@@ -246,7 +244,10 @@ const TopBar: React.FC<TopBarProps> = ({
                     variant="body2"
                     className="text-gray-700 hover:text-blue-600 cursor-pointer"
                     // 🚨 Dùng handler mới (giả sử click brand cũng dùng logic này)
-                    onClick={() => handleMenuItemClick(item)}
+                    onClick={() => {
+                      if (onBrandClick) onBrandClick(title, item);
+                      setActiveMenu(null);
+                    }}
                   >
                     {item}
                   </Typography>
