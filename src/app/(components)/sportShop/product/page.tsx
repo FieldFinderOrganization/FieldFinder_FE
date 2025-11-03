@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import FilterSection from "@/utils/filterSection";
 import { IoOptionsOutline } from "react-icons/io5";
 import { getAllProducts, productRes } from "@/services/product";
 import ProductCard from "@/utils/productCard";
 import { useProductContext } from "@/context/ProductContext";
+import { HiOutlineArrowDown } from "react-icons/hi"; //
+import { motion } from "framer-motion";
 
 interface Category {
   name: string;
@@ -16,7 +24,7 @@ const getDescendants = (
   categories: Category[],
   parentName: string
 ): Set<string> => {
-  const descendants = new Set<string>([parentName]); // Bao gồm cả chính nó
+  const descendants = new Set<string>([parentName]);
 
   const findChildren = (currentParentName: string) => {
     // Tìm các con trực tiếp
@@ -53,6 +61,9 @@ const Product = () => {
 
   const [allProducts, setAllProducts] = useState<productRes[]>([]);
 
+  const [visibleCount, setVisibleCount] = useState(9);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -66,6 +77,7 @@ const Product = () => {
   }, []);
 
   const { categories } = useProductContext();
+
   const categoryParentMap = useMemo(() => {
     const map = new Map<string, string | null>();
     categories.forEach((cat) => {
@@ -106,8 +118,6 @@ const Product = () => {
     const ALL_SHOE_TYPES = new Set<number>();
     const ALL_CLOTHING_TYPES = new Set<number>();
     const ALL_ACCESSORIES_TYPES = new Set<number>(); // 4. "Dạy" cho logic lọc
-
-    // ⛔ (KHỐI useMemo lồng nhau đã bị xóa) ⛔
 
     allProducts.forEach((product) => {
       const catName = product.categoryName;
@@ -257,10 +267,9 @@ const Product = () => {
       .forEach((id) => ALL_CLOTHING_TYPES.add(id));
     categorySuperSetMap
       .get("Jackets And Gilets")!
-      .forEach((id) => ALL_CLOTHING_TYPES.add(id)); // 6. Bắt đầu Lọc (Filtering)
+      .forEach((id) => ALL_CLOTHING_TYPES.add(id));
 
     let categoryFiltered = [];
-    // ... (Toàn bộ logic lọc Step 6, 7, 8 của bạn giữ nguyên) ...
     if (selectedCategory === "All Products") {
       categoryFiltered = allProducts;
     } else if (
@@ -315,7 +324,7 @@ const Product = () => {
     );
 
     if (!isFilterActive) {
-      section: return searchFiltered;
+      return searchFiltered;
     }
 
     return searchFiltered.filter((product) => {
@@ -361,10 +370,77 @@ const Product = () => {
     searchTerm,
   ]);
 
+  const visibleProducts = useMemo(() => {
+    return filteredProducts.slice(0, visibleCount);
+  }, [filteredProducts, visibleCount]);
+
+  // 4. 👈 RESET "LOAD MORE" KHI FILTER THAY ĐỔI
+  useEffect(() => {
+    setVisibleCount(9);
+  }, [filteredProducts]); // 👈 Reset khi filter thay đổi
+
+  // 5. 👈 LOGIC "INFINITE SCROLL"
+  const observerRef = useRef(null); // Ref cho phần tử "trigger"
+
+  const handleLoadMore = useCallback(() => {
+    setIsLoadingMore(true);
+    // Giả lập 1 chút delay cho đẹp
+    setTimeout(() => {
+      setVisibleCount((prevCount) => prevCount + 9);
+      setIsLoadingMore(false);
+    }, 300); // 300ms delay
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Nếu trigger (observerRef) xuất hiện trên màn hình
+        if (
+          entries[0].isIntersecting &&
+          !isLoadingMore &&
+          visibleCount < filteredProducts.length
+        ) {
+          handleLoadMore();
+        }
+      },
+      { threshold: 1.0 } // 100% của trigger phải lọt vào view
+    );
+
+    const currentRef = observerRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [
+    observerRef,
+    handleLoadMore,
+    isLoadingMore,
+    visibleCount,
+    filteredProducts.length,
+  ]);
+
+  // 6. 👈 SỬA LẠI JSX (RETURN)
+
+  // Định nghĩa variants cho animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05, // Delay 0.05s giữa mỗi card
+      },
+    },
+  };
+
   return (
     <div className="flex-col">
       {/* Breadcrumbs (Layout gốc) */}
-      <div className="flex items-center pt-[2rem] px-[3.5rem] gap-2 text-sm text-gray-600 flex-wrap">
+      <div className="flex items-center px-[3.5rem] gap-2 text-sm text-gray-600 flex-wrap">
         {history.map((item, index) => (
           <React.Fragment key={index}>
             {index > 0 && <span className="text-gray-400">/</span>}
@@ -383,8 +459,8 @@ const Product = () => {
       </div>
 
       {/* Title Section (Layout gốc) */}
-      <div className="flex items-center pt-[1rem] px-[3.5rem] justify-between mb-4">
-        <h2 className="text-3xl font-semibold">{selectedCategory}</h2>
+      <div className="flex items-center pt-[1rem] px-[3.5rem] justify-between mb-4 ">
+        <h2 className="text-3xl font-semibold ">{selectedCategory}</h2>
         <div
           className="hide-filters md:gap-x-[1rem] gap-x-[0.5rem] flex items-center cursor-pointer"
           onClick={() => setIsFilterVisible(!isFilterVisible)}
@@ -398,53 +474,70 @@ const Product = () => {
 
       {/* Content Section (Layout gốc) */}
       <div className="flex">
-        {isFilterVisible && (
-          <div className="w-[22%] pb-[2rem] pl-[3.5rem] pr-[2rem] h-[calc(80vh-180px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 transition-all duration-300">
+        {isFilterVisible && ( // 👈 SỬA: Tinh chỉnh CSS của Sidebar
+          <div
+            className="w-[22%] pb-[2rem] pl-[3.5rem] pr-[2rem]
+                       transition-all duration-300 
+                       sticky top-28 self-start 
+                       h-[calc(100vh_-_8rem)] // 100vh - (top-28 (7rem) + 1rem padding)
+                       overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+          >
             {subCategories.length > 0 && (
               <div className="flex flex-col gap-6 mb-4">
                 {subCategories.map((item) => (
                   <span
                     key={item}
                     className="text-gray-700 cursor-pointer hover:text-blue-600 transition"
-                    onClick={() => navigateToItem(item)} // Dùng hàm từ context
+                    onClick={() => navigateToItem(item)}
                   >
                     {item}
                   </span>
                 ))}
               </div>
             )}
-            {/* Dùng filterConfig từ context */}
+
             {filterConfig.map((filter) => (
               <FilterSection
                 key={filter.key}
                 title={filter.title}
                 options={filter.options}
-                selectedOptions={selectedFilters[filter.key]} // Dùng state từ context
-                onToggleOption={
-                  (option) => handleFilterToggle(filter.key, option) // Dùng hàm từ context
+                selectedOptions={selectedFilters[filter.key]}
+                onToggleOption={(option) =>
+                  handleFilterToggle(filter.key, option)
                 }
               />
             ))}
           </div>
         )}
 
-        {/* Product Grid Container */}
         <div
           className={`p-6 transition-all duration-300 ${
             isFilterVisible ? "w-[78%]" : "w-full"
           }`}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {visibleProducts.length > 0 ? (
+              visibleProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))
             ) : (
               <p className="col-span-3 text-center text-gray-500">
-                No products found matching your criteria.
+                 No products found matching your criteria.      
               </p>
             )}
-          </div>
+          </motion.div>
+
+          <div ref={observerRef} className="h-10 w-full" />
+          {isLoadingMore && (
+            <div className="flex justify-center items-center p-6">
+              <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
