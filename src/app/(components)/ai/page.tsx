@@ -56,6 +56,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   const [isListening, setIsListening] = useState(false);
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const handleSubmitMessageRef = useRef(async (messageText: string) => {});
 
   const handleClose = () => setIsModalBookingOpen(false);
 
@@ -218,6 +219,76 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     [sessionId]
   );
 
+  handleSubmitMessageRef.current = async (messageText: string) => {
+    if (!messageText.trim()) return;
+
+    const newUserMessage: ChatMessage = { sender: "user", text: messageText };
+    setMessages((prev) => [...prev, newUserMessage]);
+    setIsLoading(true);
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "text/plain",
+        Accept: "*/*",
+      };
+      if (sessionId) {
+        headers["X-Session-Id"] = sessionId;
+      }
+      const response = await axios.post(
+        "http://localhost:8080/api/bookings/ai-chat",
+        messageText,
+        { headers }
+      );
+      const data = response.data;
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+      }
+      if (Array.isArray(data)) {
+        const aiMessages: ChatMessage[] = data.map((item: any) => ({
+          sender: "ai",
+          text: `Sân: ${item.name || "Không xác định"}\nGiá: ${item.price || "0"} VNĐ\nMô tả: ${item.description || "Không có mô tả"}`,
+          pitchId: item.pitchId,
+          bookingDate: item.bookingDate,
+          slotList: item.slotList || [],
+          pitchType: item.pitchType,
+          formattedDate: formatDate(item.bookingDate),
+          formattedSlots: formatSlotToTime(item.slotList),
+          formattedPitchType: formatPitchType(item.pitchType),
+        }));
+        setMessages((prev) => [...prev, ...aiMessages]);
+      } else if (data.message) {
+        const aiMessage: ChatMessage = {
+          sender: "ai",
+          text:
+            data.message +
+            (data.data ? "\n" + formatDataToText(data.data) : ""),
+          data: data.data,
+          pitchType: data.pitchType || "ALL",
+          formattedPitchType: formatPitchType(data.pitchType || "ALL"),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      } else {
+        const aiMessage: ChatMessage = {
+          sender: "ai",
+          text: "Phản hồi không hợp lệ từ AI.",
+          pitchType: "ALL",
+          formattedPitchType: formatPitchType("ALL"),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+      }
+    } catch (error: any) {
+      const errorMessage: ChatMessage = {
+        sender: "ai",
+        text: `Đã có lỗi xảy ra: ${error.message}`,
+        pitchType: "ALL",
+        formattedPitchType: formatPitchType("ALL"),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!SpeechRecognition) return;
 
@@ -234,13 +305,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
     recognition.onend = () => {
       setIsListening(false);
-      setInput("");
     };
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
-      handleSubmitMessage(transcript);
     };
 
     recognition.onerror = (event: any) => {
@@ -257,11 +326,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
         );
       }
     };
-  }, [handleSubmitMessage]);
+  }, []);
 
   const handleFormSubmit = (e: FormEvent) => {
     e.preventDefault();
-    handleSubmitMessage(input);
+    handleSubmitMessageRef.current(input);
     setInput("");
   };
 
@@ -280,6 +349,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       }
     }
   };
+
   const handleBookField = (msg: ChatMessage) => {
     const textParts = msg.text.split("\n");
     const name = textParts[0]?.split(": ")[1] || "Không xác định";
