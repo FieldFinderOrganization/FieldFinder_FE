@@ -12,7 +12,6 @@ import { IoOptionsOutline } from "react-icons/io5";
 import { getAllProducts, productRes } from "@/services/product";
 import ProductCard from "@/utils/productCard";
 import { useProductContext } from "@/context/ProductContext";
-import { HiOutlineArrowDown } from "react-icons/hi"; //
 import { motion } from "framer-motion";
 
 interface Category {
@@ -27,14 +26,13 @@ const getDescendants = (
   const descendants = new Set<string>([parentName]);
 
   const findChildren = (currentParentName: string) => {
-    // Tìm các con trực tiếp
     const children = categories.filter(
       (c) => c.parentName === currentParentName
     );
     for (const child of children) {
       if (!descendants.has(child.name)) {
         descendants.add(child.name);
-        findChildren(child.name); // Đệ quy để tìm các cháu
+        findChildren(child.name);
       }
     }
   };
@@ -374,27 +372,23 @@ const Product = () => {
     return filteredProducts.slice(0, visibleCount);
   }, [filteredProducts, visibleCount]);
 
-  // 4. 👈 RESET "LOAD MORE" KHI FILTER THAY ĐỔI
   useEffect(() => {
     setVisibleCount(9);
-  }, [filteredProducts]); // 👈 Reset khi filter thay đổi
+  }, [filteredProducts]);
 
-  // 5. 👈 LOGIC "INFINITE SCROLL"
-  const observerRef = useRef(null); // Ref cho phần tử "trigger"
+  const observerRef = useRef(null);
 
   const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
-    // Giả lập 1 chút delay cho đẹp
     setTimeout(() => {
       setVisibleCount((prevCount) => prevCount + 9);
       setIsLoadingMore(false);
-    }, 300); // 300ms delay
+    }, 300);
   }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        // Nếu trigger (observerRef) xuất hiện trên màn hình
         if (
           entries[0].isIntersecting &&
           !isLoadingMore &&
@@ -403,7 +397,7 @@ const Product = () => {
           handleLoadMore();
         }
       },
-      { threshold: 1.0 } // 100% của trigger phải lọt vào view
+      { threshold: 1.0 }
     );
 
     const currentRef = observerRef.current;
@@ -424,28 +418,24 @@ const Product = () => {
     filteredProducts.length,
   ]);
 
-  // 6. 👈 SỬA LẠI JSX (RETURN)
-
-  // Định nghĩa variants cho animation
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05, // Delay 0.05s giữa mỗi card
+        staggerChildren: 0.05,
       },
     },
   };
 
   return (
     <div className="flex-col">
-      {/* Breadcrumbs (Layout gốc) */}
       <div className="flex items-center px-[3.5rem] gap-2 text-sm text-gray-600 flex-wrap">
         {history.map((item, index) => (
           <React.Fragment key={index}>
             {index > 0 && <span className="text-gray-400">/</span>}
             <span
-              onClick={() => navigateToHistory(index)} // Dùng hàm từ context
+              onClick={() => navigateToHistory(index)}
               className={`cursor-pointer ${
                 index === history.length - 1
                   ? "font-bold text-black"
@@ -458,7 +448,6 @@ const Product = () => {
         ))}
       </div>
 
-      {/* Title Section (Layout gốc) */}
       <div className="flex items-center pt-[1rem] px-[3.5rem] justify-between mb-4 ">
         <h2 className="text-3xl font-semibold ">{selectedCategory}</h2>
         <div
@@ -472,13 +461,12 @@ const Product = () => {
         </div>
       </div>
 
-      {/* Content Section (Layout gốc) */}
       <div className="flex">
-        {isFilterVisible && ( // 👈 SỬA: Tinh chỉnh CSS của Sidebar
+        {isFilterVisible && (
           <div
             className="w-[22%] pb-[2rem] pl-[3.5rem] pr-[2rem]
                        transition-all duration-300 
-                       sticky top-28 self-start 
+                        self-start 
                        h-[calc(100vh_-_8rem)] // 100vh - (top-28 (7rem) + 1rem padding)
                        overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
           >

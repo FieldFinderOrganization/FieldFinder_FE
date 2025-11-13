@@ -127,7 +127,11 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
     <div className="flex flex-wrap items-center px-6 py-6 lg:px-10 lg:py-8 justify-between">
       <div className="flex items-center md:gap-[10rem] gap-[5rem]">
-        <Typography variant="h4" className="font-bold text-xl md:text-2xl">
+        <Typography
+          variant="h4"
+          className="font-bold text-xl md:text-2xl cursor-pointer"
+          onClick={() => router.push("/home")}
+        >
           MTKICKs
         </Typography>
 
