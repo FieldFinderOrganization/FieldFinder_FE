@@ -90,7 +90,6 @@ const Product = () => {
   }, [categories]);
 
   const filteredProducts = useMemo(() => {
-    // 1. Định nghĩa các "danh mục chức năng"
     const functionalCategories = [
       "Lifestyle",
       "Athletic Shoes",
@@ -106,36 +105,48 @@ const Product = () => {
       "Socks",
       "Hats And Headwears",
       "Bags And Backpacks",
-    ]; // 2. Map "Siêu-Set" (lưu ID sản phẩm)
+    ];
 
     const categorySuperSetMap = new Map<string, Set<number>>();
     functionalCategories.forEach((catName) => {
       categorySuperSetMap.set(catName, new Set<number>());
-    }); // 3. "Siêu-Set" cho "All" (lưu ID sản phẩm)
+    });
 
     const ALL_SHOE_TYPES = new Set<number>();
     const ALL_CLOTHING_TYPES = new Set<number>();
-    const ALL_ACCESSORIES_TYPES = new Set<number>(); // 4. "Dạy" cho logic lọc
+    const ALL_ACCESSORIES_TYPES = new Set<number>();
 
     allProducts.forEach((product) => {
       const catName = product.categoryName;
       const productName = product.name.toLowerCase();
-      const productId = product.id; // 4a. Học từ phân cấp (cha-con)
+      const productId = product.id;
+
+      if (
+        catName.toLowerCase().includes("shoes") ||
+        catName.toLowerCase().includes("boot") ||
+        catName.toLowerCase().includes("sandal")
+      ) {
+        ALL_SHOE_TYPES.add(productId);
+      }
+      if (catName.toLowerCase().includes("clothing")) {
+        ALL_CLOTHING_TYPES.add(productId);
+      }
+      if (catName.toLowerCase().includes("accessories")) {
+        ALL_ACCESSORIES_TYPES.add(productId);
+      }
 
       let currentCat: string | null | undefined = catName;
       while (currentCat) {
         if (currentCat === "Shoes") ALL_SHOE_TYPES.add(productId);
         if (currentCat === "Clothing") ALL_CLOTHING_TYPES.add(productId);
         if (currentCat === "Accessories") ALL_ACCESSORIES_TYPES.add(productId);
-        // Dùng `categoryParentMap` (từ cấp cao nhất)
         currentCat = categoryParentMap.get(currentCat);
-      } // 4b. Học từ category CHÍNH XÁC
+      }
 
       if (categorySuperSetMap.has(catName)) {
         categorySuperSetMap.get(catName)!.add(productId);
-      } // 4c. Học từ tên sản phẩm (Logic "thông minh" hơn)
+      }
 
-      // (Logic "học" cho Shoes, Clothing, Accessories... giữ nguyên)
       if (categorySuperSetMap.has("Shorts")) {
         const shortsRegex = /\bshort(s)?\b/i;
         const skirtRegex = /\b(skirt|skirts)\b/i;
@@ -221,7 +232,6 @@ const Product = () => {
       }
     });
 
-    // 5. Hợp nhất (Logic này đúng, giữ nguyên)
     categorySuperSetMap
       .get("Gloves")!
       .forEach((id) => ALL_ACCESSORIES_TYPES.add(id));
@@ -299,7 +309,7 @@ const Product = () => {
       categoryFiltered = allProducts.filter((p) =>
         matchingCategories.has(p.categoryName)
       );
-    } // 7. Lọc theo Search Term
+    }
 
     let searchFiltered = categoryFiltered;
     if (searchTerm) {
@@ -315,7 +325,7 @@ const Product = () => {
           return regex.test(productName) || regex.test(productBrand);
         });
       });
-    } // 8. Lọc theo Checkbox (Filters)
+    }
 
     const isFilterActive = Object.values(selectedFilters).some(
       (arr) => arr.length > 0
@@ -350,8 +360,7 @@ const Product = () => {
             if (option === "Under 1.000.000₫") return product.price < 1000000;
             if (option === "1.000.000₫ - 3.000.000₫")
               return product.price >= 1000000 && product.price <= 3000000;
-            section: if (option === "Over 3.000.000₫")
-              return product.price > 3000000;
+            if (option === "Over 3.000.000₫") return product.price > 3000000;
             return false;
           });
           if (!passes) return false;

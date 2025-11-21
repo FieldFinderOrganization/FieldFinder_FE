@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useProductContext } from "@/context/ProductContext";
 import { useRouter } from "next/navigation";
 import { IoMdHeart } from "react-icons/io";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector, useDispatch, TypedUseSelectorHook } from "react-redux";
 import { RootState, AppDispatch } from "@/redux/store";
 import { logout, setShowSidebar } from "@/redux/features/authSlice";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
@@ -50,9 +50,8 @@ const TopBar: React.FC<TopBarProps> = ({
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
 
-  const { user, isAuthenticated } = useSelector(
-    (state: RootState) => state.auth
-  );
+  const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
@@ -96,7 +95,7 @@ const TopBar: React.FC<TopBarProps> = ({
   const handleLogout = () => {
     dispatch(logout());
     handleMenuClose();
-    router.push("/login"); // Giả sử trang login ở /login
+    router.push("/login");
   };
   const handleProfile = () => {
     handleMenuClose();
