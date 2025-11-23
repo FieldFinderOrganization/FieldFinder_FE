@@ -139,7 +139,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
 
       if (paymentMethod === "BANK") {
         const paymentPayload: PaymentRequestDTO = {
-          bookingId: bookingResponse.bookingId,
+          bookingId: parseInt(bookingResponse.bookingId, 10),
           userId: user.userId,
           amount: total,
           paymentMethod: "BANK",

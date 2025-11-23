@@ -25,6 +25,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import ava from "../../public/images/20.png";
 import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
+import { IoCartOutline } from "react-icons/io5";
 
 interface TabItem {
   label: React.ReactNode;
@@ -121,6 +122,11 @@ const Header: React.FC = () => {
     handleMenuClose();
     dispatch(setShowSidebar(false));
     router.push("/dashboard");
+  };
+
+  const handleOrderHistory = () => {
+    handleMenuClose();
+    router.push("/orderHistory");
   };
 
   return (
@@ -241,6 +247,12 @@ const Header: React.FC = () => {
                       <PersonOutlineIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>Thông tin cá nhân</ListItemText>
+                  </MenuItem>
+                  <MenuItem onClick={handleOrderHistory}>
+                    <ListItemIcon>
+                      <IoCartOutline fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Lịch sử mua hàng</ListItemText>
                   </MenuItem>
                   {user?.role === "PROVIDER" && (
                     <MenuItem onClick={handlePitchInfo}>
