@@ -4,7 +4,7 @@ import { cartItemRes } from "./cartItem";
 const baseURL = "http://localhost:8080/api/payments";
 
 export interface PaymentRequestDTO {
-  bookingId: number;
+  bookingId: string;
   userId: string;
   amount: number;
   paymentMethod: "BANK" | "CASH";

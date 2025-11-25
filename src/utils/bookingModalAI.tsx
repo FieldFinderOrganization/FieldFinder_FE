@@ -139,7 +139,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
 
       if (paymentMethod === "BANK") {
         const paymentPayload: PaymentRequestDTO = {
-          bookingId: parseInt(bookingResponse.bookingId, 10),
+          bookingId: bookingResponse.bookingId,
           userId: user.userId,
           amount: total,
           paymentMethod: "BANK",
@@ -156,8 +156,6 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
       toast.error("Đặt sân thất bại!");
     }
   };
-
-  console.log(fieldData);
 
   return (
     <div>
