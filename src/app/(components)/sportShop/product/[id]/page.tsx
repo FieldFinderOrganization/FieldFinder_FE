@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { getProductById, productRes } from "@/services/product";
+import { getProductById, productRes, ProductVariant } from "@/services/product";
 import { IoMdHeartEmpty } from "react-icons/io";
 import { MdArrowBackIos, MdArrowForwardIos } from "react-icons/md";
 import Slider from "react-slick";
@@ -57,6 +57,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedVariantStock, setSelectedVariantStock] = useState<number>(0);
 
   const [nav1, setNav1] = useState<Slider | null>(null);
   const [nav2, setNav2] = useState<Slider | null>(null);
@@ -74,6 +75,7 @@ const ProductDetailPage = () => {
         "https://res.cloudinary.com/dxgy8ilqu/image/upload/e_background_removal/f_png/19_hqozfo?_a=BAMAMiWO0",
       ]
     : [];
+
   useEffect(() => {
     if (id) {
       const fetchProduct = async () => {
@@ -81,6 +83,18 @@ const ProductDetailPage = () => {
           setLoading(true);
           const data = await getProductById(id);
           setProduct(data);
+
+          if (data.variants && data.variants.length === 1) {
+            const onlyVariant = data.variants[0];
+            if (
+              onlyVariant.size.toLowerCase() === "freesize" ||
+              onlyVariant.size.toLowerCase() === "default"
+            ) {
+              setSelectedSize(onlyVariant.size);
+              setSelectedVariantStock(onlyVariant.quantity);
+            }
+          }
+
           setError(null);
         } catch (err) {
           setError("Failed to fetch product.");
@@ -92,6 +106,13 @@ const ProductDetailPage = () => {
       fetchProduct();
     }
   }, [id]);
+
+  const handleSizeSelect = (variant: ProductVariant) => {
+    if (variant.quantity <= 0) return;
+    setSelectedSize(variant.size);
+    setSelectedVariantStock(variant.quantity);
+  };
+
   const mainSliderSettings = {
     slidesToShow: 1,
     slidesToScroll: 1,
@@ -133,6 +154,11 @@ const ProductDetailPage = () => {
   }
 
   const isFav = product ? isFavourited(product.id) : false;
+
+  const isFreesize =
+    product.variants?.length === 1 &&
+    (product.variants[0].size.toLowerCase() === "freesize" ||
+      product.variants[0].size.toLowerCase() === "default");
 
   return (
     <div className="flex-col">
@@ -181,24 +207,58 @@ const ProductDetailPage = () => {
             <p className="text-gray-600 text-lg">{product.description}</p>
             <p className="text-2xl font-semibold">VND {formattedPrice}</p>
             <div>
-              <h3 className="text-lg font-medium mb-2">Select size</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {MOCK_SIZES.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`border rounded-md p-3 text-center transition-colors ${selectedSize === size ? "bg-black text-white border-black" : "border-gray-300 hover:border-black cursor-pointer"}`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-              <a
-                href="#"
-                className="text-sm text-gray-500 mt-2 block underline"
-              >
-                Can't find your size? Click here
-              </a>
+              <h3 className="text-lg font-medium mb-2">
+                {isFreesize ? "Availability" : "Select Size"}
+              </h3>
+
+              {isFreesize ? (
+                <div className="text-green-600 font-medium">
+                  Freesize (Còn {product.variants[0].quantity} sản phẩm)
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {product.variants?.map((variant) => {
+                    const isOutOfStock = variant.quantity <= 0;
+                    const isSelected = selectedSize === variant.size;
+
+                    return (
+                      <button
+                        key={variant.size}
+                        onClick={() => handleSizeSelect(variant)}
+                        disabled={isOutOfStock}
+                        className={`border rounded-md p-3 text-center transition-colors relative 
+                                ${isSelected ? "bg-black text-white border-black" : "border-gray-300 hover:border-black"}
+                                ${isOutOfStock ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 hover:border-gray-300" : "cursor-pointer"}
+                            `}
+                      >
+                        <span className="font-bold">{variant.size}</span>
+
+                        {!isOutOfStock && (
+                          <span
+                            className={`absolute top-0.5 right-1 text-[10px] ${isSelected ? "text-gray-300" : "text-gray-500"}`}
+                          >
+                            {variant.quantity}
+                          </span>
+                        )}
+                        {isOutOfStock && (
+                          <span className="absolute top-0.5 right-1 text-[10px] text-red-500 font-bold">
+                            Hết
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!isFreesize && (
+                <a
+                  href="#"
+                  className="text-sm text-gray-500 mt-2 block underline"
+                >
+                  Can't find your size? Click here
+                </a>
+              )}
             </div>
             <div className="flex flex-col gap-3 mt-4">
               <button

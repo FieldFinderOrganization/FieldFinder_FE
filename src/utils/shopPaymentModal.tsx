@@ -65,6 +65,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         items: cartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          // size: "Freesize",
+          size: item.size,
         })),
       };
 

@@ -8,10 +8,16 @@ export interface productReq {
   name: string;
   description: string;
   price: number;
-  stockQuantity: number;
   imageUrl: string;
   brand: string;
   sex: string;
+  variants?: { size: string; quantity: number }[];
+}
+
+// 👈 THÊM: Interface cho Variant
+export interface ProductVariant {
+  size: string;
+  quantity: number;
 }
 
 // Response DTO (Dữ liệu nhận về)
@@ -25,27 +31,24 @@ export interface productRes {
   imageUrl: string;
   brand: string;
   sex: string;
+  variants: ProductVariant[];
 }
 
-// 1. Lấy tất cả sản phẩm
 export const getAllProducts = async () => {
   const response = await axios.get<productRes[]>(base_url);
   return response.data;
 };
 
-// 2. Lấy chi tiết 1 sản phẩm theo ID
 export const getProductById = async (id: string | number) => {
   const response = await axios.get<productRes>(`${base_url}/${id}`);
   return response.data;
 };
 
-// 3. Tạo sản phẩm mới
 export const createProduct = async (payload: productReq) => {
   const response = await axios.post<productRes>(base_url, payload);
   return response.data;
 };
 
-// 4. Cập nhật sản phẩm
 export const updateProduct = async (
   payload: productReq,
   id: string | number
@@ -54,7 +57,6 @@ export const updateProduct = async (
   return response.data;
 };
 
-// 5. Xóa sản phẩm
 export const deleteProduct = async (id: string | number) => {
   await axios.delete(`${base_url}/${id}`);
 };
