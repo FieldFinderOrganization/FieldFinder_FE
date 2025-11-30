@@ -200,6 +200,7 @@ const Login: React.FC = () => {
               <input
                 type="email"
                 value={email}
+                name="email"
                 onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="Điền email của bạn"
                 className={`w-full px-5 py-2 border rounded-lg ${
@@ -215,6 +216,7 @@ const Login: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
+                name="password"
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="Điền mật khẩu của bạn"
                 className={`w-full px-5 py-2 border rounded-lg ${

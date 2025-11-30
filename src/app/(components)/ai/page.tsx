@@ -1,23 +1,27 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  FormEvent,
-} from "react";
+import React, { useState, useEffect, useRef, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import { IoMdClose } from "react-icons/io";
-import { FiMic, FiSend } from "react-icons/fi";
+import { FiMic, FiSend, FiImage, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "../../../styles/AIAssistantChat.css";
 import BookingModalAI from "@/utils/bookingModalAI";
+import {
+  postChatMessage,
+  postImageMessage,
+  BookingQuery,
+  ProductDTO,
+} from "@/services/ai";
 
 interface ChatMessage {
   sender: "user" | "ai";
   text: string;
+  imagePreview?: string;
+  products?: ProductDTO[];
+
   pitchId?: string;
   bookingDate?: string | null;
   slotList?: number[];
@@ -47,15 +51,26 @@ const SpeechRecognition =
   null;
 
 const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
+  const router = useRouter();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+
+  const [zoomedImageSrc, setZoomedImageSrc] = useState<string | null>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   const [fieldData, setFieldData] = useState<FieldData | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleSubmitMessageRef = useRef(async (messageText: string) => {});
 
   const handleClose = () => setIsModalBookingOpen(false);
@@ -147,8 +162,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // const handleSubmitMessage = useCallback(
   //   async (messageText: string) => {
   //     if (!messageText.trim()) return;
   //     const newUserMessage: ChatMessage = { sender: "user", text: messageText };
@@ -328,10 +341,123 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     };
   }, []);
 
-  const handleFormSubmit = (e: FormEvent) => {
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          // Tạo canvas để vẽ lại ảnh với kích thước nhỏ hơn
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800; // Giới hạn chiều rộng 800px (đủ cho AI)
+          const scaleSize = MAX_WIDTH / img.width;
+
+          // Nếu ảnh nhỏ hơn giới hạn thì giữ nguyên, ngược lại thì resize
+          if (scaleSize < 1) {
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+          } else {
+            canvas.width = img.width;
+            canvas.height = img.height;
+          }
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // Xuất ra base64 với định dạng JPEG và chất lượng 0.7 (70%)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          resolve(dataUrl);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setSelectedFile(file);
+    e.target.value = "";
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  };
+
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    handleSubmitMessageRef.current(input);
+    if ((!input.trim() && !selectedFile) || !sessionId) return;
+    const userText = input;
+    const currentFile = selectedFile;
     setInput("");
+    setIsLoading(true);
+
+    try {
+      if (currentFile) {
+        const base64String = await compressImage(currentFile);
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "user",
+            text: userText,
+            imagePreview: base64String,
+          },
+        ]);
+        clearSelectedImage();
+        const data = await postImageMessage(base64String);
+        processAIResponse(data);
+      } else if (userText) {
+        setMessages((prev) => [...prev, { sender: "user", text: userText }]);
+        const data = await postChatMessage(userText, sessionId);
+        processAIResponse(data);
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "Xin lỗi, tôi gặp sự cố kết nối." },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const processAIResponse = (data: BookingQuery) => {
+    let displayText = data.message;
+
+    if (!displayText) {
+      if (data.data?.products && data.data.products.length > 0) {
+        displayText = "Dưới đây là các sản phẩm tôi tìm được:";
+      } else {
+        displayText = "Tôi đã nhận được yêu cầu nhưng không có kết quả.";
+      }
+    }
+
+    const aiMsg: ChatMessage = {
+      sender: "ai",
+      text: displayText,
+      products: data.data?.products,
+
+      pitchType: data.pitchType,
+      formattedPitchType: formatPitchType(data.pitchType),
+      bookingDate: data.bookingDate,
+      formattedDate: formatDate(data.bookingDate),
+      slotList: data.slotList,
+      formattedSlots: formatSlotToTime(data.slotList),
+      data: data.data,
+    };
+    setMessages((prev) => [...prev, aiMsg]);
   };
 
   const handleMicClick = () => {
@@ -366,6 +492,10 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     };
     setFieldData(fieldData);
     setIsModalBookingOpen(true);
+  };
+
+  const handleProductClick = (productId: number) => {
+    router.push(`/sportShop/product/${productId}`);
   };
 
   return (
@@ -408,7 +538,57 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                     : "bg-white text-gray-800 rounded-bl-lg border border-gray-200"
                 }`}
               >
+                {msg.imagePreview && (
+                  <div className="mb-2 group relative">
+                    <img
+                      src={msg.imagePreview}
+                      alt="Uploaded"
+                      onClick={() =>
+                        setZoomedImageSrc(msg.imagePreview || null)
+                      }
+                      className="rounded-xl w-auto h-auto max-h-[200px] max-w-full sm:max-w-[240px] object-contain shadow-sm mx-auto cursor-zoom-in hover:opacity-90 transition-opacity mix-blend-mode-screen"
+                    />
+                    <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10 rounded-xl pointer-events-none"></div>
+                  </div>
+                )}
+
                 <div style={{ whiteSpace: "pre-line" }}>{msg.text}</div>
+
+                {msg.products && msg.products.length > 0 && (
+                  <div className="mt-3 flex flex-col gap-2 text-gray-800">
+                    {msg.products.map((prod) => (
+                      <div
+                        key={prod.id}
+                        onClick={() => handleProductClick(prod.id)}
+                        className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex gap-2 items-start cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+                      >
+                        <img
+                          src={prod.imageUrl}
+                          alt={prod.name}
+                          className="w-12 h-12 object-cover rounded bg-white"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-xs truncate text-blue-900">
+                            {prod.name}
+                          </p>
+                          <p className="text-xs text-red-500 font-semibold">
+                            {prod.price.toLocaleString()} đ
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {prod.brand}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => router.push("/sportShop")}
+                      className="w-full mt-1 text-xs text-blue-600 underline hover:text-blue-800 text-center"
+                    >
+                      Xem tất cả
+                    </button>
+                  </div>
+                )}
+
                 {msg.sender === "ai" && (
                   <>
                     {msg.formattedDate && (
@@ -447,7 +627,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               className="w-full flex justify-start"
             >
               <div className="max-w-[80%] p-3 rounded-2xl shadow-sm bg-white text-gray-800 rounded-bl-lg border border-gray-200">
-                {/* === THAY THẾ PHẦN NÀY === */}
                 <div className="flex gap-1.5">
                   <span
                     className="w-2 h-2 bg-gray-400 rounded-full animate-loadingDotsBounce"
@@ -464,45 +643,75 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           )}
         </div>
 
-        <form
-          onSubmit={handleFormSubmit}
-          className="p-3 border-t border-gray-200 bg-white flex items-center gap-2 flex-shrink-0"
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isListening}
-            placeholder={isListening ? "Đang nghe..." : "Nhập yêu cầu..."}
-            className="flex-1 p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-500 shadow-sm text-sm"
-            onKeyPress={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleFormSubmit(e);
-              }
-            }}
-          />
+        <div className="bg-white border-t border-gray-200">
+          {previewUrl && (
+            <div className="px-4 pt-3 pb-1 flex w-full relative">
+              <div className="relative inline-block group">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="h-16 w-16 object-contain rounded-lg border border-gray-300 shadow-sm bg-white mix-blend-multiply"
+                />
+                <button
+                  onClick={clearSelectedImage}
+                  className="absolute -top-2 -right-2 bg-gray-500 text-white rounded-full p-1 shadow-md hover:bg-red-500 transition-colors cursor-pointer"
+                >
+                  <FiX size={12} />
+                </button>
+              </div>
+            </div>
+          )}
 
-          {SpeechRecognition && (
+          <form
+            onSubmit={handleFormSubmit}
+            className="p-3 flex items-center gap-2"
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={handleImageClick}
+              className={`p-2 rounded-full transition-colors ${selectedFile ? "text-blue-600 bg-blue-50" : "text-gray-500 hover:text-blue-600 hover:bg-gray-100 cursor-pointer"}`}
+              title="Gửi ảnh"
+              disabled={isLoading}
+            >
+              <FiImage size={20} />
+            </button>
+
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                selectedFile ? "Thêm mô tả cho ảnh..." : "Nhập yêu cầu..."
+              }
+              className="flex-1 p-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={isLoading}
+            />
+
             <button
               type="button"
               onClick={handleMicClick}
-              title="Ghi âm"
-              className={`mic-button ${isListening ? "is-listening" : ""}`}
+              className={`p-2 rounded-full transition-colors ${isListening ? "text-red-500 bg-red-100" : "text-gray-500 hover:bg-gray-100"}`}
             >
-              <FiMic size={18} />
+              <FiMic size={20} />
             </button>
-          )}
 
-          <button
-            type="submit"
-            title="Gửi"
-            disabled={isLoading || !input}
-            className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition-colors hover:bg-blue-600 disabled:bg-gray-400"
-          >
-            <FiSend size={18} />
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={isLoading || (!input && !selectedFile)} // Disable nếu ko có text VÀ ko có ảnh
+              className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
+            >
+              <FiSend size={18} />
+            </button>
+          </form>
+        </div>
 
         {isModalBookingOpen && fieldData && fieldData.id && (
           <BookingModalAI

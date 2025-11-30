@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8080/api/ai/chat";
+const API_URL = "http://localhost:8080/api/ai";
 
 export interface ChatRequest {
   userInput: string;
@@ -13,6 +13,15 @@ export interface BookingQuery {
   pitchType: string;
   message: string;
   data: any;
+}
+
+export interface ProductDTO {
+  id: number;
+  name: string;
+  price: number;
+  imageUrl: string;
+  brand: string;
+  description: string;
 }
 
 export const postChatMessage = async (
@@ -32,5 +41,19 @@ export const postChatMessage = async (
   } catch (error) {
     console.error("Error calling AI chat API:", error);
     throw new Error("Failed to get response from assistant.");
+  }
+};
+
+export const postImageMessage = async (
+  base64Image: string
+): Promise<BookingQuery> => {
+  try {
+    const response = await axios.post<BookingQuery>(`${API_URL}/image`, {
+      image: base64Image,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error calling AI image API:", error);
+    throw new Error("Failed to analyze image.");
   }
 };
