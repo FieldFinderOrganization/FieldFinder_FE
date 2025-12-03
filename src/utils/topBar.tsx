@@ -32,6 +32,8 @@ import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
+import { FiPackage } from "react-icons/fi";
+import { IoCartOutline } from "react-icons/io5";
 
 interface TopBarProps {
   groupedCategories?: Record<string, string[]>;
@@ -122,6 +124,11 @@ const TopBar: React.FC<TopBarProps> = ({
     dispatch(setShowSidebar(false));
     router.push("/dashboard");
   };
+  const handleOrderHistory = () => {
+    handleMenuClose();
+    dispatch(setShowSidebar(false));
+    router.push("/orderHistory");
+  };
 
   return (
     <div className="flex flex-wrap items-center px-6 py-6 lg:px-10 lg:py-8 justify-between">
@@ -188,7 +195,6 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         </div>
 
-        {/* --- Product Menu --- */}
         {activeMenu === "product" && groupedCategories && (
           <div
             className={`absolute left-0 top-[6rem] w-full bg-white shadow-lg border-t border-gray-200 px-[8rem] py-8 flex justify-between gap-10 z-50 menu-content transition-all duration-300 ease-out ${
@@ -210,7 +216,6 @@ const TopBar: React.FC<TopBarProps> = ({
                     key={item}
                     variant="body2"
                     className="text-gray-700 hover:text-blue-600 cursor-pointer"
-                    // 🚨 Dùng handler mới
                     onClick={() => {
                       if (onProductClick) onProductClick(item);
                       setActiveMenu(null);
@@ -246,7 +251,6 @@ const TopBar: React.FC<TopBarProps> = ({
                     key={item}
                     variant="body2"
                     className="text-gray-700 hover:text-blue-600 cursor-pointer"
-                    // 🚨 Dùng handler mới (giả sử click brand cũng dùng logic này)
                     onClick={() => {
                       if (onBrandClick) onBrandClick(title, item);
                       setActiveMenu(null);
@@ -310,7 +314,7 @@ const TopBar: React.FC<TopBarProps> = ({
 
         {isAuthenticated ? (
           <div>
-            <Tooltip title="Tài khoản">
+            <Tooltip title="Account settings">
               <Button
                 id="user-menu-button"
                 aria-controls={open ? "user-menu" : undefined}
@@ -367,6 +371,12 @@ const TopBar: React.FC<TopBarProps> = ({
                     <PersonOutlineIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText>Thông tin cá nhân</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleOrderHistory}>
+                  <ListItemIcon>
+                    <IoCartOutline fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Lịch sử đặt hàng</ListItemText>
                 </MenuItem>
                 {user?.role === "PROVIDER" && (
                   <MenuItem onClick={handlePitchInfo}>

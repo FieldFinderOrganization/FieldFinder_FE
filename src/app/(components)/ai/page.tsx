@@ -520,126 +520,92 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
         <div
           ref={chatWindowRef}
-          className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto bg-gray-100 chat-window"
+          className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto bg-gray-50"
         >
           {messages.map((msg, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`w-full flex ${
-                msg.sender === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`w-full flex flex-col gap-2 ${msg.sender === "user" ? "items-end" : "items-start"}`}
             >
-              <div
-                className={`max-w-[80%] p-3 rounded-2xl shadow-sm text-sm ${
-                  msg.sender === "user"
-                    ? "bg-blue-600 text-white rounded-br-lg"
-                    : "bg-white text-gray-800 rounded-bl-lg border border-gray-200"
-                }`}
-              >
-                {msg.imagePreview && (
-                  <div className="mb-2 group relative">
-                    <img
-                      src={msg.imagePreview}
-                      alt="Uploaded"
-                      onClick={() =>
-                        setZoomedImageSrc(msg.imagePreview || null)
-                      }
-                      className="rounded-xl w-auto h-auto max-h-[200px] max-w-full sm:max-w-[240px] object-contain shadow-sm mx-auto cursor-zoom-in hover:opacity-90 transition-opacity mix-blend-mode-screen"
-                    />
-                    <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10 rounded-xl pointer-events-none"></div>
-                  </div>
-                )}
+              {msg.imagePreview && (
+                <div className="max-w-[85%] relative group">
+                  <img
+                    src={msg.imagePreview}
+                    alt="Uploaded"
+                    onClick={() => setZoomedImageSrc(msg.imagePreview || null)}
+                    className="rounded-2xl w-auto h-auto max-h-[300px] border-[3px] border-white shadow-md object-cover cursor-zoom-in transition-transform group-hover:scale-[1.02]"
+                  />
+                  <div className="absolute inset-0 rounded-2xl bg-black/0 transition-colors group-hover:bg-black/5 pointer-events-none"></div>
+                </div>
+              )}
 
-                <div style={{ whiteSpace: "pre-line" }}>{msg.text}</div>
+              {msg.text && (
+                <div
+                  className={`max-w-[85%] p-3 rounded-2xl shadow-sm text-sm ${
+                    msg.sender === "user"
+                      ? "bg-blue-600 text-white rounded-br-lg"
+                      : "bg-white text-gray-800 rounded-bl-lg border border-gray-200"
+                  }`}
+                >
+                  <div style={{ whiteSpace: "pre-line" }}>{msg.text}</div>
 
-                {msg.products && msg.products.length > 0 && (
-                  <div className="mt-3 flex flex-col gap-2 text-gray-800">
-                    {msg.products.map((prod) => (
-                      <div
-                        key={prod.id}
-                        onClick={() => handleProductClick(prod.id)}
-                        className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex gap-2 items-start cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
-                      >
-                        <img
-                          src={prod.imageUrl}
-                          alt={prod.name}
-                          className="w-12 h-12 object-cover rounded bg-white"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-xs truncate text-blue-900">
-                            {prod.name}
-                          </p>
-                          <p className="text-xs text-red-500 font-semibold">
-                            {prod.price.toLocaleString()} đ
-                          </p>
-                          <p className="text-[10px] text-gray-500 truncate">
-                            {prod.brand}
-                          </p>
+                  {msg.products && msg.products.length > 0 && (
+                    <div className="mt-3 flex flex-col gap-2 text-gray-800">
+                      {msg.products.map((prod) => (
+                        <div
+                          key={prod.id}
+                          onClick={() => handleProductClick(prod.id)}
+                          className="bg-gray-50 p-2 rounded-lg border border-gray-200 flex gap-2 items-start cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+                        >
+                          <img
+                            src={prod.imageUrl}
+                            alt={prod.name}
+                            className="w-12 h-12 object-cover rounded bg-white"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-xs truncate text-blue-900">
+                              {prod.name}
+                            </p>
+                            <p className="text-xs text-red-500 font-semibold">
+                              {prod.price.toLocaleString()} đ
+                            </p>
+                            <p className="text-[10px] text-gray-500 truncate">
+                              {prod.brand}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => router.push("/sportShop")}
-                      className="w-full mt-1 text-xs text-blue-600 underline hover:text-blue-800 text-center"
-                    >
-                      Xem tất cả
-                    </button>
-                  </div>
-                )}
-
-                {msg.sender === "ai" && (
-                  <>
-                    {msg.formattedDate && (
-                      <div className="mt-2 text-xs opacity-80">
-                        <strong>Ngày:</strong> {msg.formattedDate}
-                      </div>
-                    )}
-                    {msg.formattedSlots && (
-                      <div className="text-xs opacity-80">
-                        <strong>Khung giờ:</strong> {msg.formattedSlots}
-                      </div>
-                    )}
-                    {msg.formattedPitchType && msg.formattedDate && (
-                      <div className="text-xs opacity-80">
-                        <strong>Loại sân:</strong> {msg.formattedPitchType}
-                      </div>
-                    )}
-                    {msg.pitchId && msg.formattedDate && (
+                      ))}
                       <button
-                        className="mt-3 bg-green-500 text-white text-xs font-medium px-4 py-1.5 rounded-lg hover:bg-green-600 transition-colors"
-                        onClick={() => handleBookField(msg)}
+                        onClick={() => router.push("/sportShop/product")}
+                        className="w-full mt-1 text-xs text-blue-600 underline hover:text-blue-800 text-center cursor-pointer"
                       >
-                        Đặt sân
+                        Xem tất cả
                       </button>
+                    </div>
+                  )}
+
+                  {msg.sender === "ai" &&
+                    msg.slotList &&
+                    msg.slotList.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <button
+                          className="mt-2 bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600"
+                          onClick={() => handleBookField(msg)}
+                        >
+                          Đặt sân ngay
+                        </button>
+                      </div>
                     )}
-                  </>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           ))}
-
           {isLoading && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full flex justify-start"
-            >
-              <div className="max-w-[80%] p-3 rounded-2xl shadow-sm bg-white text-gray-800 rounded-bl-lg border border-gray-200">
-                <div className="flex gap-1.5">
-                  <span
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-loadingDotsBounce"
-                    style={{ animationDelay: "-0.32s" }}
-                  ></span>
-                  <span
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-loadingDotsBounce"
-                    style={{ animationDelay: "-0.16s" }}
-                  ></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-loadingDotsBounce"></span>
-                </div>
-              </div>
-            </motion.div>
+            <div className="text-xs text-gray-400 p-2 italic">
+              Đang suy nghĩ...
+            </div>
           )}
         </div>
 

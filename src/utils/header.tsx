@@ -252,7 +252,7 @@ const Header: React.FC = () => {
                     <ListItemIcon>
                       <IoCartOutline fontSize="small" />
                     </ListItemIcon>
-                    <ListItemText>Lịch sử mua hàng</ListItemText>
+                    <ListItemText>Lịch sử đặt hàng</ListItemText>
                   </MenuItem>
                   {user?.role === "PROVIDER" && (
                     <MenuItem onClick={handlePitchInfo}>

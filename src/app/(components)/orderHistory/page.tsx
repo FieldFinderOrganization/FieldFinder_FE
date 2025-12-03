@@ -108,7 +108,7 @@ const OrderHistoryPage = () => {
           <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-100">
             <FiPackage size={24} className="text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Lịch sử đơn hàng</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Lịch sử đặt hàng</h1>
         </div>
 
         {orders.length === 0 ? (

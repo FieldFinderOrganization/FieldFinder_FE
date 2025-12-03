@@ -34,9 +34,13 @@ export const postChatMessage = async (
   };
 
   try {
-    const response = await axios.post<BookingQuery>(API_URL, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await axios.post<BookingQuery>(
+      `${API_URL}/chat`,
+      payload,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Error calling AI chat API:", error);
