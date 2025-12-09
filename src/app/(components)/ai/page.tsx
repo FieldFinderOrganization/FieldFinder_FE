@@ -5,16 +5,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { IoMdClose } from "react-icons/io";
-import { FiMic, FiSend, FiImage, FiX } from "react-icons/fi";
+import { FiMic, FiSend, FiImage, FiX, FiShoppingBag } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "../../../styles/AIAssistantChat.css";
 import BookingModalAI from "@/utils/bookingModalAI";
+import { addItemToCart } from "@/services/cartItem";
+import ShopPaymentModal from "@/utils/shopPaymentModal";
 import {
   postChatMessage,
   postImageMessage,
   BookingQuery,
   ProductDTO,
 } from "@/services/ai";
+import { useCart } from "@/context/CartContext";
+import { useSelector } from "react-redux";
 
 interface ChatMessage {
   sender: "user" | "ai";
@@ -30,6 +34,12 @@ interface ChatMessage {
   formattedSlots?: string;
   formattedPitchType?: string;
   data?: any;
+
+  orderInfo?: {
+    product: ProductDTO;
+    size: string;
+    quantity: number;
+  };
 }
 interface FieldData {
   id: string;
@@ -52,11 +62,14 @@ const SpeechRecognition =
 
 const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   const router = useRouter();
+  const user = useSelector((state: any) => state.auth.user);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
 
   const [zoomedImageSrc, setZoomedImageSrc] = useState<string | null>(null);
+
+  const [aiCartId, setAiCartId] = useState<number | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -70,6 +83,10 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [isShopPaymentOpen, setIsShopPaymentOpen] = useState(false);
+
+  const { addToCart, clearCart } = useCart();
 
   const handleSubmitMessageRef = useRef(async (messageText: string) => {});
 
@@ -147,8 +164,14 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
-    const newSessionId = "session_" + Math.random().toString(36).substr(2, 9);
-    setSessionId(newSessionId);
+    const storedSession = localStorage.getItem("chat_session_id");
+    if (storedSession) {
+      setSessionId(storedSession);
+    } else {
+      const newId = "session_" + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("chat_session_id", newId); // Lưu vào storage để reload không mất
+      setSessionId(newId);
+    }
     setMessages([
       {
         sender: "ai",
@@ -162,75 +185,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
   }, [messages]);
-  //   async (messageText: string) => {
-  //     if (!messageText.trim()) return;
-  //     const newUserMessage: ChatMessage = { sender: "user", text: messageText };
-  //     setMessages((prev) => [...prev, newUserMessage]);
-  //     setIsLoading(true);
-  //     try {
-  //       const headers: Record<string, string> = {
-  //         "Content-Type": "text/plain",
-  //         Accept: "*/*",
-  //       };
-  //       if (sessionId) {
-  //         headers["X-Session-Id"] = sessionId;
-  //       }
-  //       const response = await axios.post(
-  //         "http://localhost:8080/api/bookings/ai-chat",
-  //         messageText,
-  //         { headers }
-  //       );
-  //       const data = response.data;
-  //       if (data.sessionId) {
-  //         setSessionId(data.sessionId);
-  //       }
-  //       if (Array.isArray(data)) {
-  //         const aiMessages: ChatMessage[] = data.map((item: any) => ({
-  //           sender: "ai",
-  //           text: `Sân: ${item.name || "Không xác định"}\nGiá: ${item.price || "0"} VNĐ\nMô tả: ${item.description || "Không có mô tả"}`,
-  //           pitchId: item.pitchId,
-  //           bookingDate: item.bookingDate,
-  //           slotList: item.slotList || [],
-  //           pitchType: item.pitchType,
-  //           formattedDate: formatDate(item.bookingDate),
-  //           formattedSlots: formatSlotToTime(item.slotList),
-  //           formattedPitchType: formatPitchType(item.pitchType),
-  //         }));
-  //         setMessages((prev) => [...prev, ...aiMessages]);
-  //       } else if (data.message) {
-  //         const aiMessage: ChatMessage = {
-  //           sender: "ai",
-  //           text:
-  //             data.message +
-  //             (data.data ? "\n" + formatDataToText(data.data) : ""),
-  //           data: data.data,
-  //           pitchType: data.pitchType || "ALL",
-  //           formattedPitchType: formatPitchType(data.pitchType || "ALL"),
-  //         };
-  //         setMessages((prev) => [...prev, aiMessage]);
-  //       } else {
-  //         const aiMessage: ChatMessage = {
-  //           sender: "ai",
-  //           text: "Phản hồi không hợp lệ từ AI.",
-  //           pitchType: "ALL",
-  //           formattedPitchType: formatPitchType("ALL"),
-  //         };
-  //         setMessages((prev) => [...prev, aiMessage]);
-  //       }
-  //     } catch (error: any) {
-  //       const errorMessage: ChatMessage = {
-  //         sender: "ai",
-  //         text: `Đã có lỗi xảy ra: ${error.message}`,
-  //         pitchType: "ALL",
-  //         formattedPitchType: formatPitchType("ALL"),
-  //       };
-  //       setMessages((prev) => [...prev, errorMessage]);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   },
-  //   [sessionId]
-  // );
 
   handleSubmitMessageRef.current = async (messageText: string) => {
     if (!messageText.trim()) return;
@@ -415,7 +369,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           },
         ]);
         clearSelectedImage();
-        const data = await postImageMessage(base64String);
+        const data = await postImageMessage(base64String, sessionId || "guest");
         processAIResponse(data);
       } else if (userText) {
         setMessages((prev) => [...prev, { sender: "user", text: userText }]);
@@ -457,6 +411,15 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       formattedSlots: formatSlotToTime(data.slotList),
       data: data.data,
     };
+
+    if (data.data?.action === "ready_to_order" && data.data.selectedSize) {
+      aiMsg.orderInfo = {
+        product: data.data.product,
+        size: data.data.selectedSize,
+        quantity: data.data.quantity || 1,
+      };
+    }
+
     setMessages((prev) => [...prev, aiMsg]);
   };
 
@@ -496,6 +459,36 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const handleProductClick = (productId: number) => {
     router.push(`/sportShop/product/${productId}`);
+  };
+
+  const handleBuyProduct = async (
+    product: ProductDTO,
+    size: string,
+    quantity: number
+  ) => {
+    if (!user || !user.userId) {
+      toast.warn("Vui lòng đăng nhập để mua hàng");
+      return;
+    }
+
+    try {
+      const res = await addItemToCart({
+        userId: user.userId,
+        productId: product.id,
+        quantity: quantity,
+        size: size,
+        cartId: null,
+      });
+
+      if (res && res.cartId) {
+        setAiCartId(res.cartId);
+
+        setIsShopPaymentOpen(true);
+      }
+    } catch (error) {
+      console.error("Lỗi tạo đơn hàng AI:", error);
+      toast.error("Không thể tạo đơn hàng ngay lúc này.");
+    }
   };
 
   return (
@@ -600,6 +593,34 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                     )}
                 </div>
               )}
+
+              {msg.orderInfo && (
+                <div className="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-2">
+                  <div className="bg-blue-50 p-2 rounded text-xs text-blue-800">
+                    <strong>Đơn hàng:</strong> {msg.orderInfo.product.name}{" "}
+                    <br />
+                    <strong>Size:</strong> {msg.orderInfo.size} <br />
+                    <strong>Số lượng:</strong> {msg.orderInfo.quantity} <br />
+                    <strong>Tổng tạm tính:</strong>{" "}
+                    {(
+                      msg.orderInfo.product.price * msg.orderInfo.quantity
+                    ).toLocaleString()}{" "}
+                    đ
+                  </div>
+                  <button
+                    className="w-full bg-red-500 text-white text-xs font-bold px-3 py-2 rounded hover:bg-red-600 shadow-sm transition-colors flex items-center justify-center gap-1"
+                    onClick={() =>
+                      handleBuyProduct(
+                        msg.orderInfo!.product,
+                        msg.orderInfo!.size,
+                        msg.orderInfo!.quantity
+                      )
+                    }
+                  >
+                    <FiShoppingBag /> Nhấn để thanh toán
+                  </button>
+                </div>
+              )}
             </motion.div>
           ))}
           {isLoading && (
@@ -684,6 +705,17 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
             open={isModalBookingOpen}
             onClose={handleClose}
             fieldData={fieldData}
+          />
+        )}
+
+        {isShopPaymentOpen && (
+          <ShopPaymentModal
+            open={isShopPaymentOpen}
+            onClose={() => {
+              setIsShopPaymentOpen(false);
+              setAiCartId(null);
+            }}
+            customCartId={aiCartId}
           />
         )}
       </motion.div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Button,
   Modal,
@@ -14,6 +14,7 @@ import { useSelector } from "react-redux";
 import { useCart } from "@/context/CartContext";
 import { toast } from "react-toastify";
 import { createShopPayment, ShopPaymentRequestDTO } from "@/services/payment";
+import { getItemsByCartId, cartItemRes } from "@/services/cartItem";
 
 interface GuestInfo {
   name: string;
@@ -26,19 +27,52 @@ interface ShopPaymentModalProps {
   open: boolean;
   onClose: () => void;
   guestInfo?: GuestInfo | null;
+  onPaymentSuccess?: () => void;
+  customCartId?: number | null;
 }
 
 const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
   open,
   onClose,
   guestInfo,
+  customCartId,
 }) => {
   const reduxUser = useSelector((state: any) => state.auth.user);
   const currentUser = guestInfo || reduxUser;
   const isGuest = !!guestInfo;
 
-  const { cartItems, getSubtotal } = useCart();
-  const totalAmount = getSubtotal();
+  const { cartItems: contextCartItems, getSubtotal, clearCart } = useCart();
+
+  const [customItems, setCustomItems] = useState<cartItemRes[]>([]);
+  const [loadingCustom, setLoadingCustom] = useState(false);
+
+  useEffect(() => {
+    if (open && customCartId) {
+      const fetchCustomCartItems = async () => {
+        setLoadingCustom(true);
+        try {
+          const items = await getItemsByCartId(customCartId);
+          setCustomItems(items || []);
+        } catch (error) {
+          console.error("Lỗi tải giỏ hàng AI:", error);
+          toast.error("Không thể tải thông tin đơn hàng");
+        } finally {
+          setLoadingCustom(false);
+        }
+      };
+
+      fetchCustomCartItems();
+    } else {
+      setCustomItems([]);
+    }
+  }, [open, customCartId]);
+
+  const finalCartItems = customCartId ? customItems : contextCartItems;
+
+  const totalAmount = finalCartItems.reduce(
+    (total, item) => total + item.priceAtTime * item.quantity,
+    0
+  );
 
   const [paymentMethod, setPaymentMethod] = useState<"BANK" | "CASH">("BANK");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -49,8 +83,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
       return;
     }
 
-    if (cartItems.length === 0) {
-      toast.warn("Giỏ hàng của bạn đang trống");
+    if (finalCartItems.length === 0) {
+      toast.warn("Danh sách sản phẩm trống");
       return;
     }
 
@@ -58,14 +92,12 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     try {
       const payload: ShopPaymentRequestDTO = {
         userId: isGuest ? "GUEST" : currentUser.userId,
-
         amount: totalAmount,
         description: `Thanh toan don hang ${currentUser.name || "Guest"}`,
         paymentMethod: paymentMethod,
-        items: cartItems.map((item) => ({
+        items: finalCartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          // size: "Freesize",
           size: item.size,
         })),
       };
@@ -76,9 +108,11 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         window.location.href = paymentRes.checkoutUrl;
       } else if (paymentMethod === "CASH") {
         toast.success("Đặt hàng thành công!");
+
+        if (!customCartId) {
+          await clearCart();
+        }
         onClose();
-      } else {
-        toast.error("Không nhận được link thanh toán");
       }
     } catch (error: any) {
       console.error("Payment failed", error);
@@ -158,56 +192,61 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
             </div>
 
             <div>
-              <Typography
-                variant="subtitle1"
-                fontWeight={700}
-                mb={2}
-                className="text-gray-800"
-              >
-                📦 Sản phẩm ({cartItems.length})
+              <Typography variant="subtitle1" fontWeight={700} mb={2}>
+                📦 Sản phẩm ({finalCartItems.length})
               </Typography>
-              <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 items-start p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <img
-                      src={item.imageUrl || "/placeholder.png"}
-                      alt={item.productName}
-                      className="w-16 h-16 object-cover rounded-md border border-gray-200 bg-white"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-gray-900 line-clamp-2 mb-1">
-                        {item.productName}
-                      </p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
-                          Size: {item.size}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          x{item.quantity}
-                        </span>
+
+              {loadingCustom ? (
+                <div className="text-center py-4 text-gray-500">
+                  Đang tải thông tin sản phẩm...
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                  {finalCartItems.map((item) => (
+                    <div
+                      key={item.id || item.productId}
+                      className="flex gap-4 items-start p-3 border border-gray-100 rounded-lg"
+                    >
+                      <img
+                        src={item.imageUrl || "/placeholder.png"}
+                        alt={item.productName}
+                        className="w-16 h-16 object-cover rounded-md border"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold line-clamp-2">
+                          {item.productName}
+                        </p>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                            Size: {item.size}
+                          </span>
+                          <span className="text-xs">x{item.quantity}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">
+                          {new Intl.NumberFormat("vi-VN").format(
+                            item.priceAtTime
+                          )}{" "}
+                          ₫
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Tổng:{" "}
+                          {new Intl.NumberFormat("vi-VN").format(
+                            item.priceAtTime * item.quantity
+                          )}{" "}
+                          ₫
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">
-                        {new Intl.NumberFormat("vi-VN").format(
-                          item.priceAtTime / item.quantity
-                        )}{" "}
-                        ₫
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Tổng:{" "}
-                        {new Intl.NumberFormat("vi-VN").format(
-                          item.priceAtTime
-                        )}{" "}
-                        ₫
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {finalCartItems.length === 0 && !loadingCustom && (
+                    <p className="text-center text-red-500 text-sm">
+                      Không tìm thấy sản phẩm trong giỏ hàng này.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

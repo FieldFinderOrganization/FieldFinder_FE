@@ -100,7 +100,7 @@ const BookingModalAI: React.FC<BookingModalProps> = ({
       });
     } catch (error) {
       console.error("Error parsing time slots:", error);
-      return []; // Return empty array on error
+      return [];
     }
   };
 

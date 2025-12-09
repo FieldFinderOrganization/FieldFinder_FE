@@ -49,15 +49,16 @@ export const postChatMessage = async (
 };
 
 export const postImageMessage = async (
-  base64Image: string
+  base64Image: string,
+  sessionId: string
 ): Promise<BookingQuery> => {
   try {
     const response = await axios.post<BookingQuery>(`${API_URL}/image`, {
       image: base64Image,
+      sessionId: sessionId,
     });
     return response.data;
   } catch (error) {
-    console.error("Error calling AI image API:", error);
     throw new Error("Failed to analyze image.");
   }
 };

@@ -10,7 +10,7 @@ import React, {
 import { productRes } from "@/services/product";
 import { toast } from "react-toastify";
 
-import { getCartByUserId, createCart } from "@/services/cart";
+import { getCartByUserId, createCart, deleteCart } from "@/services/cart";
 import {
   getItemsByCartId,
   addItemToCart,
@@ -27,11 +27,16 @@ interface CartContextType {
   cartItems: cartItemRes[];
   cartId: number | null;
   loadingCart: boolean;
-  addToCart: (product: productRes, size: string) => Promise<void>;
+  addToCart: (
+    product: productRes,
+    size: string,
+    quantity?: number
+  ) => Promise<void>;
   removeFromCart: (cartItemId: number) => Promise<void>;
   updateQuantity: (cartItemId: number, newQuantity: number) => Promise<void>;
   getCartCount: () => number;
   getSubtotal: () => number;
+  clearCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -43,14 +48,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const { user } = useSelector((state: RootState) => state.auth);
   const userId = user?.userId;
-  console.log("User Info:", user);
 
-  // 🔹 Hàm tìm hoặc tạo giỏ hàng
   const findOrCreateCart = useCallback(async (currentUserId: string) => {
     if (!currentUserId) return;
     setLoadingCart(true);
     try {
       const existingCarts = await getCartByUserId(currentUserId);
+
       if (existingCarts && existingCarts.length > 0) {
         setCartId(existingCarts[0].cartId);
       } else {
@@ -58,14 +62,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setCartId(newCart.cartId);
       }
     } catch (error) {
-      console.error("Failed to find or create cart:", error);
-      toast.error("Không thể khởi tạo giỏ hàng.");
+      // console.error("Failed to find or create cart:", error);
     } finally {
       setLoadingCart(false);
     }
   }, []);
 
-  // 🔹 Hàm load các items trong giỏ
   const loadCartItems = useCallback(async (currentCartId: number) => {
     try {
       const items = await getItemsByCartId(currentCartId);
@@ -93,13 +95,18 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [cartId, loadCartItems]);
 
-  const addToCart = async (product: productRes, size: string) => {
+  const addToCart = async (
+    product: productRes,
+    size: string,
+    quantity: number = 1
+  ) => {
     if (!userId) {
       toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
       return;
     }
 
     let currentCartId = cartId;
+
     if (!currentCartId) {
       setLoadingCart(true);
       try {
@@ -107,8 +114,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setCartId(newCart.cartId);
         currentCartId = newCart.cartId;
       } catch (err) {
-        console.error("Failed to create cart before adding item:", err);
-        toast.error("Không thể tạo giỏ hàng. Vui lòng thử lại.");
+        console.error("Failed to create cart:", err);
+        toast.error("Lỗi kết nối giỏ hàng.");
         setLoadingCart(false);
         return;
       } finally {
@@ -116,29 +123,23 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    if (!currentCartId) {
-      toast.error("Giỏ hàng chưa sẵn sàng. Vui lòng thử lại.");
-      return;
-    }
-
     const payload: cartItemReq = {
-      cartId: currentCartId,
+      cartId: currentCartId!,
+      userId: userId,
       productId: product.id,
-      quantity: 1,
+      quantity: quantity,
       size: size,
     };
 
     try {
       await addItemToCart(payload);
-      toast.success("Đã thêm vào giỏ hàng!");
-      await loadCartItems(currentCartId);
+      toast.success(`Đã thêm vào giỏ hàng!`);
+      await loadCartItems(currentCartId!);
     } catch (error: any) {
       console.error("Failed to add item:", error);
-      if (error?.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error("Thêm vào giỏ hàng thất bại.");
-      }
+      const msg =
+        error?.response?.data?.message || "Thêm vào giỏ hàng thất bại.";
+      toast.error(msg);
     }
   };
 
@@ -146,11 +147,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     if (!cartId) return;
     try {
       await deleteCartItem(cartItemId);
-      toast.info("Đã xóa sản phẩm khỏi giỏ hàng.");
       await loadCartItems(cartId);
+      toast.info("Đã xóa sản phẩm.");
     } catch (error) {
       console.error("Failed to remove item:", error);
-      toast.error("Không thể xóa sản phẩm.");
+      toast.error("Lỗi khi xóa sản phẩm.");
     }
   };
 
@@ -165,14 +166,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await updateCartItem(cartItemId, newQuantity);
       await loadCartItems(cartId);
-      toast.success("Cập nhật số lượng thành công!");
     } catch (error: any) {
-      console.error("Failed to update quantity:", error);
-      if (error?.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error("Không thể cập nhật số lượng.");
-      }
+      console.error("Update quantity failed:", error);
+      toast.error(error?.response?.data?.message || "Lỗi cập nhật số lượng");
     }
   };
 
@@ -187,6 +183,20 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
+  const clearCart = useCallback(async () => {
+    if (!cartId) return;
+    try {
+      setCartItems([]);
+
+      setCartId(null);
+      if (userId) {
+        await findOrCreateCart(userId);
+      }
+    } catch (error) {
+      console.error("Failed to clear cart context:", error);
+    }
+  }, [cartId, userId, findOrCreateCart]);
+
   const value = {
     cartItems,
     cartId,
@@ -196,6 +206,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     updateQuantity,
     getCartCount,
     getSubtotal,
+    clearCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

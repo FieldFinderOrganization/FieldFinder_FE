@@ -5,19 +5,17 @@ import { IoIosArrowDown, IoIosArrowUp } from "react-icons/io";
 interface FilterSectionProps {
   title: string;
   options: string[];
-  selectedOptions: string[]; // 👈 THÊM: Nhận state từ Cha
-  onToggleOption: (option: string) => void; // 👈 THÊM: Nhận hàm xử lý từ Cha
+  selectedOptions: string[];
+  onToggleOption: (option: string) => void;
 }
 
 const FilterSection: React.FC<FilterSectionProps> = ({
   title,
   options,
-  selectedOptions, // 👈 THÊM
-  onToggleOption, // 👈 THÊM
+  selectedOptions,
+  onToggleOption,
 }) => {
   const [open, setOpen] = useState(false);
-  // ⛔ XOÁ: const [selected, setSelected] = useState<string[]>([]);
-  // ⛔ XOÁ: const toggleOption = ...
 
   return (
     <div className="border-b border-gray-300 py-3">
@@ -33,7 +31,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
       {/* Options */}
       <div
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? "max-h-60 mt-2 overflow-y-auto" : "max-h-0" // Tăng max-h, thêm overflow-y
+          open ? "max-h-60 mt-2 overflow-y-auto" : "max-h-0"
         }`}
       >
         {options.map((option) => (
@@ -43,7 +41,6 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           >
             <input
               type="checkbox"
-              // 👈 SỬA: Dùng state và hàm từ props
               checked={selectedOptions.includes(option)}
               onChange={() => onToggleOption(option)}
               className="cursor-pointer accent-blue-600"

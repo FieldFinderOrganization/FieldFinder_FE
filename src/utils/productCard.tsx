@@ -12,7 +12,6 @@ interface ProductCardProps {
   product: productRes;
 }
 
-// Định nghĩa variants (kịch bản animation)
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {

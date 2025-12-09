@@ -11,14 +11,11 @@ import {
   Button,
   Typography,
 } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import dayjs, { Dayjs } from "dayjs";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import GroupIcon from "@mui/icons-material/Group";
 import { FaSearch } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { getAllAddresses } from "@/services/provider";
@@ -107,7 +104,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
       return;
     }
 
-    // Kiểm tra giờ bắt đầu có trong quá khứ không
     if (date.isSame(now, "day") && isPastTime(date, startTime)) {
       alert(
         "Cannot book a time in the past. Please choose a valid start time!"
@@ -115,7 +111,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ inView }) => {
       return;
     }
 
-    // Tính toán các slot
     const slots = calculateSlots();
 
     if (slots.length === 0) {

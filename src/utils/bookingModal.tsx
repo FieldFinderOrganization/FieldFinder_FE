@@ -115,11 +115,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
   const total = temporaryTotal - discountAmount;
 
   const handlePayment = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    // 1. Chặn hành vi submit form hoặc lan truyền sự kiện (quan trọng)
     e.preventDefault();
     e.stopPropagation();
-
-    console.log("🚀 BẮT ĐẦU handlePayment");
 
     try {
       if (bookingDetails.length === 0) {
@@ -139,14 +136,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
         totalPrice: total,
       };
 
-      console.log("📦 Đang gọi createBooking...");
       const bookingResponse = await createBooking(payload);
 
-      // IN RA RESPONSE THỰC TẾ
-      console.log("✅ Booking Created Response:", bookingResponse);
-
-      // Lấy ID an toàn (bao gồm cả trường hợp nó nằm trong .data hoặc tên khác)
-      // Ép kiểu any để tránh TS check tạm thời lúc debug
       const resAny = bookingResponse as any;
       const safeId =
         resAny.bookingId ||
@@ -154,7 +145,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
         resAny.booking_id ||
         (resAny.data && resAny.data.bookingId);
 
-      console.log("🔑 ID Sẽ dùng để thanh toán:", safeId);
+      // console.log("🔑 ID Sẽ dùng để thanh toán:", safeId);
 
       if (!safeId) {
         toast.error("LỖI: Server trả về thành công nhưng không có Booking ID!");
@@ -165,7 +156,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
       }
 
       if (paymentMethod === "BANK") {
-        console.log("🏦 Đang xử lý thanh toán BANK...");
+        // console.log("🏦 Đang xử lý thanh toán BANK...");
 
         const paymentPayload: PaymentRequestDTO = {
           bookingId: safeId,
@@ -174,22 +165,22 @@ const BookingModal: React.FC<BookingModalProps> = ({
           paymentMethod: "BANK",
         };
 
-        console.log("📦 Payload gửi đi Payment:", paymentPayload);
+        // console.log("📦 Payload gửi đi Payment:", paymentPayload);
 
         // Gọi API Payment
         const paymentResponse = await createPayment(paymentPayload);
-        console.log("✅ Payment Created Response:", paymentResponse);
+        // console.log("✅ Payment Created Response:", paymentResponse);
 
         setPaymentData(paymentResponse);
 
         // Mở Modal
-        console.log("🔓 Mở Modal Payment ngay bây giờ!");
+        // console.log("🔓 Mở Modal Payment ngay bây giờ!");
         setIsPaymentModalOpen(true);
 
         // Lưu ý: KHÔNG reset, KHÔNG đóng modal cha ở đây
       } else {
         // CASH
-        console.log("💵 Thanh toán tiền mặt");
+        // console.log("💵 Thanh toán tiền mặt");
         toast.success("Đặt sân thành công!");
         onClose();
         resetSelectedSlots();
@@ -445,11 +436,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
       <PaymentModal
         open={isPaymentModalOpen}
         onClose={() => {
-          // Khi tắt bảng QR Code thì mới thực hiện dọn dẹp
-          setIsPaymentModalOpen(false); // Tắt modal thanh toán
-          onClose(); // Tắt luôn modal đặt sân (BookingModalAI)
-          resetSelectedSlots(); // Reset ô đã chọn
-          onBookingSuccess(); // Báo cho cha biết để load lại lịch
+          setIsPaymentModalOpen(false);
+          onClose();
+          resetSelectedSlots();
+          onBookingSuccess();
         }}
         paymentData={paymentData}
         fieldData={fieldData}

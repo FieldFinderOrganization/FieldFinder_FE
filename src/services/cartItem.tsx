@@ -3,7 +3,8 @@ import axios from "axios";
 const base_url: string = "http://localhost:8080/api/cart-items";
 
 export interface cartItemReq {
-  cartId: number;
+  cartId: number | null;
+  userId: string | undefined;
   productId: number;
   quantity: number;
   size: string;
