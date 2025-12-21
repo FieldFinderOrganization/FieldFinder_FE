@@ -25,7 +25,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const formattedPrice = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
-  }).format(product.price);
+  }).format(product.salePrice ?? product.price);
 
   const { toggleFavourite, isFavourited } = useFavourite();
   const isFav = isFavourited(product.id);

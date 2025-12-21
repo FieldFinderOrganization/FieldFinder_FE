@@ -19,6 +19,7 @@ export interface ProductDTO {
   id: number;
   name: string;
   price: number;
+  salePrice: number;
   imageUrl: string;
   brand: string;
   description: string;

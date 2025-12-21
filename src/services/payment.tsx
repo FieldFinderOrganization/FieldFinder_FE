@@ -26,6 +26,7 @@ export interface paymentRes {
   checkoutUrl: string;
   amount: string;
   status: string;
+  paymentMethod: string;
 }
 
 export const createPayment = async (payload: PaymentRequestDTO) => {

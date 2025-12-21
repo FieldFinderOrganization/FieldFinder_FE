@@ -575,7 +575,7 @@ const Profile: React.FC = () => {
         phone: editedUser.phone,
       })
     );
-    toast.success("Thay đổi thông tin thành công");
+    toast.success("Change information successfully!");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -902,9 +902,7 @@ const Profile: React.FC = () => {
                         className="flex items-center justify-center border-1 border-gray-600 rounded-lg px-4 py-2 cursor-pointer gap-x-[0.5rem] hover:bg-gray-200"
                         onClick={handleEdit}
                       >
-                        <Typography className="text-[1.2rem]">
-                          Chỉnh sửa
-                        </Typography>
+                        <Typography className="text-[1.2rem]">Edit</Typography>
                         <BorderColorIcon fontSize="small" />
                       </div>
                     ) : (
@@ -918,7 +916,7 @@ const Profile: React.FC = () => {
                           }}
                           onClick={handleSave}
                         >
-                          Đồng ý
+                          Save
                         </Button>
                         <Button
                           variant="outlined"
@@ -929,7 +927,7 @@ const Profile: React.FC = () => {
                           }}
                           onClick={handleCancel}
                         >
-                          Hủy bỏ
+                          Cancel
                         </Button>
                       </div>
                     )}

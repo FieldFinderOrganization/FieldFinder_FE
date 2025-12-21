@@ -169,11 +169,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleFacebookLogin = async () => {
-    const provider = new FacebookAuthProvider();
-    signInWithRedirect(auth, provider);
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, x: -50 }}
@@ -241,6 +236,7 @@ const Login: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              name="Login"
               className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-red-700 disabled:bg-gray-400"
             >
               {" "}
@@ -287,7 +283,7 @@ const Login: React.FC = () => {
         }}
         onSuccess={(token) => {
           localStorage.setItem("token", token);
-          toast.success("Đăng nhập thành công!");
+          toast.success("Login successful!");
         }}
       />
 

@@ -86,6 +86,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const [isShopPaymentOpen, setIsShopPaymentOpen] = useState(false);
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const { addToCart, clearCart } = useCart();
 
   const handleSubmitMessageRef = useRef(async (messageText: string) => {});
@@ -115,11 +117,17 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     return timeRanges.join(", ");
   };
   const formatDate = (dateStr: string | null | undefined): string => {
-    if (!dateStr || typeof dateStr !== "string") return "";
-    const parts = dateStr.split("-");
-    if (parts.length !== 3) return "";
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      return new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(date);
+    } catch (e) {
+      return dateStr;
+    }
   };
   const formatPitchType = (pitchType: string | undefined): string => {
     if (!pitchType) return "Không xác định";
@@ -164,14 +172,15 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
-    const storedSession = localStorage.getItem("chat_session_id");
-    if (storedSession) {
-      setSessionId(storedSession);
-    } else {
-      const newId = "session_" + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem("chat_session_id", newId); // Lưu vào storage để reload không mất
-      setSessionId(newId);
+    let currentSession = localStorage.getItem("chat_session_id");
+
+    if (!currentSession) {
+      currentSession = "session_" + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("chat_session_id", currentSession);
     }
+
+    setSessionId(currentSession);
+
     setMessages([
       {
         sender: "ai",
@@ -184,6 +193,10 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
     }
+  }, [messages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   handleSubmitMessageRef.current = async (messageText: string) => {
@@ -501,7 +514,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
         className="fixed bottom-6 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
       >
         <div className="flex justify-between items-center p-3 bg-[#0d6efd] text-white flex-shrink-0">
-          <h3 className="font-bold text-lg">Trợ lý đặt sân</h3>
+          <h3 className="font-bold text-lg">Trợ lý ảo</h3>
           <button
             onClick={onClose}
             title="Đóng"
@@ -544,6 +557,21 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                 >
                   <div style={{ whiteSpace: "pre-line" }}>{msg.text}</div>
 
+                  {msg.sender === "ai" &&
+                    msg.data?.showImage === true &&
+                    msg.data?.product?.imageUrl && (
+                      <div className="mt-3">
+                        <img
+                          src={msg.data.product.imageUrl}
+                          alt={msg.data.product.name}
+                          onClick={() =>
+                            setZoomedImageSrc(msg.data.product.imageUrl)
+                          }
+                          className="rounded-lg w-full max-w-[250px] h-auto object-cover border border-gray-200 cursor-zoom-in hover:opacity-95 transition-opacity bg-white"
+                        />
+                      </div>
+                    )}
+
                   {msg.products && msg.products.length > 0 && (
                     <div className="mt-3 flex flex-col gap-2 text-gray-800">
                       {msg.products.map((prod) => (
@@ -562,7 +590,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                               {prod.name}
                             </p>
                             <p className="text-xs text-red-500 font-semibold">
-                              {prod.price.toLocaleString()} đ
+                              {prod.salePrice.toLocaleString("vi-VN", {
+                                style: "currency",
+                                currency: "VND",
+                              })}{" "}
+                              VND
                             </p>
                             <p className="text-[10px] text-gray-500 truncate">
                               {prod.brand}
@@ -603,7 +635,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                     <strong>Số lượng:</strong> {msg.orderInfo.quantity} <br />
                     <strong>Tổng tạm tính:</strong>{" "}
                     {(
-                      msg.orderInfo.product.price * msg.orderInfo.quantity
+                      msg.orderInfo.product.salePrice * msg.orderInfo.quantity
                     ).toLocaleString()}{" "}
                     đ
                   </div>
@@ -628,6 +660,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               Đang suy nghĩ...
             </div>
           )}
+
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="bg-white border-t border-gray-200">
@@ -674,6 +708,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
             <input
               type="text"
               value={input}
+              autoComplete="off"
               onChange={(e) => setInput(e.target.value)}
               placeholder={
                 selectedFile ? "Thêm mô tả cho ảnh..." : "Nhập yêu cầu..."
@@ -692,7 +727,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
             <button
               type="submit"
-              disabled={isLoading || (!input && !selectedFile)} // Disable nếu ko có text VÀ ko có ảnh
+              disabled={isLoading || (!input && !selectedFile)}
               className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
             >
               <FiSend size={18} />
@@ -719,6 +754,31 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           />
         )}
       </motion.div>
+
+      {zoomedImageSrc && (
+        <motion.div
+          key="zoom-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setZoomedImageSrc(null)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <img
+              src={zoomedImageSrc}
+              alt="Zoomed"
+              className="w-full h-full object-contain rounded-lg shadow-2xl"
+            />
+            <button
+              onClick={() => setZoomedImageSrc(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <IoMdClose size={32} />
+            </button>
+          </div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

@@ -2,7 +2,6 @@ import axios from "axios";
 
 const base_url: string = "http://localhost:8080/api/products";
 
-// Request DTO (Dữ liệu gửi đi)
 export interface productReq {
   categoryId: number;
   name: string;
@@ -14,19 +13,18 @@ export interface productReq {
   variants?: { size: string; quantity: number }[];
 }
 
-// 👈 THÊM: Interface cho Variant
 export interface ProductVariant {
   size: string;
   quantity: number;
 }
 
-// Response DTO (Dữ liệu nhận về)
 export interface productRes {
   id: number;
   name: string;
   description: string;
   categoryName: string;
   price: number;
+  salePrice?: number;
   stockQuantity: number;
   imageUrl: string;
   brand: string;

@@ -29,10 +29,7 @@ import { Options } from "selenium-webdriver/chrome.js";
 
     await emailInput.sendKeys("testuser@gmail.com");
 
-    // THAY ĐỔI Ở ĐÂY: Thêm Key.RETURN để nhấn Enter ngay sau khi nhập pass
     await passwordInput.sendKeys("123456", Key.RETURN);
-
-    // Không cần tìm nút và click nữa
 
     let toastMessage = await driver.wait(
       until.elementLocated(By.css(".Toastify__toast-body, .Toastify__toast")),
