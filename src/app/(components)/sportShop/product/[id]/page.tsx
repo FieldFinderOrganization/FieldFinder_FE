@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -131,7 +133,7 @@ const ProductDetailPage = () => {
     arrows: false,
   };
   const formattedPrice = product
-    ? new Intl.NumberFormat("vi-VN").format(product.price)
+    ? new Intl.NumberFormat("vi-VN").format(product.salePrice || product.price)
     : "";
 
   if (loading) {
@@ -256,7 +258,7 @@ const ProductDetailPage = () => {
                   href="#"
                   className="text-sm text-gray-500 mt-2 block underline"
                 >
-                  Can't find your size? Click here
+                  Can&apos;t find your size? Click here
                 </a>
               )}
             </div>

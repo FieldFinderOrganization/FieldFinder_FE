@@ -25,6 +25,7 @@ export interface productRes {
   categoryName: string;
   price: number;
   salePrice?: number;
+  onSalePercent?: number;
   stockQuantity: number;
   imageUrl: string;
   brand: string;

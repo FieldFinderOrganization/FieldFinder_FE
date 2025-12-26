@@ -1,8 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { Box, Button, Tab, Tabs, Typography } from "@mui/material";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Swiper as SwiperType } from "swiper";
+import { Navigation } from "swiper/modules";
+
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import { Button, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Divider from "@mui/material/Divider";
 import { CiStar } from "react-icons/ci";
@@ -15,12 +26,16 @@ import CardContent from "@mui/material/CardContent";
 import { GiSoccerField } from "react-icons/gi";
 import SearchBar from "@/utils/searchBar";
 import {} from "@mui/material";
-import Carousel from "react-multi-carousel";
+import { toast } from "react-toastify";
 import "react-multi-carousel/lib/styles.css";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
+import {
+  discountRes,
+  getAllDiscounts,
+  saveDiscountToWallet,
+} from "@/services/discount";
 import Header from "@/utils/header";
-import ChatOutlinedIcon from "@mui/icons-material/ChatOutlined";
-import AIChat from "../ai/page";
+import { useSelector } from "react-redux";
 
 interface Field {
   image: string;
@@ -36,7 +51,13 @@ interface CardData {
   backContent: string;
 }
 
+interface DisplayDiscount extends discountRes {
+  displayImage: string;
+  displayText: string;
+}
+
 const Home: React.FC = () => {
+  const userId = useSelector((state: any) => state.auth.user?.userId);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentImage, setCurrentImage] = useState<number>(0);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -44,7 +65,6 @@ const Home: React.FC = () => {
   const reviewsPerPage = 8;
   const startIndex = currentPage * reviewsPerPage;
   const endIndex = startIndex + reviewsPerPage;
-  const [showChat, setShowChat] = useState(false);
   const [searchBarRef, searchBarInView] = useInView({
     triggerOnce: true,
     threshold: 0.3,
@@ -63,6 +83,18 @@ const Home: React.FC = () => {
     triggerOnce: true,
     threshold: 0.1,
   });
+
+  const [realDiscounts, setRealDiscounts] = useState<DisplayDiscount[]>([]);
+  const [discountSwiper, setDiscountSwiper] = useState<SwiperType | null>(null);
+
+  const fallbackImages = [
+    "/images/sale1.jpg",
+    "/images/sale2.jpg",
+    "/images/sale3.jpg",
+    "/images/sale4.jpg",
+    "/images/sale5.jpg",
+    "/images/sale6.jpg",
+  ];
 
   const reviewsData = [
     {
@@ -213,7 +245,6 @@ const Home: React.FC = () => {
       setCurrentPage(currentPage + 1);
     }
   };
-  const router = useRouter();
 
   const initialImages = [
     { src: "/images/lc1.jpg", text: "Quận 1" },
@@ -236,6 +267,55 @@ const Home: React.FC = () => {
   const [sections, setSections] = useState(initialState);
   const [history, setHistory] = useState([initialState]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getAllDiscounts();
+        const now = new Date();
+        const activeDiscounts = data.filter((d) => {
+          const endDate = new Date(d.endDate);
+          if (d.endDate.length <= 10) {
+            endDate.setHours(23, 59, 59, 999);
+          }
+
+          return d.status === "ACTIVE" && endDate >= now;
+        });
+
+        const mappedData: DisplayDiscount[] = activeDiscounts.map(
+          (d, index) => ({
+            ...d,
+            displayImage: fallbackImages[index % fallbackImages.length],
+            displayText: d.description || `Mã giảm giá ${d.code}`,
+          })
+        );
+
+        setRealDiscounts(mappedData);
+      } catch (error) {
+        console.error("Failed to fetch discounts:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const discountSlides = [];
+  for (let i = 0; i < realDiscounts.length; i += 3) {
+    discountSlides.push(realDiscounts.slice(i, i + 3));
+  }
+  const handleSaveDiscount = async (code: string) => {
+    if (!userId) {
+      alert("Vui lòng đăng nhập để lưu mã!");
+      return;
+    }
+
+    try {
+      await saveDiscountToWallet(userId, { discountCode: code });
+      toast.success("Lưu mã thành công!");
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Lỗi khi lưu mã";
+      toast.success("Đã xảy ra lỗi trong quá trình lưu mã!");
+    }
+  };
 
   const fields: Field[] = [
     {
@@ -402,7 +482,7 @@ const Home: React.FC = () => {
     );
   }
 
-  const getIndex = (image: { src: any; text?: string }) =>
+  const getIndex = (image: { src: unknown; text?: string }) =>
     initialImages.findIndex((img) => img.src === image.src);
 
   const handlePrev = () => {
@@ -472,28 +552,16 @@ const Home: React.FC = () => {
     setHistoryIndex(historyIndex + 1);
   };
 
-  const responsive = {
-    desktop: {
-      breakpoint: { max: 3000, min: 1024 },
-      items: 1,
-    },
-    tablet: {
-      breakpoint: { max: 1024, min: 464 },
-      items: 1,
-    },
-    mobile: {
-      breakpoint: { max: 464, min: 0 },
-      items: 1,
-    },
-  };
-
-  const CustomLeftArrow = ({ onClick }: { onClick?: () => void }) => (
+  const SwiperPrevBtn = ({
+    className,
+    handlePrev,
+  }: {
+    className?: string;
+    handlePrev?: () => void;
+  }) => (
     <button
-      onClick={() => {
-        handlePrev();
-        if (onClick) onClick();
-      }}
-      className="absolute left-[-1rem] top-1/2 transform -translate-y-1/2 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer"
+      className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer shadow-md hover:bg-gray-200 transition-all ${className}`}
+      onClick={handlePrev}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -512,13 +580,16 @@ const Home: React.FC = () => {
     </button>
   );
 
-  const CustomRightArrow = ({ onClick }: { onClick?: () => void }) => (
+  const SwiperNextBtn = ({
+    className,
+    handleNext,
+  }: {
+    className?: string;
+    handleNext?: () => void;
+  }) => (
     <button
-      onClick={() => {
-        handleNext();
-        if (onClick) onClick();
-      }}
-      className="absolute right-[-1rem] top-1/2 transform -translate-y-1/2 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer"
+      className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer shadow-md hover:bg-gray-200 transition-all ${className}`}
+      onClick={handleNext}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -541,50 +612,6 @@ const Home: React.FC = () => {
     setImagesLoaded((prev) => prev + 1);
   };
 
-  const CustomLeftArrowDis = ({ onClick }: { onClick?: () => void }) => (
-    <button
-      onClick={onClick}
-      className="absolute left-[-1rem] top-1/2 transform -translate-y-1/2 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 text-black"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15 19l-7-7 7-7"
-        />
-      </svg>
-    </button>
-  );
-
-  const CustomRightArrowDis = ({ onClick }: { onClick?: () => void }) => (
-    <button
-      onClick={onClick}
-      className="absolute right-[-1rem] top-1/2 transform -translate-y-1/2 flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full cursor-pointer"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 text-black"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 5l7 7-7 7"
-        />
-      </svg>
-    </button>
-  );
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -593,15 +620,15 @@ const Home: React.FC = () => {
       className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px] relative"
     >
       <Header />
-      <div className="best-locations flex items-center justify-center flex-col sm:flex-row gap-[0.5rem] sm:gap-[1rem] max-w-7xl mx-auto">
-        <div className="w-[55%] flex items-center justify-between max-w-5xl mx-auto">
-          <div className="flex flex-col gap-y-[2rem]">
+      {/* Hero Section */}
+      <div className="best-locations flex items-center justify-center flex-col lg:flex-row gap-[2rem] lg:gap-[1rem] max-w-7xl mx-auto w-full">
+        <div className="w-full lg:w-[55%] flex flex-col-reverse sm:flex-row items-center justify-between max-w-5xl mx-auto gap-6 sm:gap-0">
+          <div className="flex flex-col gap-y-[1rem] sm:gap-y-[2rem] text-center sm:text-left">
             <Typography
               variant="h4"
               sx={{
                 fontWeight: "bold",
                 color: "#FE2A00",
-                textAlign: "left",
               }}
             >
               Đặt sân, chạm bóng, cháy hết mình
@@ -611,7 +638,6 @@ const Home: React.FC = () => {
               sx={{
                 fontWeight: "bold",
                 color: "#000000",
-                textAlign: "left",
               }}
             >
               ⚽ Sân chơi chất lượng - Giá cả hợp lý ⚽ - Ưu đãi 15% cho lần đầu
@@ -622,22 +648,33 @@ const Home: React.FC = () => {
             alt="Homepage Image"
             width={600}
             height={600}
-            className="object-cover w-auto h-auto max-w-[50%]"
+            className="object-cover w-auto h-auto max-w-[80%] sm:max-w-[50%]"
           />
         </div>
         <Divider
           orientation="vertical"
           flexItem
           sx={{
+            display: { xs: "none", lg: "block" },
             borderColor: "black",
             borderWidth: "1px",
           }}
         />
-        <div className="flex items-center justify-center flex-col gap-y-[1.5rem] max-w-[45%] mx-auto">
+        <Divider
+          orientation="horizontal"
+          flexItem
+          sx={{
+            display: { xs: "block", lg: "none" },
+            width: "100%",
+            my: 2,
+            borderColor: "black",
+          }}
+        />
+        <div className="flex items-center justify-center flex-col gap-y-[1.5rem] w-full lg:max-w-[45%] mx-auto">
           <Typography variant="h5" sx={{ fontWeight: "bold" }}>
             Các sân phổ biến
           </Typography>
-          <div className="field-list space-y-[1.5rem]">
+          <div className="field-list space-y-[1.5rem] w-full">
             {fields.map((field, index) => (
               <div
                 className="field flex space-x-[1rem] items-stretch h-[100px]"
@@ -663,8 +700,10 @@ const Home: React.FC = () => {
                     <div className="rating flex items-start gap-x-[0.5rem]">
                       {renderStars(field.rating)}
                     </div>
-                    <p className="name font-bold text-[1.2rem]">{field.name}</p>
-                    <p className="address font-light text-[1rem]">
+                    <p className="name font-bold text-[1rem] sm:text-[1.2rem]">
+                      {field.name}
+                    </p>
+                    <p className="address font-light text-[0.9rem] sm:text-[1rem]">
                       {field.address}
                     </p>
                   </div>
@@ -672,7 +711,7 @@ const Home: React.FC = () => {
                     <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
                       {field.score}
                     </div>
-                    <div className="field-info font-bold text-[1rem] flex-1">
+                    <div className="field-info font-bold text-[0.9rem] sm:text-[1rem] flex-1 truncate">
                       {field.info}
                     </div>
                   </div>
@@ -682,6 +721,8 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Search Bar */}
       <motion.div
         ref={searchBarRef}
         initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -700,10 +741,12 @@ const Home: React.FC = () => {
               }
             : { opacity: 0, y: 50, scale: 0.95 }
         }
-        className="searchBar flex items-center justify-center w-fit mx-auto bg-white rounded-lg shadow-md py-5 px-7 mt-[2rem]"
+        className="searchBar flex items-center justify-center w-full sm:w-fit mx-auto bg-white rounded-lg shadow-md py-5 px-7 mt-[2rem]"
       >
         <SearchBar inView={searchBarInView} />
       </motion.div>
+
+      {/* Why MTKicks */}
       <motion.div
         ref={whyMtkicksRef}
         initial={{ opacity: 0, y: 50 }}
@@ -714,7 +757,7 @@ const Home: React.FC = () => {
           duration: 0.8,
           ease: "easeOut",
         }}
-        className="why-mtkicks max-w-7xl mt-[2rem] space-y-[2rem] mx-auto"
+        className="why-mtkicks max-w-7xl mt-[2rem] space-y-[2rem] mx-auto w-full"
       >
         <Typography
           variant="h3"
@@ -722,15 +765,21 @@ const Home: React.FC = () => {
             fontWeight: "bold",
             textAlign: "center",
             marginBottom: "3rem",
+            fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
           Tại sao là MTKICKs
         </Typography>
-        <div className="card1 flex items-center flex-wrap mx-auto gap-20">
+        <div className="card1 flex items-center justify-center flex-wrap mx-auto gap-6 sm:gap-10 lg:gap-20">
           {cardData.slice(0, 3).map((card, index) => (
             <Card
               key={index}
-              sx={{ width: 350, height: 250, backgroundColor: "#1ea0ff" }}
+              sx={{
+                width: "100%",
+                maxWidth: 350,
+                height: 250,
+                backgroundColor: "#1ea0ff",
+              }}
               className="mx-auto flex items-center justify-center flex-col relative overflow-hidden cursor-pointer"
               onMouseEnter={() => handleMouseEnter(index)}
               onMouseLeave={handleMouseLeave}
@@ -793,11 +842,16 @@ const Home: React.FC = () => {
             </Card>
           ))}
         </div>
-        <div className="card2 flex items-center flex-wrap mx-auto gap-20">
+        <div className="card2 flex items-center justify-center flex-wrap mx-auto gap-6 sm:gap-10 lg:gap-20">
           {cardData.slice(3, 6).map((card, index) => (
             <Card
               key={index + 3}
-              sx={{ width: 350, height: 250, backgroundColor: "#1ea0ff" }}
+              sx={{
+                width: "100%",
+                maxWidth: 350,
+                height: 250,
+                backgroundColor: "#1ea0ff",
+              }}
               className="mx-auto flex items-center justify-center flex-col relative overflow-hidden cursor-pointer"
               onMouseEnter={() => handleMouseEnter(index + 3)}
               onMouseLeave={handleMouseLeave}
@@ -863,6 +917,8 @@ const Home: React.FC = () => {
           ))}
         </div>
       </motion.div>
+
+      {/* Popular Locations Swiper */}
       <div className="popular-locations mt-[2rem]">
         <Typography
           variant="h3"
@@ -870,81 +926,108 @@ const Home: React.FC = () => {
             fontWeight: "bold",
             textAlign: "center",
             marginBottom: "3rem",
+            fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
           Vị trí sân phổ biến
         </Typography>
-        <div className="relative max-w-7xl mx-auto">
-          <Carousel
-            responsive={responsive}
-            infinite={true}
-            arrows={true}
-            customLeftArrow={<CustomLeftArrow />}
-            customRightArrow={<CustomRightArrow />}
-            showDots={false}
+        <div className="relative group max-w-7xl mx-auto w-full">
+          <Swiper
+            modules={[Navigation]}
+            spaceBetween={20}
+            slidesPerView={1}
+            loop={true}
+            navigation={{
+              nextEl: ".image-swiper-button-next",
+              prevEl: ".image-swiper-button-prev",
+            }}
+            className="px-4 py-4"
           >
-            <div className="flex items-center flex-wrap mx-auto gap-4 justify-center">
-              <div className="flex flex-col gap-4 mx-auto">
-                {sections.left.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image.src}
-                      style={{
-                        width: 350,
-                        height: sections.left.length === 1 ? 400 : 190,
-                      }}
-                      className="mx-auto rounded-md"
-                      onLoad={handleImageLoad}
-                    />
-                    <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
-                      {image.text}
-                    </span>
-                  </div>
-                ))}
+            <SwiperSlide>
+              <div className="flex items-center flex-wrap mx-auto gap-4 justify-center">
+                <div className="flex flex-col gap-4 mx-auto w-full sm:w-auto">
+                  {sections.left.map((image, index) => (
+                    <div key={index} className="relative w-full sm:w-auto">
+                      <img
+                        src={image.src}
+                        style={{
+                          width: "100%",
+                          maxWidth: 350,
+                          height: sections.left.length === 1 ? "auto" : 190,
+                          objectFit: "cover",
+                        }}
+                        className="mx-auto rounded-md"
+                        onLoad={handleImageLoad}
+                      />
+                      <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
+                        {image.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-4 mx-auto w-full sm:w-auto">
+                  {sections.middle.map((image, index) => (
+                    <div key={index} className="relative w-full sm:w-auto">
+                      <img
+                        src={image.src}
+                        style={{
+                          width: "100%",
+                          maxWidth: 350,
+                          height: sections.middle.length === 1 ? "auto" : 190,
+                          objectFit: "cover",
+                        }}
+                        className="mx-auto rounded-md"
+                        onLoad={handleImageLoad}
+                      />
+                      <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
+                        {image.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-4 mx-auto w-full sm:w-auto">
+                  {sections.right.map((image, index) => (
+                    <div key={index} className="relative w-full sm:w-auto">
+                      <img
+                        src={image.src}
+                        style={{
+                          width: "100%",
+                          maxWidth: 350,
+                          height: sections.right.length === 1 ? "auto" : 190,
+                          objectFit: "cover",
+                        }}
+                        className="mx-auto rounded-md"
+                        onLoad={handleImageLoad}
+                      />
+                      <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
+                        {image.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col gap-4 mx-auto">
-                {sections.middle.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image.src}
-                      style={{
-                        width: 350,
-                        height: sections.middle.length === 1 ? 400 : 190,
-                      }}
-                      className="mx-auto rounded-md"
-                      onLoad={handleImageLoad}
-                    />
-                    <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
-                      {image.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col gap-4 mx-auto">
-                {sections.right.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image.src}
-                      style={{
-                        width: 350,
-                        height: sections.right.length === 1 ? 400 : 190,
-                      }}
-                      className="mx-auto rounded-md"
-                      onLoad={handleImageLoad}
-                    />
-                    <span className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-white font-bold bg-black bg-opacity-50 px-2 py-1 rounded">
-                      {image.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Carousel>
+            </SwiperSlide>
+          </Swiper>
+
+          <SwiperPrevBtn
+            className="image-swiper-button-prev left-2"
+            handlePrev={handlePrev}
+          />
+          <SwiperNextBtn
+            className="image-swiper-button-next right-2"
+            handleNext={handleNext}
+          />
         </div>
       </div>
+
+      {/* Discounts Section */}
       <div
         ref={discountsRef}
-        className={`discounts mt-[2rem] ${discountsInView ? "animate-fadeSlideUp" : "opacity-0 "}`}
+        className={`discounts mt-[2rem] ${
+          discountsInView ? "animate-fadeSlideUp" : "opacity-0 "
+        }`}
       >
         <Typography
           variant="h3"
@@ -952,85 +1035,135 @@ const Home: React.FC = () => {
             fontWeight: "bold",
             textAlign: "center",
             marginBottom: "3rem",
+            fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
-          Ưu đãi
+          Ưu đãi hấp dẫn
         </Typography>
-        <Carousel
-          responsive={responsive}
-          infinite={true}
-          arrows={true}
-          customLeftArrow={<CustomLeftArrowDis />}
-          customRightArrow={<CustomRightArrowDis />}
-          showDots={false}
-          className="max-w-7xl mx-auto"
-        >
-          {slides.map((slide, slideIndex) => (
-            <div
-              key={slideIndex}
-              className="flex items-center flex-wrap justify-center"
+
+        <div className="relative group max-w-7xl mx-auto w-full">
+          {realDiscounts.length > 0 ? (
+            <Swiper
+              modules={[Navigation]}
+              spaceBetween={20}
+              slidesPerView={1}
+              loop={true}
+              onSwiper={(swiper) => setDiscountSwiper(swiper)}
+              className="pb-8"
             >
-              {slide.map((discount, index) => (
-                <Card
-                  key={index}
-                  sx={{
-                    width: 350,
-                    height: 300,
-                    backgroundColor: "white",
-                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                  }}
-                  className="flex flex-col relative overflow-hidden mx-auto"
-                >
-                  <div className="w-full h-[60%] overflow-hidden">
-                    <img
-                      src={discount.image}
-                      className="w-full h-full object-cover object-center"
-                      alt={discount.text}
-                    />
+              {discountSlides.map((slide, slideIndex) => (
+                <SwiperSlide key={slideIndex}>
+                  <div className="flex items-center flex-wrap justify-center gap-6">
+                    {slide.map((discount) => (
+                      <Card
+                        key={discount.id}
+                        sx={{
+                          width: "100%",
+                          maxWidth: 350,
+                          height: 320,
+                          backgroundColor: "white",
+                          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                        }}
+                        className="flex flex-col relative overflow-hidden mx-auto rounded-lg transition-transform hover:scale-105"
+                      >
+                        <div className="w-full h-[55%] overflow-hidden relative">
+                          <img
+                            src={discount.displayImage}
+                            className="w-full h-full object-cover object-center"
+                            alt={discount.code}
+                          />
+                          <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                            {discount.discountType === "PERCENTAGE"
+                              ? `-${discount.value}%`
+                              : `-${discount.value}k`}
+                          </div>
+                        </div>
+                        <CardContent
+                          sx={{
+                            flexGrow: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            padding: "1rem",
+                            width: "100%",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                fontWeight: "bold",
+                                color: "#000",
+                                marginBottom: "0.2rem",
+                                fontSize: "1.1rem",
+                              }}
+                            >
+                              {discount.displayText}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Code:{" "}
+                              <span className="font-mono font-bold text-blue-600">
+                                {discount.code}
+                              </span>
+                            </Typography>
+                            {discount.minOrderValue && (
+                              <Typography
+                                variant="caption"
+                                display="block"
+                                color="text.secondary"
+                              >
+                                Đơn tối thiểu:{" "}
+                                {discount.minOrderValue.toLocaleString()}đ
+                              </Typography>
+                            )}
+                          </div>
+
+                          <Button
+                            onClick={() => handleSaveDiscount(discount.code)}
+                            variant="contained"
+                            fullWidth
+                            sx={{
+                              backgroundColor: "#ff0000",
+                              color: "#ffffff",
+                              fontWeight: "bold",
+                              textTransform: "none",
+                              marginTop: "1rem",
+                              "&:hover": { backgroundColor: "#cc0000" },
+                            }}
+                          >
+                            Lưu mã ngay
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                  <CardContent
-                    sx={{
-                      flexGrow: 1,
-                      flexDirection: "column",
-                      padding: "1rem",
-                      width: "100%",
-                    }}
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: "bold",
-                        textAlign: "left",
-                        color: "#000",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      {discount.text}
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      sx={{
-                        backgroundColor: "#ff0000",
-                        color: "#ffffff",
-                        fontWeight: "bold",
-                        textTransform: "none",
-                        padding: "0.5rem 2rem",
-                        "&:hover": { backgroundColor: "#cc0000" },
-                      }}
-                    >
-                      Lưu mã ngay
-                    </Button>
-                  </CardContent>
-                </Card>
+                </SwiperSlide>
               ))}
+            </Swiper>
+          ) : (
+            <div className="text-center text-gray-500 py-10">
+              Hiện chưa có mã giảm giá nào.
             </div>
-          ))}
-        </Carousel>
+          )}
+
+          <SwiperPrevBtn
+            className="discount-swiper-button-prev left-[-1rem]"
+            handlePrev={() => discountSwiper?.slidePrev()}
+          />
+          <SwiperNextBtn
+            className="discount-swiper-button-next right-[-1rem]"
+            handleNext={() => discountSwiper?.slideNext()}
+          />
+        </div>
       </div>
+
+      {/* Reviews Section */}
       <div className="flex gap-x-[2rem] max-w-7xl w-full px-4 mt-[2rem] flex-col mx-auto">
         <div
           ref={reviewsRef}
-          className={`reviews mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0 "}`}
+          className={`reviews mt-[2rem] ${
+            reviewsInView ? "animate-fadeSlideUp" : "opacity-0 "
+          }`}
         >
           <div className="flex items-center justify-center mb-[2rem] relative">
             <Typography
@@ -1038,38 +1171,40 @@ const Home: React.FC = () => {
               sx={{
                 fontWeight: "bold",
                 textAlign: "center",
+                fontSize: { xs: "2rem", md: "3rem" },
               }}
             >
               Nhận xét
             </Typography>
-            <div className="flex items-end icons absolute right-4 gap-[1.5rem]">
+            <div className="flex items-end icons absolute right-4 gap-[1rem] sm:gap-[1.5rem]">
               <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center ${
+                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto ${
                   currentPage === 0 ? "opacity-50" : "cursor-pointer"
                 }`}
                 onClick={handlePrevRe}
               >
-                <MdKeyboardArrowLeft className="text-[2.5rem]" />
+                <MdKeyboardArrowLeft className="text-[2rem] sm:text-[2.5rem]" />
               </div>
               <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center  ${
+                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto ${
                   endIndex >= reviewsData.length
                     ? "opacity-50 "
                     : "cursor-pointer"
                 }`}
                 onClick={handleNextRe}
               >
-                <MdKeyboardArrowRight className="text-[2.5rem]" />
+                <MdKeyboardArrowRight className="text-[2rem] sm:text-[2.5rem]" />
               </div>
             </div>
           </div>
           <div className="reviews-cards space-y-[2rem]">
-            <div className="mx-auto grid grid-cols-4 space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
+            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[1rem]">
               {currentReviews.map((review, index) => (
                 <Card
                   key={index}
                   sx={{
-                    maxWidth: "250px",
+                    width: "100%",
+                    maxWidth: { xs: "100%", sm: "250px" },
                     height: "250px",
                     position: "relative",
                     paddingBottom: "50px",
@@ -1138,23 +1273,6 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
-      <div
-        className="fixed bottom-10 right-5 cursor-pointer z-50"
-        onClick={() => setShowChat(!showChat)}
-      >
-        <Image
-          src="/chatIcon.png"
-          alt="chatIcon"
-          width={60}
-          height={60}
-          className="transition-transform duration-300 hover:scale-110"
-        />
-      </div>
-      {showChat && (
-        <div className="fixed bottom-24 right-5 z-50 w-[350px] h-[450px] shadow-xl rounded-lg overflow-hidden">
-          <AIChat onClose={() => setShowChat(false)} />
-        </div>
-      )}
     </motion.div>
   );
 };

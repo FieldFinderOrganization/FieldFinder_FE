@@ -260,7 +260,6 @@ const Product = () => {
     categorySuperSetMap
       .get("Dress Shoes")!
       .forEach((id) => ALL_SHOE_TYPES.add(id));
-    // (Hợp nhất Clothing)
     categorySuperSetMap
       .get("Tops And T-Shirts")!
       .forEach((id) => ALL_CLOTHING_TYPES.add(id));
@@ -357,10 +356,22 @@ const Product = () => {
           }
         } else if (filterKey === "Shop By Price") {
           const passes = selectedOptions.some((option) => {
-            if (option === "Under 1.000.000₫") return product.price < 1000000;
+            if (option === "Under 1.000.000₫")
+              return (
+                (product?.salePrice ? product.salePrice : product.price) <
+                1000000
+              );
             if (option === "1.000.000₫ - 3.000.000₫")
-              return product.price >= 1000000 && product.price <= 3000000;
-            if (option === "Over 3.000.000₫") return product.price > 3000000;
+              return (
+                product.price >= 1000000 &&
+                (product?.salePrice ? product.salePrice : product.price) <=
+                  3000000
+              );
+            if (option === "Over 3.000.000₫")
+              return (
+                (product?.salePrice ? product.salePrice : product.price) >
+                3000000
+              );
             return false;
           });
           if (!passes) return false;
@@ -524,7 +535,7 @@ const Product = () => {
               ))
             ) : (
               <p className="col-span-3 text-center text-gray-500">
-                 No products found matching your criteria.      
+                 Không tìm thấy sản phẩm phù hợp.      
               </p>
             )}
           </motion.div>

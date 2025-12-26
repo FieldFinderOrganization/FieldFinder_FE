@@ -186,8 +186,8 @@ const FieldLists: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
-      <div className="main flex items-start justify-center gap-x-[2rem] max-w-7xl w-full px-4 mt-[1rem] mx-auto">
-        <div className="search-tabs w-[20%] flex flex-col gap-y-[1rem] max-w-[250px] bg-white rounded-[10px] shadow-md px-[1.5rem] py-[1rem]">
+      <div className="main flex flex-col lg:flex-row items-start justify-center gap-y-8 lg:gap-x-[2rem] max-w-7xl w-full px-0 sm:px-4 mt-[1rem] mx-auto">
+        <div className="search-tabs w-full lg:w-[25%] lg:max-w-[280px] flex flex-col gap-y-[1rem] bg-white rounded-[10px] shadow-md px-[1.5rem] py-[1rem]">
           <div className="input-container relative">
             <FaSearch className="absolute left-[1rem] top-[50%] translate-y-[-50%] text-[#aaa] cursor-pointer" />
             <input
@@ -218,6 +218,7 @@ const FieldLists: React.FC = () => {
                         : "black"
                     }
                     fontWeight={700}
+                    className="truncate mr-2"
                   >
                     {address.address}
                   </Typography>
@@ -241,28 +242,33 @@ const FieldLists: React.FC = () => {
             </Typography>
           )}
         </div>
-        <div className="w-[73%] flex flex-col items-center gap-y-[2rem]">
-          <Typography variant="h5" fontWeight={700}>
+
+        <div className="w-full lg:w-[73%] flex flex-col items-center lg:items-start gap-y-[2rem]">
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            className="w-full text-center lg:text-left"
+          >
             Danh sách sân
           </Typography>
           {pitches.length > 0 ? (
-            <div className="pitches grid grid-cols-3 gap-y-[2rem] gap-x-[3rem]">
+            <div className="pitches grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full justify-items-center">
               {pitches.map((pitch) => (
                 <Card
                   key={pitch.pitchId}
-                  className="w-[270px] h-[230px] bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer"
+                  className="w-full max-w-[320px] sm:max-w-none h-auto bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer hover:shadow-lg transition-shadow duration-300 pb-4"
                   onClick={() => handlePitchClick(pitch)}
                 >
                   <img
                     src={f.src}
                     alt="Field"
-                    className="w-full h-[95px] rounded-t-[10px] object-cover"
+                    className="w-full h-[120px] rounded-t-[10px] object-cover"
                   />
-                  <div className="content flex flex-col gap-y-[0.2rem] ml-[1rem] ">
+                  <div className="content flex flex-col gap-y-[0.2rem] px-[1rem] w-full">
                     <div className="ratings flex items-start gap-x-[0.5rem]">
                       {renderStars(ratings[pitch.pitchId] || 0)}
                     </div>
-                    <Typography fontWeight={700}>
+                    <Typography fontWeight={700} className="truncate w-full">
                       Sân {pitch.name} (sân{" "}
                       {pitch.type === "FIVE_A_SIDE"
                         ? 5
@@ -271,12 +277,14 @@ const FieldLists: React.FC = () => {
                           : 11}
                       )
                     </Typography>
-                    <Typography>{pitch.price} VNĐ</Typography>
-                    <div className="flex items-center gap-x-[0.5rem]">
-                      <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
+                    <Typography className="text-[#FE2A00] font-bold">
+                      {pitch.price.toLocaleString()} VNĐ
+                    </Typography>
+                    <div className="flex items-center gap-x-[0.5rem] mt-2">
+                      <div className="bg-blue-600 text-white font-bold rounded-md py-[0.2rem] px-[0.5rem] text-[0.8rem] min-w-[50px] text-center">
                         {(ratings[pitch.pitchId] || 0).toFixed(1)}/10
                       </div>
-                      <div className="field-info text-[1rem] flex-1">
+                      <div className="field-info text-[0.9rem] text-gray-600 flex-1 truncate">
                         {pitch.description || "Không có thông tin"}
                       </div>
                     </div>
@@ -285,8 +293,12 @@ const FieldLists: React.FC = () => {
               ))}
             </div>
           ) : (
-            <Typography variant="body1" color="textSecondary">
-              Không có sân
+            <Typography
+              variant="body1"
+              color="textSecondary"
+              className="w-full text-center"
+            >
+              Không có sân nào trong khu vực này.
             </Typography>
           )}
         </div>

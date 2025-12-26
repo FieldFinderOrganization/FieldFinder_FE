@@ -25,7 +25,7 @@ const InforBar = () => {
   ];
 
   return (
-    <div className="w-full bg-gray-100 py-5">
+    <div className="w-full  py-5 z-50">
       <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-left gap-6 px-4">
         {items.map((item, index) => (
           <div

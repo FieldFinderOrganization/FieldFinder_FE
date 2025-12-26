@@ -2,7 +2,6 @@
 
 import React from "react";
 import { productRes } from "@/services/product";
-import { FiPlus } from "react-icons/fi";
 import Link from "next/link";
 import { useFavourite } from "@/context/FavouriteContext";
 import { IoMdHeart, IoMdHeartEmpty } from "react-icons/io";
@@ -10,6 +9,7 @@ import { motion } from "framer-motion";
 
 interface ProductCardProps {
   product: productRes;
+  isBestSeller?: boolean;
 }
 
 const cardVariants = {
@@ -21,11 +21,18 @@ const cardVariants = {
   },
 };
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  isBestSeller = false,
+}) => {
+  const currentPrice = product.salePrice ?? product.price;
+
   const formattedPrice = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
-  }).format(product.salePrice ?? product.price);
+  }).format(currentPrice);
+
+  const isSale = product.salePrice && product.salePrice < product.price;
 
   const { toggleFavourite, isFavourited } = useFavourite();
   const isFav = isFavourited(product.id);
@@ -43,9 +50,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
           />
 
-          <span className="absolute top-3 right-3 bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-            Best Seller
-          </span>
+          {isBestSeller && (
+            <span className="absolute top-3 right-3 bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md z-10">
+              Best Seller
+            </span>
+          )}
+
+          {isSale && (
+            <span className="absolute top-3 right-3 bg-pink-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md z-10">
+              On Sale
+            </span>
+          )}
         </div>
       </Link>
       <div>
@@ -54,7 +69,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </h3>
          
         <p className="text-gray-600">
-          {product.sex}'s {product.categoryName}
+          {product.sex} {product.categoryName}
         </p>
         <p className="font-semibold text-base mt-1">{formattedPrice}</p>
       </div>

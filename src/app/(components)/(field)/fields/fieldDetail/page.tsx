@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Header from "@/utils/header";
@@ -31,7 +32,7 @@ import { toast } from "react-toastify";
 import { getBookingSlot } from "@/services/booking";
 import { getReviewByPitch } from "@/services/review";
 import { getAllUsers } from "@/services/user";
-import f from "../../../../../../public/images/field3.jpg";
+import f from "../../../../../../public/images/field3.jpg"; // Điều chỉnh path ảnh nếu cần
 
 interface reviewResponseDTO {
   reviewId: string;
@@ -57,7 +58,7 @@ const FieldDetail: React.FC = () => {
   const description = searchParams.get("description");
   const address = searchParams.get("address");
   const rating = searchParams.get("rating");
-  const parsedRating = rating ? parseFloat(rating) : null; // Parse rating from URL
+  const parsedRating = rating ? parseFloat(rating) : null;
   const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
   const [reviews, setReviews] = useState<reviewResponseDTO[]>([]);
   const [users, setUsers] = useState<{ [key: string]: User }>({});
@@ -281,23 +282,31 @@ const FieldDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
-      <div className="main flex gap-x-[2rem] max-w-7xl w-full px-4 mt-[2rem] flex-col mx-auto">
-        <div className="inline-flex items-start gap-[1rem] relative ml-[1.8rem]">
+      <div className="main flex gap-y-8 max-w-7xl w-full px-0 sm:px-4 mt-[2rem] flex-col mx-auto">
+        {/* Breadcrumb */}
+        <div className="inline-flex items-center gap-[1rem] relative ml-0 sm:ml-[1.8rem] flex-wrap">
           <p
-            className="relative w-fit mt-[-1.00px] [font-family:'Inter-Bold',Helvetica] font-bold text-[#188862] text-[1.3rem] tracking-[0] leading-[normal] whitespace-nowrap cursor-pointer"
+            className="relative w-fit mt-[-1.00px] [font-family:'Inter-Bold',Helvetica] font-bold text-[#188862] text-[1.1rem] sm:text-[1.3rem] tracking-[0] leading-[normal] whitespace-nowrap cursor-pointer"
             onClick={() => window.history.back()}
           >
             Danh sách sân
           </p>
           <KeyboardArrowRightOutlinedIcon className="text-[#188862] mt-[-1.00px]" />
-          <p className="relative w-fit [font-family:'Inter-Regular',Helvetica] font-normal text-black text-[1.3rem] tracking-[0] leading-[normal]">
+          <p className="relative w-fit [font-family:'Inter-Regular',Helvetica] font-normal text-black text-[1.1rem] sm:text-[1.3rem] tracking-[0] leading-[normal]">
             Chi tiết sân
           </p>
         </div>
-        <div className="pitch-card max-w-5xl mx-auto flex items-center bg-white p-12 rounded-md max-h-[500px] shadow-md gap-x-[5rem] mt-[2rem]">
-          <div className="left-content flex flex-col gap-y-[1.2rem]">
-            <div className="flex items-center gap-x-[2rem]">
-              <Typography variant="h4" fontWeight={700}>
+
+        {/* Pitch Card Details */}
+        <div className="pitch-card w-full max-w-6xl mx-auto flex flex-col-reverse lg:flex-row items-center bg-white p-6 sm:p-12 rounded-md shadow-md gap-8 lg:gap-x-[5rem] mt-[1rem]">
+          {/* Left Content: Info */}
+          <div className="left-content w-full lg:flex-1 flex flex-col gap-y-[1.2rem]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-x-[2rem]">
+              <Typography
+                variant="h4"
+                fontWeight={700}
+                className="text-2xl sm:text-3xl"
+              >
                 Sân {name || "Sân không xác định"}
               </Typography>
               <div className="ratings flex items-center justify-center gap-x-[0.5rem]">
@@ -306,19 +315,22 @@ const FieldDetail: React.FC = () => {
                   : "Chưa có đánh giá"}
               </div>
             </div>
-            <div className="flex items-center gap-x-[2.4rem]">
+
+            <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-[2.4rem] gap-y-2">
               <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
                 {parsedRating !== null ? parsedRating.toFixed(1) : "0"}/10
               </div>
-              <div className="field-info text-[1rem] flex-1 font-bold">
+              <div className="field-info text-[1rem] flex-1 font-bold break-words">
                 {description || "Không có mô tả"}
               </div>
             </div>
 
-            <div className="flex items-center gap-x-[4rem]">
-              <BsPinMap className="text-[1.5rem] text-gray-600 cursor-pointer" />
-              <div className="field-info text-[1rem] flex-1">
-                {address || "Lỗi lấy địa chỉ"}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-x-[4rem]">
+              <div className="flex items-center gap-2 flex-1">
+                <BsPinMap className="text-[1.5rem] text-gray-600 flex-shrink-0" />
+                <div className="field-info text-[1rem] break-words">
+                  {address || "Lỗi lấy địa chỉ"}
+                </div>
               </div>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
@@ -334,7 +346,7 @@ const FieldDetail: React.FC = () => {
                   }}
                   slotProps={{
                     textField: {
-                      sx: { width: { xs: "100%", sm: "200px" } },
+                      sx: { width: "100%", maxWidth: "300px" },
                     },
                     actionBar: {
                       actions: ["clear", "today"],
@@ -369,17 +381,17 @@ const FieldDetail: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {selectedTimeSlots.length > 0 ? (
                   selectedTimeSlots.map((slot) => (
                     <div
                       key={slot}
                       className="bg-[#188862] text-white font-bold rounded-md px-3 py-1 text-sm flex items-center justify-between"
                     >
-                      <span>{slot}</span>
+                      <span className="truncate mr-1">{slot}</span>
                       <button
                         onClick={() => removeTimeSlot(slot)}
-                        className="hover:text-red-200 ml-2 cursor-pointer"
+                        className="hover:text-red-200 cursor-pointer flex-shrink-0"
                       >
                         <CloseIcon fontSize="small" />
                       </button>
@@ -393,34 +405,42 @@ const FieldDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-x-[6.1rem]">
-              <div className="flex items-center gap-x-[1.4rem]">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-x-[6.1rem]">
+              <div className="flex items-center gap-x-2">
                 <div className="field-info text-[1rem] font-bold">
                   Loại sân:
                 </div>
-                <div className="field-info text-[1rem] flex-1">
+                <div className="field-info text-[1rem]">
                   {type ? getPitchType(type as string) : "Không xác định"}
                 </div>
               </div>
-              <div className="flex items-center gap-x-[1.5rem]">
+              <div className="flex items-center gap-x-2">
                 <div className="field-info text-[1rem] font-bold">Giá:</div>
-                <div className="field-info text-[1rem] flex-1">
-                  {price ? `${price} VNĐ` : "Không xác định"}
+                <div className="field-info text-[1rem] text-[#FE2A00] font-bold">
+                  {price
+                    ? `${parseInt(price).toLocaleString()} VNĐ`
+                    : "Không xác định"}
                 </div>
               </div>
             </div>
           </div>
-          <div className="right-content images relative">
+
+          {/* Right Content: Images (ĐÃ SỬA LỖI MẤT ẢNH) */}
+          {/* Sửa: Thay vì h-auto, set chiều cao cụ thể cho LG để container không bị 0px do con absolute */}
+          <div className="right-content relative w-full max-w-[300px] h-[280px] lg:w-[400px] lg:h-[350px] flex-shrink-0 mx-auto mt-4 lg:mt-0">
             <Image
               src="/images/field3.jpg"
               width={240}
               height={240}
-              className="rounded-md rotate-[-3deg] cursor-pointer"
+              className="rounded-md rotate-[-3deg] cursor-pointer object-cover shadow-lg"
               style={{
                 position: "absolute",
-                top: "-10px",
-                left: "-20px",
+                top: "0px",
+                left: "10px",
                 zIndex: 2,
+                width: "85%",
+                height: "auto",
+                aspectRatio: "1/1",
               }}
               alt="Field 3"
               onClick={() => handleImageClick("/images/field3.jpg")}
@@ -429,13 +449,23 @@ const FieldDetail: React.FC = () => {
               src="/images/field1.jpg"
               width={248}
               height={248}
-              className="rounded-md cursor-pointer"
-              style={{ zIndex: 1, position: "relative" }}
+              className="rounded-md cursor-pointer object-cover shadow-md"
+              style={{
+                zIndex: 1,
+                position: "absolute",
+                top: "20px",
+                left: "30px",
+                width: "85%",
+                height: "auto",
+                aspectRatio: "1/1",
+              }}
               alt="Field 5"
               onClick={() => handleImageClick("/images/field1.jpg")}
             />
           </div>
         </div>
+
+        {/* Reviews Section */}
         <div
           ref={reviewsRef}
           className={`reviews mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
@@ -443,41 +473,41 @@ const FieldDetail: React.FC = () => {
           <div className="flex items-center justify-center mb-[2rem] relative mt-[2rem]">
             <Typography
               variant="h3"
-              sx={{ fontWeight: "bold", textAlign: "center" }}
+              sx={{
+                fontWeight: "bold",
+                textAlign: "center",
+                fontSize: { xs: "2rem", md: "3rem" },
+              }}
             >
               Nhận xét
             </Typography>
-            <div className="flex items-end icons absolute right-4 gap-[1.5rem]">
+            <div className="flex items-end icons absolute right-0 sm:right-4 gap-[1rem]">
               <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center ${
+                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 ${
                   currentPage === 0 ? "opacity-50" : "cursor-pointer"
                 }`}
                 onClick={handlePrevRe}
               >
-                <MdKeyboardArrowLeft className="text-[2.5rem]" />
+                <MdKeyboardArrowLeft className="text-[2rem]" />
               </div>
               <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center ${
+                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 ${
                   endIndex >= reviews.length ? "opacity-50" : "cursor-pointer"
                 }`}
                 onClick={handleNextRe}
               >
-                <MdKeyboardArrowRight className="text-[2.5rem]" />
+                <MdKeyboardArrowRight className="text-[2rem]" />
               </div>
             </div>
           </div>
+
           <div className="reviews-cards space-y-[2rem]">
-            <div className="mx-auto grid grid-cols-4 space-y-[1rem] sm:space-y-0 sm:gap-[1rem]">
+            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {currentReviews.length > 0 ? (
                 currentReviews.map((review, index) => (
                   <Card
                     key={index}
-                    sx={{
-                      maxWidth: "250px",
-                      height: "250px",
-                      position: "relative",
-                      paddingBottom: "50px",
-                    }}
+                    className="w-full h-auto min-h-[200px] relative pb-[50px] mx-auto"
                   >
                     <CardContent
                       sx={{
@@ -495,12 +525,12 @@ const FieldDetail: React.FC = () => {
                           className="rounded-full h-12 w-12 object-cover"
                         />
                         <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
-                          <p className="font-bold text-[1.2rem]">
+                          <p className="font-bold text-[1.1rem]">
                             {truncateName(
                               users[review.userId]?.name || "Người dùng ẩn danh"
                             )}
                           </p>
-                          <div className="stars flex items-start gap-x-[0.5rem]">
+                          <div className="stars flex items-start gap-x-[0.2rem]">
                             {renderStars(review.rating)}
                           </div>
                         </div>
@@ -537,7 +567,7 @@ const FieldDetail: React.FC = () => {
                           marginBottom: "0.5rem",
                         }}
                       />
-                      <p className="text-[1rem] text-justify">
+                      <p className="text-[0.9rem] text-gray-500">
                         Đã đánh giá vào{" "}
                         <span className="font-bold">
                           {dayjs(review.createat).format("DD/MM/YYYY")}
@@ -549,7 +579,10 @@ const FieldDetail: React.FC = () => {
               ) : (
                 <Typography
                   variant="body1"
-                  sx={{ gridColumn: "span 4", textAlign: "center" }}
+                  sx={{
+                    gridColumn: { xs: "span 1", sm: "span 2", lg: "span 4" },
+                    textAlign: "center",
+                  }}
                 >
                   Sân này chưa có đánh giá nào
                 </Typography>
@@ -557,6 +590,7 @@ const FieldDetail: React.FC = () => {
             </div>
           </div>
         </div>
+
         <div className="flex items-center justify-center">
           <Button
             sx={{
@@ -564,10 +598,12 @@ const FieldDetail: React.FC = () => {
               color: "white",
               borderRadius: "0.5rem",
               padding: "0.5rem 1rem",
-              fontSize: "1.5rem",
-              width: "400px",
+              fontSize: { xs: "1.2rem", sm: "1.5rem" },
+              width: "100%",
+              maxWidth: "400px",
               height: "50px",
               marginTop: "3rem",
+              "&:hover": { bgcolor: "#146c4e" },
             }}
             onClick={handleOpen}
           >
@@ -582,9 +618,10 @@ const FieldDetail: React.FC = () => {
           />
         </div>
       </div>
+
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="relative w-full h-full flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-4xl h-[80vh] flex items-center justify-center">
             <Image
               src={selectedImage || "/images/field1.jpg"}
               layout="fill"
@@ -593,7 +630,7 @@ const FieldDetail: React.FC = () => {
               alt="Zoomed Image"
             />
             <button
-              className="absolute top-4 right-4 text-white hover:text-gray-300"
+              className="absolute top-[-2rem] right-[-1rem] sm:top-4 sm:right-4 text-white hover:text-gray-300 bg-black/50 rounded-full p-1"
               onClick={closeModal}
             >
               <CloseIcon fontSize="large" />
@@ -601,10 +638,11 @@ const FieldDetail: React.FC = () => {
           </div>
         </div>
       )}
+
       {isTimeModalOpen && (
-        <div className="fixed inset-0 bg-transparent bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md w-[90%] max-w-[900px] ">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-md w-full max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white z-10">
               <Typography variant="h6" fontWeight="bold">
                 Chọn khung giờ
               </Typography>
@@ -618,7 +656,7 @@ const FieldDetail: React.FC = () => {
                 <CircularProgress />
               </div>
             ) : (
-              <div className="grid grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {timeSlots.map((slot, index) => {
                   const isBooked = isSlotBooked(slot);
                   const isPast = date?.isBefore(dayjs(), "day");

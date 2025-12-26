@@ -5,6 +5,8 @@ import { ToastContainer } from "react-toastify";
 import { ReduxProvider } from "../provider";
 import "../styles/AIAssistantChat.css";
 import { CartProvider } from "@/context/CartContext";
+import GlobalAIChat from "./(components)/GlobalAIChat";
+import { FavouriteProvider } from "@/context/FavouriteContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,12 +34,15 @@ export default function RootLayout({
       >
         <ReduxProvider>
           <CartProvider>
-            {children}
-            <ToastContainer
-              position="top-right"
-              autoClose={2000}
-              theme="colored"
-            />
+            <FavouriteProvider>
+              {children}
+              <GlobalAIChat />
+              <ToastContainer
+                position="top-right"
+                autoClose={2000}
+                theme="colored"
+              />
+            </FavouriteProvider>
           </CartProvider>
         </ReduxProvider>
       </body>

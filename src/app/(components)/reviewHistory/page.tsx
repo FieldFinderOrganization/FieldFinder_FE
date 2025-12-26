@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
 "use client";
 
 import { logout, setShowSidebar } from "@/redux/features/authSlice";
@@ -122,7 +124,7 @@ const reviewHistory: React.FC = () => {
   const tabs = user?.role === "PROVIDER" ? providerTabs : baseTabs;
 
   const [initTab, setInitTab] = useState(tabs[0].value);
-  const [show, setShow] = useState(false);
+  // const [show, setShow] = useState(false);
 
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
@@ -507,7 +509,7 @@ const reviewHistory: React.FC = () => {
               </div>
               <div className="reviews grid grid-cols-4 gap-x-[1rem] gap-y-[2rem]">
                 {paginatedReviews.length > 0 ? (
-                  paginatedReviews.map((review, index) => (
+                  paginatedReviews.map((review) => (
                     <Card
                       key={review.reviewId}
                       sx={{

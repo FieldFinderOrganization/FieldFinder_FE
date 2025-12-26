@@ -1,4 +1,5 @@
 import axios from "axios";
+import { discountRes } from "./discount";
 
 const base_url: string = "http://localhost:8080/api/cart-items";
 
@@ -19,6 +20,8 @@ export interface cartItemRes {
   size: string;
   quantity: number;
   priceAtTime: number;
+  originalPrice?: number;
+  appliedDiscounts?: discountRes[];
 }
 
 export const addItemToCart = async (payload: cartItemReq) => {

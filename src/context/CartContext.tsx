@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, {
@@ -62,7 +64,6 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         setCartId(newCart.cartId);
       }
     } catch (error) {
-      // console.error("Failed to find or create cart:", error);
     } finally {
       setLoadingCart(false);
     }

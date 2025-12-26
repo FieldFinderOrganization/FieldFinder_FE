@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, {
@@ -138,7 +139,6 @@ export const ProductProvider = ({
 
   // groupedBrands
   const groupedBrands = useMemo(() => {
-    // 👈 SỬA: Đã thêm data hardcode cho menu brand
     const brandNames = ["Nike", "Adidas", "Puma", "Converse", "K-Swiss"];
     const defaultSubItems = [
       "Shoes",
@@ -250,7 +250,7 @@ export const ProductProvider = ({
     };
     const sports = ["Running", "Football", "Tennis", "Basketball"];
     let subItems: string[] = [];
-    let sport = currentActiveSport;
+    const sport = currentActiveSport;
     if (sports.includes(item)) {
       return {
         selectedCategory: item,

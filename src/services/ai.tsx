@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 
 const API_URL = "http://localhost:8080/api/ai";
@@ -59,7 +60,7 @@ export const postImageMessage = async (
       sessionId: sessionId,
     });
     return response.data;
-  } catch (error) {
+  } catch {
     throw new Error("Failed to analyze image.");
   }
 };

@@ -1,23 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { FormEvent, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye } from "react-icons/fa";
 import { LuEyeClosed } from "react-icons/lu";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../../../redux/store";
-import { loginStart, loginSuccess } from "../../../../redux/features/authSlice";
-import { login, loginSocial } from "../../../../services/auth";
+import { login } from "../../../../services/auth";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import {
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  FacebookAuthProvider,
-} from "firebase/auth";
+
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { forgotPassword, googleLogin } from "@/services/firebaseAuth";
+import { googleLogin } from "@/services/firebaseAuth";
 import { auth } from "@/services/firebaseAuth";
 import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 import OtpModal from "@/utils/otpModal";
@@ -35,7 +31,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const dispatch = useDispatch<AppDispatch>();
+  // const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 

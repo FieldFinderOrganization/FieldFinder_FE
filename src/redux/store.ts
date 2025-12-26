@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./features/authSlice";
-import type { AuthState } from "./features/authSlice"; // 👈 import kiểu từ slice
+import type { AuthState } from "./features/authSlice";
 
 // Hàm để lưu trạng thái vào localStorage
 const saveState = (state: AuthState) => {

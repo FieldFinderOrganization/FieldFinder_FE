@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { logout, setShowSidebar } from "@/redux/features/authSlice";
@@ -31,7 +33,7 @@ const mergeContinuousSlots = (slots: number[]): string => {
 
   const sortedSlots = [...slots].sort((a, b) => a - b);
 
-  let result: string[] = [];
+  const result: string[] = [];
   let start = sortedSlots[0];
   let current = start;
 

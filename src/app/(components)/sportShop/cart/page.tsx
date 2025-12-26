@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -110,18 +111,20 @@ const CartPage = () => {
     <div className="container mx-auto max-w-6xl p-6 mt-10">
       {cartItems.length === 0 ? (
         <div className="text-center py-20">
-          <h2 className="text-2xl font-medium mb-4">Your cart is empty.</h2>
+          <h2 className="text-2xl font-medium mb-4">
+            Giỏ hàng của bạn đang trống.
+          </h2>
           <Link
             href="/sportShop/product"
             className="bg-black text-white px-6 py-3 rounded-full font-medium"
           >
-            Continue Shopping
+            Tiếp tục mua sắm
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
           <div className="lg:col-span-2">
-            <h1 className="text-3xl font-semibold mb-8">Cart</h1>
+            <h1 className="text-3xl font-semibold mb-8">Giỏ hàng</h1>
             <div>
               {cartItems.map((item) => (
                 <CartItemRow key={item.id} item={item} />
@@ -131,19 +134,19 @@ const CartPage = () => {
 
           {/* CỘT PHẢI: SUMMARY */}
           <div className="lg:col-span-1">
-            <h2 className="text-3xl font-medium mb-8">Summary</h2>
+            <h2 className="text-3xl font-medium mb-8">Tổng kết</h2>
             <div className="bg-gray-50 p-6 rounded-lg sticky top-28">
               <div className="flex justify-between items-center mb-2 text-gray-600">
-                <p>Subtotal</p>
+                <p>Tạm tính</p>
                 <p>VND {formattedSubtotal}</p>
               </div>
               <div className="flex justify-between items-center mb-6 text-gray-600">
-                <p>Estimated Delivery</p>
-                <p>Free</p>
+                <p>Phí vận đơn</p>
+                <p>Miễn phí</p>
               </div>
               <div className="border-t border-gray-300 pt-4">
                 <div className="flex justify-between items-center font-bold text-xl">
-                  <p>Total</p>
+                  <p>Tổng cộng</p>
                   <p>VND {formattedSubtotal}</p>
                 </div>
               </div>
@@ -153,14 +156,14 @@ const CartPage = () => {
                   onClick={handleGuestCheckout}
                   className="bg-gray-800 text-white p-4 rounded-full text-lg font-medium hover:bg-black transition cursor-pointer"
                 >
-                  Guest Checkout
+                  Thanh toán khách
                 </button>
 
                 <button
                   onClick={handleMemberCheckout}
                   className="bg-black text-white p-4 rounded-full text-lg font-medium hover:bg-gray-800 transition cursor-pointer"
                 >
-                  Member Checkout
+                  Thanh toán thành viên
                 </button>
               </div>
             </div>

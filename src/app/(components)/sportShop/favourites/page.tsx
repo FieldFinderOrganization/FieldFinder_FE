@@ -14,7 +14,7 @@ const FavouriteCard: React.FC<{ product: productRes }> = ({ product }) => {
   const formattedPrice = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
-  }).format(product.price);
+  }).format(product.salePrice ?? product.price);
 
   return (
     <div className="flex flex-col gap-3">

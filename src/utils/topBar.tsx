@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import {
   Button,
@@ -32,7 +34,6 @@ import RateReviewIcon from "@mui/icons-material/RateReview";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
-import { FiPackage } from "react-icons/fi";
 import { IoCartOutline } from "react-icons/io5";
 
 interface TopBarProps {
@@ -53,7 +54,10 @@ const TopBar: React.FC<TopBarProps> = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth) as {
+    user: any;
+    isAuthenticated: boolean;
+  };
 
   const [activeMenu, setActiveMenu] = React.useState<
     "product" | "brand" | null
@@ -70,6 +74,17 @@ const TopBar: React.FC<TopBarProps> = ({
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -131,7 +146,7 @@ const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center px-6 py-6 lg:px-10 lg:py-8 justify-between">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-white flex flex-wrap items-center px-6 py-6 lg:px-10 lg:py-8 justify-between shadow-md transition-shadow duration-300 ease-in-out">
       <div className="flex items-center md:gap-[10rem] gap-[5rem]">
         <Typography
           variant="h4"
@@ -156,7 +171,7 @@ const TopBar: React.FC<TopBarProps> = ({
                   : "font-normal text-gray-800"
               }`}
             >
-              Product
+              Sản phẩm
             </Typography>
             {activeMenu === "product" ? (
               <IoIosArrowUp
@@ -182,7 +197,7 @@ const TopBar: React.FC<TopBarProps> = ({
                   : "font-normal text-gray-800"
               }`}
             >
-              Brand
+              Thương hiệu
             </Typography>
             {activeMenu === "brand" ? (
               <IoIosArrowUp
@@ -229,7 +244,6 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        {/* --- Brand Menu --- */}
         {activeMenu === "brand" && groupedBrands && (
           <div
             className={`absolute left-0 top-[6rem] w-full bg-white shadow-lg border-t border-gray-200 px-[8rem] py-8 flex justify-between gap-10 z-50 menu-content transition-all duration-300 ease-out ${
