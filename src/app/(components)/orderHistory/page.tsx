@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -242,7 +243,10 @@ const OrderHistoryPage = () => {
                         </div>
 
                         <div className="text-right font-medium text-gray-900">
-                          {new Intl.NumberFormat("vi-VN").format(item.price)} đ
+                          {new Intl.NumberFormat("vi-VN").format(
+                            order.totalAmount
+                          )}{" "}
+                          đ
                         </div>
                       </div>
                     ))}

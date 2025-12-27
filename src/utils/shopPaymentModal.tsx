@@ -87,7 +87,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
       // 1. Thu thập các mã đã áp dụng từ CartItems (Dữ liệu Lite từ BE)
       const appliedCodes = new Set<string>();
       finalCartItems.forEach((item) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const itemDiscounts = (item as any).appliedDiscounts;
         if (Array.isArray(itemDiscounts)) {
           itemDiscounts.forEach((d: any) => appliedCodes.add(d.code));
@@ -115,98 +114,88 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     };
 
     enrichAndSelectDiscounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalCartItems, open]);
 
-  // --- 2. Calculate Subtotal (LOGIC MỚI: DÙNG GIÁ GỐC) ---
-  const subTotal = useMemo(() => {
+  const totalOriginalPrice = useMemo(() => {
     return finalCartItems.reduce((total, item) => {
-      // Ưu tiên dùng originalPrice nếu có, để tính tổng tiền gốc
-      // Nếu không có originalPrice (API cũ), fallback về priceAtTime
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const basePrice = (item as any).originalPrice ?? item.priceAtTime;
-      return total + basePrice * item.quantity;
+      const original = (item as any).originalPrice ?? item.priceAtTime;
+      return total + original * item.quantity;
     }, 0);
   }, [finalCartItems]);
 
+  const totalRealPrice = useMemo(() => {
+    return finalCartItems.reduce((total, item) => {
+      return total + item.priceAtTime * item.quantity;
+    }, 0);
+  }, [finalCartItems]);
+
+  const productSavings = totalOriginalPrice - totalRealPrice;
+
   // --- 3. Discount Amount Calculation ---
   const discountAmount = useMemo(() => {
-    return selectedDiscounts.reduce((sum, discount) => {
-      // Ép kiểu để truy cập các trường mới từ backend
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const d = discount as any;
+    if (selectedDiscounts.length === 0) return 0;
 
+    return selectedDiscounts.reduce((sum, discount) => {
+      const d = discount as any;
       const minOrder = d.minOrderValue || 0;
 
-      // 1. Kiểm tra Min Order (trên tổng đơn hàng)
-      if (minOrder > 0 && subTotal < minOrder) return sum;
+      // SỬA: Kiểm tra Min Order dựa trên giá thực tế khách mua
+      if (minOrder > 0 && totalRealPrice < minOrder) return sum;
 
-      // 2. Xác định giá trị tính giảm giá (Applicable Subtotal) dựa trên Scope
       const scope = d.scope || "GLOBAL";
       let applicableSubtotal = 0;
 
       if (scope === "GLOBAL") {
-        applicableSubtotal = subTotal;
+        applicableSubtotal = totalRealPrice; // SỬA: Dùng totalRealPrice
       } else if (scope === "SPECIFIC_PRODUCT") {
-        // Chỉ tính tổng tiền của các sản phẩm được phép áp dụng
-        const applicableProductIds: number[] = d.applicableProductIds || [];
-        applicableSubtotal = finalCartItems
-          .filter((item) =>
-            applicableProductIds.includes(Number(item.productId))
-          )
-          .reduce((acc, item) => {
-            // Dùng giá gốc để tính giảm giá
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const price = (item as any).originalPrice ?? item.priceAtTime;
-            return acc + price * item.quantity;
-          }, 0);
+        // ... Logic lọc sản phẩm giữ nguyên ...
+        // NHƯNG bên trong reduce phải dùng item.priceAtTime
+        const applicableProductIds: number[] = (
+          d.applicableProductIds || []
+        ).map(Number);
+        applicableSubtotal = finalCartItems.reduce((acc, item) => {
+          if (applicableProductIds.includes(Number(item.productId))) {
+            return acc + item.priceAtTime * item.quantity; // SỬA: Dùng priceAtTime
+          }
+          return acc;
+        }, 0);
       } else if (scope === "CATEGORY") {
-        // Logic cho Category: Kiểm tra categoryId của sản phẩm
-        const applicableCategoryIds: number[] = d.applicableCategoryIds || [];
-        applicableSubtotal = finalCartItems
-          .filter((item) => {
-            // Lấy categoryId từ item (hoặc item.product nếu cấu trúc object lồng nhau)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const catId =
-              (item as any).categoryId || (item as any).product?.categoryId;
-            return applicableCategoryIds.includes(Number(catId));
-          })
-          .reduce((acc, item) => {
-            // Dùng giá gốc để tính giảm giá
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const price = (item as any).originalPrice ?? item.priceAtTime;
-            return acc + price * item.quantity;
-          }, 0);
+        // ... Tương tự, nhớ dùng item.priceAtTime ...
+        const applicableCategoryIds: number[] = (
+          d.applicableCategoryIds || []
+        ).map(Number);
+        applicableSubtotal = finalCartItems.reduce((acc, item) => {
+          const catId =
+            (item as any).categoryId || (item as any).product?.categoryId;
+          if (catId && applicableCategoryIds.includes(Number(catId))) {
+            return acc + item.priceAtTime * item.quantity; // SỬA: Dùng priceAtTime
+          }
+          return acc;
+        }, 0);
       }
 
-      // Nếu không có sản phẩm nào phù hợp -> Không giảm
       if (applicableSubtotal === 0) return sum;
 
-      // 3. Tính toán số tiền giảm
+      // ... Phần tính toán val, maxDiscount giữ nguyên ...
       const val = d.value ?? d.percentage ?? 0;
-      const maxDiscount = d.maxDiscountAmount ?? 0;
-
+      const maxDiscount = d.maxDiscountAmount || 0;
       let currentDiscount = 0;
+
       if (d.discountType === "FIXED_AMOUNT") {
         currentDiscount = val;
-        // Nếu giảm tiền mặt cho sp/category cụ thể, không được giảm quá tổng tiền nhóm sp đó
-        if (scope !== "GLOBAL" && currentDiscount > applicableSubtotal) {
+        if (currentDiscount > applicableSubtotal)
           currentDiscount = applicableSubtotal;
-        }
       } else {
-        // PERCENTAGE: Tính trên applicableSubtotal
         currentDiscount = (applicableSubtotal * val) / 100;
-
-        // Kiểm tra Max Discount (Trần giảm giá)
-        if (maxDiscount > 0 && currentDiscount > maxDiscount) {
+        if (maxDiscount > 0 && currentDiscount > maxDiscount)
           currentDiscount = maxDiscount;
-        }
       }
+
       return sum + currentDiscount;
     }, 0);
-  }, [selectedDiscounts, subTotal, finalCartItems]);
+  }, [selectedDiscounts, totalRealPrice, finalCartItems]);
 
-  const finalTotal = Math.max(0, subTotal - discountAmount);
+  const finalTotal = Math.max(0, totalRealPrice - discountAmount);
 
   // --- 4. Payment State ---
   const [paymentMethod, setPaymentMethod] = useState<"BANK" | "CASH">("BANK");
@@ -235,7 +224,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
           quantity: item.quantity,
           size: item.size,
         })),
-        // Có thể gửi thêm danh sách mã giảm giá đã dùng về BE để lưu lịch sử/trừ số lượng
         // appliedDiscounts: selectedDiscounts.map(d => d.code)
       };
 
@@ -537,15 +525,31 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
               <div className="mt-auto bg-gray-50 p-4 rounded-xl">
                 <div className="flex justify-between mb-2 text-sm">
-                  <span className="text-gray-600">Tạm tính (Gốc):</span>
-                  <span className="font-medium">
-                    {subTotal.toLocaleString("vi-VN")} ₫
+                  <span className="text-gray-600">Tổng tiền hàng (Gốc):</span>
+                  <span className="font-medium line-through text-gray-400">
+                    {totalOriginalPrice.toLocaleString("vi-VN")} ₫
+                  </span>
+                </div>
+
+                {productSavings > 0 && (
+                  <div className="flex justify-between mb-2 text-sm text-blue-600">
+                    <span className="font-medium">Giảm giá sản phẩm:</span>
+                    <span className="font-medium">
+                      -{productSavings.toLocaleString("vi-VN")} ₫
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between mb-2 text-sm">
+                  <span className="text-gray-600">Thành tiền:</span>
+                  <span className="font-medium text-gray-900">
+                    {totalRealPrice.toLocaleString("vi-VN")} ₫
                   </span>
                 </div>
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between mb-2 text-sm text-[#FE2A00]">
-                    <span className="font-medium">Giảm giá:</span>
+                    <span className="font-medium">Voucher giảm giá:</span>
                     <span className="font-medium">
                       -{discountAmount.toLocaleString("vi-VN")} ₫
                     </span>
@@ -559,6 +563,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
                 <Divider sx={{ my: 1, borderStyle: "dashed" }} />
 
+                {/* Dòng cuối: Tổng thanh toán */}
                 <div className="flex justify-between items-center">
                   <span className="text-base font-bold text-gray-800">
                     Tổng thanh toán:
@@ -607,7 +612,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         onClose={() => setIsDiscountModalOpen(false)}
         selectedDiscounts={selectedDiscounts}
         setSelectedDiscounts={setSelectedDiscounts}
-        orderValue={subTotal}
+        orderValue={totalOriginalPrice}
         products={finalCartItems}
       />
     </div>

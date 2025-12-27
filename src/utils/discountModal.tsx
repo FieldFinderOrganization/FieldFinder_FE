@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   Box,
@@ -24,8 +24,7 @@ interface DiscountModalProps {
   selectedDiscounts: discountRes[];
   setSelectedDiscounts: (discounts: discountRes[]) => void;
   orderValue: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  products?: any[]; // Danh sách sản phẩm trong giỏ để check scope
+  products?: any[];
 }
 
 const DiscountModal: React.FC<DiscountModalProps> = ({
@@ -36,7 +35,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   orderValue,
   products = [],
 }) => {
-  const [discounts, setDiscounts] = useState<discountRes[]>([]);
+  const [allDiscounts, setAllDiscounts] = useState<discountRes[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -44,56 +43,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
       setLoading(true);
       try {
         const data = await getAllDiscounts();
-        const now = dayjs();
-
-        const validDiscounts = data.filter((discount) => {
-          // 1. Check Status
-          if (discount.status !== "ACTIVE") return false;
-
-          // 2. Check Date
-          const startDate = dayjs(discount.startDate);
-          const endDate = dayjs(discount.endDate).endOf("day");
-          if (!now.isAfter(startDate) || !now.isBefore(endDate)) return false;
-
-          // 3. Check Min Order
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const d = discount as any;
-          const minOrder = d.minOrderValue || 0;
-          if (minOrder > 0 && orderValue < minOrder) return false;
-
-          // 4. Check Scope (Quan trọng)
-          const scope = d.scope || "GLOBAL";
-
-          if (scope === "GLOBAL") return true; // Luôn đúng với Global
-
-          // Nếu scope đặc biệt mà không có sản phẩm nào để check -> false
-          if (!products || products.length === 0) return false;
-
-          if (scope === "SPECIFIC_PRODUCT") {
-            const applicableProductIds: number[] = d.applicableProductIds || [];
-            // Kiểm tra xem có sản phẩm nào trong giỏ nằm trong danh sách được áp dụng không
-            const hasMatch = products.some((p) =>
-              applicableProductIds.includes(Number(p.productId))
-            );
-            if (!hasMatch) return false;
-          } else if (scope === "CATEGORY") {
-            const applicableCategoryIds: number[] =
-              d.applicableCategoryIds || [];
-            // Kiểm tra xem có sản phẩm nào thuộc category được áp dụng không
-            const hasMatch = products.some((p) => {
-              // Lấy categoryId an toàn từ nhiều nguồn
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const catId =
-                (p as any).categoryId || (p as any).product?.categoryId;
-              return applicableCategoryIds.includes(Number(catId));
-            });
-            if (!hasMatch) return false;
-          }
-
-          return true;
-        });
-
-        setDiscounts(validDiscounts);
+        setAllDiscounts(data);
       } catch (error) {
         console.error("Error fetching discounts:", error);
       } finally {
@@ -104,7 +54,51 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     if (open) {
       fetchDiscounts();
     }
-  }, [open, orderValue, products]);
+  }, [open]);
+
+  const validDiscounts = useMemo(() => {
+    const now = dayjs();
+
+    return allDiscounts.filter((discount) => {
+      // 1. Check Status
+      if (discount.status !== "ACTIVE") return false;
+
+      // 2. Check Date
+      const startDate = dayjs(discount.startDate);
+      const endDate = dayjs(discount.endDate).endOf("day");
+      if (!now.isAfter(startDate) || !now.isBefore(endDate)) return false;
+
+      // 3. Check Min Order
+      const d = discount as any;
+      const minOrder = d.minOrderValue || 0;
+      if (minOrder > 0 && orderValue < minOrder) return false;
+
+      // 4. Check Scope
+      const scope = d.scope || "GLOBAL";
+
+      if (scope === "GLOBAL") return true;
+
+      // Nếu scope đặc biệt mà không có sản phẩm nào để check -> false
+      if (!products || products.length === 0) return false;
+
+      if (scope === "SPECIFIC_PRODUCT") {
+        const applicableProductIds: number[] = d.applicableProductIds || [];
+        const hasMatch = products.some((p) =>
+          applicableProductIds.includes(Number(p.productId))
+        );
+        if (!hasMatch) return false;
+      } else if (scope === "CATEGORY") {
+        const applicableCategoryIds: number[] = d.applicableCategoryIds || [];
+        const hasMatch = products.some((p) => {
+          const catId = (p as any).categoryId || (p as any).product?.categoryId;
+          return applicableCategoryIds.includes(Number(catId));
+        });
+        if (!hasMatch) return false;
+      }
+
+      return true;
+    });
+  }, [allDiscounts, orderValue, products]);
 
   const toggleDiscountSelection = (discount: discountRes) => {
     const isSelected = selectedDiscounts.some((d) => d.id === discount.id);
@@ -113,8 +107,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
         selectedDiscounts.filter((d) => d.id !== discount.id)
       );
     } else {
-      // Logic cộng dồn mã: Hiện tại cho phép chọn nhiều
-      // Nếu muốn chỉ 1 mã, dùng: setSelectedDiscounts([discount]);
       setSelectedDiscounts([...selectedDiscounts, discount]);
     }
   };
@@ -124,7 +116,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   };
 
   const getDiscountValue = (discount: discountRes) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return discount.value ?? (discount as any).percentage ?? 0;
   };
 
@@ -174,7 +165,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
             <Typography align="center" py={3} color="text.secondary">
               Đang tải mã khuyến mãi...
             </Typography>
-          ) : discounts.length === 0 ? (
+          ) : validDiscounts.length === 0 ? (
             <Box textAlign="center" py={4}>
               <Typography color="text.secondary" mb={1}>
                 Không có mã khuyến mãi phù hợp
@@ -185,13 +176,12 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
             </Box>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {discounts.map((discount) => {
+              {validDiscounts.map((discount) => {
                 const isSelected = selectedDiscounts.some(
                   (d) => d.id === discount.id
                 );
                 const val = getDiscountValue(discount);
 
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const d = discount as any;
                 const minOrder = d.minOrderValue || 0;
                 const maxDiscount = d.maxDiscountAmount || 0;

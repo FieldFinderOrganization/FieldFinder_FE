@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect, useRef, FormEvent } from "react";
@@ -19,12 +21,16 @@ import {
 } from "@/services/ai";
 import { useCart } from "@/context/CartContext";
 import { useSelector } from "react-redux";
+import { PitchResponseDTO } from "@/services/pitch";
+import dayjs from "dayjs";
 
 interface ChatMessage {
   sender: "user" | "ai";
   text: string;
   imagePreview?: string;
   products?: ProductDTO[];
+
+  matchedPitches?: PitchResponseDTO[];
 
   pitchId?: string;
   bookingDate?: string | null;
@@ -71,6 +77,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const [aiCartId, setAiCartId] = useState<number | null>(null);
 
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -88,7 +96,9 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { addToCart, clearCart } = useCart();
+  // const { addToCart, clearCart } = useCart();
+
+  const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
 
   const handleSubmitMessageRef = useRef(async (messageText: string) => {});
 
@@ -116,6 +126,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     }
     return timeRanges.join(", ");
   };
+
   const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return "";
     try {
@@ -170,6 +181,10 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     }
     return "";
   };
+
+  useEffect(() => {
+    setSelectedTimeSlots([]);
+  }, [date]);
 
   useEffect(() => {
     let currentSession = localStorage.getItem("chat_session_id");
@@ -245,6 +260,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
           data: data.data,
           pitchType: data.pitchType || "ALL",
           formattedPitchType: formatPitchType(data.pitchType || "ALL"),
+
+          matchedPitches: data.data?.matchedPitches,
         };
         setMessages((prev) => [...prev, aiMessage]);
       } else {
@@ -423,6 +440,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       slotList: data.slotList,
       formattedSlots: formatSlotToTime(data.slotList),
       data: data.data,
+
+      matchedPitches: data.data?.matchedPitches,
     };
 
     if (data.data?.action === "ready_to_order" && data.data.selectedSize) {
@@ -452,20 +471,17 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     }
   };
 
-  const handleBookField = (msg: ChatMessage) => {
-    const textParts = msg.text.split("\n");
-    const name = textParts[0]?.split(": ")[1] || "Không xác định";
-    const price = textParts[1]?.split(": ")[1] || "0";
-    const description = textParts[2]?.split(": ")[1] || "Không có mô tả";
+  const handleBookSpecificPitch = (pitch: any, parentMsg: ChatMessage) => {
     const fieldData: FieldData = {
-      id: msg.pitchId || "",
-      name,
-      type: msg.formattedPitchType || "",
-      price,
-      description,
-      date: msg.formattedDate || "",
-      time: msg.formattedSlots || "",
+      id: pitch.pitchId,
+      name: pitch.name,
+      type: pitch.type,
+      price: pitch.price,
+      description: pitch.description,
+      date: parentMsg.formattedDate || "",
+      time: parentMsg.formattedSlots || "",
     };
+    console.log(fieldData);
     setFieldData(fieldData);
     setIsModalBookingOpen(true);
   };
@@ -610,21 +626,46 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                       </button>
                     </div>
                   )}
-
-                  {msg.sender === "ai" &&
-                    msg.slotList &&
-                    msg.slotList.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <button
-                          className="mt-2 bg-green-500 text-white text-xs px-3 py-1 rounded hover:bg-green-600"
-                          onClick={() => handleBookField(msg)}
-                        >
-                          Đặt sân ngay
-                        </button>
-                      </div>
-                    )}
                 </div>
               )}
+
+              {msg.sender === "ai" &&
+                msg.matchedPitches &&
+                msg.matchedPitches.length > 0 && (
+                  <div className="mt-3 flex flex-col gap-3 w-full">
+                    {msg.matchedPitches.map((pitch: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-1"
+                      >
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-bold text-blue-700 text-sm">
+                            {pitch.name}
+                          </h4>
+                          <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            {formatPitchType(pitch.type)}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {pitch.description || "Mặt sân đẹp, thoáng mát"}
+                        </p>
+
+                        <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-2">
+                          <span className="text-red-500 font-bold text-sm">
+                            {Number(pitch.price).toLocaleString()} đ/h
+                          </span>
+                          <button
+                            onClick={() => handleBookSpecificPitch(pitch, msg)}
+                            className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                          >
+                            Đặt ngay
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
               {msg.orderInfo && (
                 <div className="mt-3 pt-2 border-t border-gray-100 flex flex-col gap-2">
@@ -740,6 +781,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
             open={isModalBookingOpen}
             onClose={handleClose}
             fieldData={fieldData}
+            // onBookingSuccess={() => {
+            //   setIsModalBookingOpen(false);
+            //   toast.success("Đặt sân thành công!");
+            // }}
+            // resetSelectedSlots={() => setSelectedTimeSlots([])}
           />
         )}
 
