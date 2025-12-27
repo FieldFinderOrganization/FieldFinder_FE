@@ -1,5 +1,4 @@
 import axios from "axios";
-import { cartItemRes } from "./cartItem";
 
 const baseURL = "http://localhost:8080/api/payments";
 
@@ -19,6 +18,7 @@ export interface ShopPaymentRequestDTO {
     productId: number;
     quantity: number;
   }[];
+  discountCodes?: string[];
 }
 
 export interface paymentRes {

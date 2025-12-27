@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/rules-of-hooks */
 "use client";
 
 import React from "react";
 import { Button, Modal, Box, Typography, Divider } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EventIcon from "@mui/icons-material/Event";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 
@@ -135,14 +136,6 @@ const paymentModal: React.FC<PaymentModalProps> = ({
             <Typography variant="h6" fontWeight={700}>
               Thông tin thanh toán
             </Typography>
-            {/* <div className="flex items-center justify-between w-full">
-              <div className="field-info text-[1rem] font-bold">
-                Tên tài khỏan:
-              </div>
-              <div className="field-info text-[1rem] flex-1 text-right">
-                {paymentData.bankAccountName || "Chưa cập nhật"}
-              </div>
-            </div> */}
             <Divider
               orientation="horizontal"
               flexItem

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
@@ -41,6 +43,7 @@ import { useFavourite } from "@/context/FavouriteContext";
 import { IoMdHeart } from "react-icons/io";
 import { GoHeart } from "react-icons/go";
 import { BsCart2 } from "react-icons/bs";
+import { CiDiscount1 } from "react-icons/ci";
 
 interface TabItem {
   label: React.ReactNode;
@@ -55,7 +58,7 @@ const Header: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated } = useSelector(
     (state: RootState) => state.auth
-  );
+  ) as { user: any; isAuthenticated: boolean };
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -73,7 +76,6 @@ const Header: React.FC = () => {
     { label: "Cửa hàng", path: "/sportShop/product" },
     { label: "Giới thiệu", path: "/about" },
     { label: "Danh sách sân", path: "/fields" },
-    { label: "Mã khuyến mãi", path: "/discount" }, // Đã sửa thành /discounts theo file page bạn tạo trước đó
   ];
 
   const tabItems = isAuthenticated ? authenticatedTabItems : defaultTabItems;
@@ -95,12 +97,10 @@ const Header: React.FC = () => {
     router.push(tabItems[newValue].path);
   };
 
-  // Xử lý đóng mở Mobile Menu
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  // Render nội dung bên trong Mobile Drawer
   const drawer = (
     <Box onClick={handleDrawerToggle} sx={{ textAlign: "center" }}>
       <Box
@@ -200,6 +200,11 @@ const Header: React.FC = () => {
     router.push("/orderHistory");
   };
 
+  const handleDiscountWallet = () => {
+    handleMenuClose();
+    router.push("/discount");
+  };
+
   return (
     <div
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md h-[80px] flex items-center`}
@@ -277,8 +282,7 @@ const Header: React.FC = () => {
         <Box className="flex items-center gap-1 sm:gap-2">
           {isAuthenticated && (
             <>
-              {/* Favourite Icon */}
-              <Link href="/sportShop/favourites" className="hidden xs:block">
+              <Link href="/sportShop/favourites">
                 <Tooltip title="Favourites">
                   <Button sx={{ minWidth: "40px", px: 1 }}>
                     {isMounted && favCount > 0 ? (
@@ -295,7 +299,6 @@ const Header: React.FC = () => {
                 </Tooltip>
               </Link>
 
-              {/* Cart Icon */}
               <Link href="/sportShop/cart">
                 <Tooltip title="Cart">
                   <Button sx={{ minWidth: "40px", px: 1 }}>
@@ -309,7 +312,6 @@ const Header: React.FC = () => {
                 </Tooltip>
               </Link>
 
-              {/* User Avatar */}
               <Button
                 id="user-menu-button"
                 aria-controls={open ? "user-menu" : undefined}
@@ -335,7 +337,6 @@ const Header: React.FC = () => {
                 </div>
               </Button>
 
-              {/* Dropdown Menu */}
               <Menu
                 id="user-menu"
                 anchorEl={anchorEl}
@@ -369,6 +370,7 @@ const Header: React.FC = () => {
                 <div className="px-4 py-3 flex items-center gap-3">
                   <img
                     src={ava.src}
+                    alt="Avatar"
                     className="w-10 h-10 rounded-full border"
                   />
                   <div>
@@ -398,6 +400,12 @@ const Header: React.FC = () => {
                     <IoCartOutline fontSize="small" />
                   </ListItemIcon>
                   <ListItemText>Lịch sử đặt hàng</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleDiscountWallet}>
+                  <ListItemIcon>
+                    <CiDiscount1 fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Mã giảm giá</ListItemText>
                 </MenuItem>
                 {user?.role === "PROVIDER" && (
                   <MenuItem onClick={handlePitchInfo}>

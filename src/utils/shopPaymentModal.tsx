@@ -17,8 +17,9 @@ import { toast } from "react-toastify";
 import { createShopPayment, ShopPaymentRequestDTO } from "@/services/payment";
 import { getItemsByCartId, cartItemRes } from "@/services/cartItem";
 import { discountRes, getAllDiscounts } from "@/services/discount";
-import DiscountModal from "./discountModal"; // Ensure this path is correct
+import DiscountModal from "./discountModal";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
+import { createOrder } from "@/services/order";
 
 interface GuestInfo {
   name: string;
@@ -41,7 +42,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
   guestInfo,
   customCartId,
 }) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reduxUser = useSelector((state: any) => state.auth.user);
   const currentUser = guestInfo || reduxUser;
   const isGuest = !!guestInfo;
@@ -51,7 +51,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
   const [customItems, setCustomItems] = useState<cartItemRes[]>([]);
   const [loadingCustom, setLoadingCustom] = useState(false);
 
-  // --- 1. Fetch Items Logic ---
   useEffect(() => {
     if (open && customCartId) {
       const fetchCustomCartItems = async () => {
@@ -75,16 +74,13 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
   const finalCartItems = customCartId ? customItems : contextCartItems;
 
-  // --- Discount Logic Initialization ---
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [selectedDiscounts, setSelectedDiscounts] = useState<discountRes[]>([]);
 
   useEffect(() => {
     const enrichAndSelectDiscounts = async () => {
-      // Chỉ chạy khi modal mở và có sản phẩm
       if (!open || finalCartItems.length === 0) return;
 
-      // 1. Thu thập các mã đã áp dụng từ CartItems (Dữ liệu Lite từ BE)
       const appliedCodes = new Set<string>();
       finalCartItems.forEach((item) => {
         const itemDiscounts = (item as any).appliedDiscounts;
@@ -93,14 +89,14 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         }
       });
 
-      // Nếu không có mã nào từ BE hoặc user đã tự chọn mã rồi thì thôi
-      if (appliedCodes.size === 0 || selectedDiscounts.length > 0) return;
+      if (appliedCodes.size === 0) {
+        setSelectedDiscounts([]);
+        return;
+      }
 
       try {
-        // 2. Fetch tất cả discount đầy đủ để lấy thông tin Scope, MinOrder...
         const allDiscounts = await getAllDiscounts();
 
-        // 3. Lọc ra các discount khớp với mã đã áp dụng
         const fullDiscountsToSelect = allDiscounts.filter((d) =>
           appliedCodes.has(d.code)
         );
@@ -129,75 +125,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     }, 0);
   }, [finalCartItems]);
 
-  const productSavings = totalOriginalPrice - totalRealPrice;
+  const finalTotal = totalRealPrice;
 
-  // --- 3. Discount Amount Calculation ---
-  const discountAmount = useMemo(() => {
-    if (selectedDiscounts.length === 0) return 0;
-
-    return selectedDiscounts.reduce((sum, discount) => {
-      const d = discount as any;
-      const minOrder = d.minOrderValue || 0;
-
-      // SỬA: Kiểm tra Min Order dựa trên giá thực tế khách mua
-      if (minOrder > 0 && totalRealPrice < minOrder) return sum;
-
-      const scope = d.scope || "GLOBAL";
-      let applicableSubtotal = 0;
-
-      if (scope === "GLOBAL") {
-        applicableSubtotal = totalRealPrice; // SỬA: Dùng totalRealPrice
-      } else if (scope === "SPECIFIC_PRODUCT") {
-        // ... Logic lọc sản phẩm giữ nguyên ...
-        // NHƯNG bên trong reduce phải dùng item.priceAtTime
-        const applicableProductIds: number[] = (
-          d.applicableProductIds || []
-        ).map(Number);
-        applicableSubtotal = finalCartItems.reduce((acc, item) => {
-          if (applicableProductIds.includes(Number(item.productId))) {
-            return acc + item.priceAtTime * item.quantity; // SỬA: Dùng priceAtTime
-          }
-          return acc;
-        }, 0);
-      } else if (scope === "CATEGORY") {
-        // ... Tương tự, nhớ dùng item.priceAtTime ...
-        const applicableCategoryIds: number[] = (
-          d.applicableCategoryIds || []
-        ).map(Number);
-        applicableSubtotal = finalCartItems.reduce((acc, item) => {
-          const catId =
-            (item as any).categoryId || (item as any).product?.categoryId;
-          if (catId && applicableCategoryIds.includes(Number(catId))) {
-            return acc + item.priceAtTime * item.quantity; // SỬA: Dùng priceAtTime
-          }
-          return acc;
-        }, 0);
-      }
-
-      if (applicableSubtotal === 0) return sum;
-
-      // ... Phần tính toán val, maxDiscount giữ nguyên ...
-      const val = d.value ?? d.percentage ?? 0;
-      const maxDiscount = d.maxDiscountAmount || 0;
-      let currentDiscount = 0;
-
-      if (d.discountType === "FIXED_AMOUNT") {
-        currentDiscount = val;
-        if (currentDiscount > applicableSubtotal)
-          currentDiscount = applicableSubtotal;
-      } else {
-        currentDiscount = (applicableSubtotal * val) / 100;
-        if (maxDiscount > 0 && currentDiscount > maxDiscount)
-          currentDiscount = maxDiscount;
-      }
-
-      return sum + currentDiscount;
-    }, 0);
-  }, [selectedDiscounts, totalRealPrice, finalCartItems]);
-
-  const finalTotal = Math.max(0, totalRealPrice - discountAmount);
-
-  // --- 4. Payment State ---
   const [paymentMethod, setPaymentMethod] = useState<"BANK" | "CASH">("BANK");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -216,17 +145,18 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     try {
       const payload: ShopPaymentRequestDTO = {
         userId: isGuest ? "GUEST" : currentUser.userId,
-        amount: finalTotal, // Send the discounted amount
+        amount: finalTotal,
         description: `Thanh toan don hang ${currentUser.name || "Guest"}`,
         paymentMethod: paymentMethod,
+        discountCodes: selectedDiscounts.map((d) => d.code), // Gửi mã đi
         items: finalCartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
           size: item.size,
         })),
-        // appliedDiscounts: selectedDiscounts.map(d => d.code)
       };
 
+      await createOrder(payload);
       const paymentRes = await createShopPayment(payload);
 
       if (paymentRes.checkoutUrl) {
@@ -237,7 +167,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         if (!customCartId) {
           await clearCart();
         }
-        // Reset states
         setSelectedDiscounts([]);
         onClose();
       }
@@ -269,6 +198,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
             outline: "none",
           }}
         >
+          {/* Header */}
           <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
             <Typography variant="h6" fontWeight={700} color="text.primary">
               Xác nhận đơn hàng {isGuest ? "(Khách)" : ""}
@@ -280,6 +210,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
           <div className="p-4 md:p-6 flex flex-col md:flex-row gap-6 md:gap-8">
             <div className="w-full md:w-3/5 flex flex-col gap-6">
+              {/* User Info */}
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <Typography
                   variant="subtitle1"
@@ -319,6 +250,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                 </div>
               </div>
 
+              {/* Product List */}
               <div>
                 <Typography variant="subtitle1" fontWeight={700} mb={2}>
                   📦 Sản phẩm ({finalCartItems.length})
@@ -368,7 +300,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                                 ₫
                               </p>
                             )}
-
                           <p className="text-xs text-gray-500 mt-1">
                             Tổng gốc:{" "}
                             {new Intl.NumberFormat("vi-VN").format(
@@ -380,11 +311,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                         </div>
                       </div>
                     ))}
-                    {finalCartItems.length === 0 && !loadingCustom && (
-                      <p className="text-center text-red-500 text-sm">
-                        Không tìm thấy sản phẩm trong giỏ hàng này.
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
@@ -452,7 +378,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                 ) : (
                   <div
                     onClick={() => setIsDiscountModalOpen(true)}
-                    className="border border-dashed border-gray-300 rounded-lg p-3 text-center text-sm text-gray-500 cursor-pointer hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    className="border border-dashed border-gray-300 rounded-lg p-3 text-center text-sm text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     Chưa áp dụng mã nào
                   </div>
@@ -469,14 +395,9 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                 >
                   💳 Phương thức thanh toán
                 </Typography>
-
                 <div className="flex flex-col gap-3">
                   <div
-                    className={`relative rounded-xl border-2 p-3 cursor-pointer flex items-center gap-3 transition-all hover:shadow-sm ${
-                      paymentMethod === "BANK"
-                        ? "border-blue-600 bg-blue-50/50"
-                        : "border-gray-200 hover:border-blue-300"
-                    }`}
+                    className={`relative rounded-xl border-2 p-3 cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === "BANK" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"}`}
                     onClick={() => setPaymentMethod("BANK")}
                   >
                     <div
@@ -486,8 +407,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                         <div className="w-2 h-2 rounded-full bg-blue-600" />
                       )}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-gray-800">
+                    <div>
+                      <span className="text-sm font-bold text-gray-800 block">
                         Chuyển khoản ngân hàng
                       </span>
                       <span className="text-[10px] text-gray-500">
@@ -495,13 +416,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                       </span>
                     </div>
                   </div>
-
                   <div
-                    className={`relative rounded-xl border-2 p-3 cursor-pointer flex items-center gap-3 transition-all hover:shadow-sm ${
-                      paymentMethod === "CASH"
-                        ? "border-blue-600 bg-blue-50/50"
-                        : "border-gray-200 hover:border-blue-300"
-                    }`}
+                    className={`relative rounded-xl border-2 p-3 cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === "CASH" ? "border-blue-600 bg-blue-50/50" : "border-gray-200"}`}
                     onClick={() => setPaymentMethod("CASH")}
                   >
                     <div
@@ -511,8 +427,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                         <div className="w-2 h-2 rounded-full bg-blue-600" />
                       )}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-gray-800">
+                    <div>
+                      <span className="text-sm font-bold text-gray-800 block">
                         Thanh toán khi nhận hàng
                       </span>
                       <span className="text-[10px] text-gray-500">
@@ -531,28 +447,34 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                   </span>
                 </div>
 
-                {productSavings > 0 && (
+                {totalOriginalPrice > finalTotal && (
                   <div className="flex justify-between mb-2 text-sm text-blue-600">
-                    <span className="font-medium">Giảm giá sản phẩm:</span>
+                    <span className="font-medium">Tổng tiết kiệm:</span>
                     <span className="font-medium">
-                      -{productSavings.toLocaleString("vi-VN")} ₫
+                      -
+                      {(totalOriginalPrice - finalTotal).toLocaleString(
+                        "vi-VN"
+                      )}{" "}
+                      ₫
                     </span>
                   </div>
                 )}
 
-                <div className="flex justify-between mb-2 text-sm">
-                  <span className="text-gray-600">Thành tiền:</span>
-                  <span className="font-medium text-gray-900">
-                    {totalRealPrice.toLocaleString("vi-VN")} ₫
-                  </span>
-                </div>
-
-                {discountAmount > 0 && (
-                  <div className="flex justify-between mb-2 text-sm text-[#FE2A00]">
-                    <span className="font-medium">Voucher giảm giá:</span>
-                    <span className="font-medium">
-                      -{discountAmount.toLocaleString("vi-VN")} ₫
+                {selectedDiscounts.length > 0 && (
+                  <div className="mb-2">
+                    <span className="text-xs text-gray-500 block mb-1">
+                      Mã đã áp dụng:
                     </span>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedDiscounts.map((d) => (
+                        <span
+                          key={d.id}
+                          className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 font-bold"
+                        >
+                          {d.code}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -563,7 +485,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
                 <Divider sx={{ my: 1, borderStyle: "dashed" }} />
 
-                {/* Dòng cuối: Tổng thanh toán */}
                 <div className="flex justify-between items-center">
                   <span className="text-base font-bold text-gray-800">
                     Tổng thanh toán:
@@ -588,13 +509,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                   borderRadius: "12px",
                   textTransform: "none",
                   fontSize: "1rem",
-                  boxShadow:
-                    "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                  "&:hover": {
-                    bgcolor: "#000000",
-                    boxShadow:
-                      "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                  },
+                  "&:hover": { bgcolor: "#000000" },
                   "&:disabled": { bgcolor: "#9CA3AF", color: "#F3F4F6" },
                 }}
               >
@@ -612,7 +527,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         onClose={() => setIsDiscountModalOpen(false)}
         selectedDiscounts={selectedDiscounts}
         setSelectedDiscounts={setSelectedDiscounts}
-        orderValue={totalOriginalPrice}
+        orderValue={totalRealPrice}
         products={finalCartItems}
       />
     </div>
