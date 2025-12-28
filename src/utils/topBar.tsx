@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
-import { CiSearch } from "react-icons/ci";
+import { CiDiscount1, CiSearch } from "react-icons/ci";
 import { GoHeart } from "react-icons/go";
 import { BsCart2 } from "react-icons/bs";
 import ava from "../../public/images/20.png";
@@ -143,6 +143,11 @@ const TopBar: React.FC<TopBarProps> = ({
     handleMenuClose();
     dispatch(setShowSidebar(false));
     router.push("/orderHistory");
+  };
+
+  const handleDiscountWallet = () => {
+    handleMenuClose();
+    router.push("/discount");
   };
 
   return (
@@ -391,6 +396,12 @@ const TopBar: React.FC<TopBarProps> = ({
                     <IoCartOutline fontSize="small" />
                   </ListItemIcon>
                   <ListItemText>Lịch sử đặt hàng</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleDiscountWallet}>
+                  <ListItemIcon>
+                    <CiDiscount1 fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Mã giảm giá</ListItemText>
                 </MenuItem>
                 {user?.role === "PROVIDER" && (
                   <MenuItem onClick={handlePitchInfo}>

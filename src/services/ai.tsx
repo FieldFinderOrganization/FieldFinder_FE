@@ -26,6 +26,21 @@ export interface ProductDTO {
   description: string;
 }
 
+// --- HELPER: Lấy Header có Token ---
+const getConfig = () => {
+  if (typeof window === "undefined")
+    return { headers: { "Content-Type": "application/json" } };
+
+  const token = localStorage.getItem("token");
+  const headers: any = { "Content-Type": "application/json" };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return { headers };
+};
+
 export const postChatMessage = async (
   userInput: string,
   sessionId: string
@@ -39,9 +54,7 @@ export const postChatMessage = async (
     const response = await axios.post<BookingQuery>(
       `${API_URL}/chat`,
       payload,
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      getConfig()
     );
     return response.data;
   } catch (error) {
@@ -55,10 +68,14 @@ export const postImageMessage = async (
   sessionId: string
 ): Promise<BookingQuery> => {
   try {
-    const response = await axios.post<BookingQuery>(`${API_URL}/image`, {
-      image: base64Image,
-      sessionId: sessionId,
-    });
+    const response = await axios.post<BookingQuery>(
+      `${API_URL}/image`,
+      {
+        image: base64Image,
+        sessionId: sessionId,
+      },
+      getConfig()
+    );
     return response.data;
   } catch {
     throw new Error("Failed to analyze image.");

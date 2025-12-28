@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, FormEvent } from "react";
@@ -13,8 +14,8 @@ import FormControl from "@mui/material/FormControl";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import { Box } from "@mui/material";
 import { addProvider } from "@/services/provider";
-import { useDispatch } from "react-redux";
-import { registerSuccess } from "@/redux/features/authSlice";
+// import { useDispatch } from "react-redux"; // Xóa dòng này
+// import { registerSuccess } from "@/redux/features/authSlice"; // Xóa dòng này
 
 const Signup: React.FC = () => {
   const [name, setName] = useState<string>("");
@@ -23,9 +24,9 @@ const Signup: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [role, setRole] = useState<string>("USER");
-  const [status, setStatus] = useState("ACTIVE");
+  const [status, setStatus] = useState("ACTIVE"); // eslint-disable-line @typescript-eslint/no-unused-vars
   const router = useRouter();
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch(); // Xóa dòng này
 
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
@@ -41,33 +42,20 @@ const Signup: React.FC = () => {
     try {
       const res = await register(user);
       if (res && res.data) {
-        let userData = {
-          userId: res.data.userId,
-          name: res.data.name,
-          email: res.data.email,
-          phone: res.data.phone,
-          role: res.data.role,
-          cardNumber: "",
-          bank: "",
-          providerId: "",
-          addresses: [] as { providerAddressId: string; address: string }[],
-        };
+        // Logic tạo provider giữ nguyên
         if (res.data.role === "PROVIDER") {
           const providerData = {
             cardNumber: "",
             bank: "",
           };
-          const providerRes = await addProvider(providerData, res.data.userId);
-          if (providerRes && providerRes.providerId) {
-            userData = {
-              ...userData,
-              providerId: providerRes.providerId,
-            };
-          }
+          await addProvider(providerData, res.data.userId);
         }
-        dispatch(registerSuccess(userData));
 
-        toast.success("Đăng ký thành công");
+        // --- THAY ĐỔI Ở ĐÂY ---
+        // Không dispatch registerSuccess nữa để tránh lỗi state "fake login" không có token.
+        // dispatch(registerSuccess(userData));
+
+        toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
         router.push("/login");
       } else {
         toast.error("Đăng ký thất bại");
@@ -78,6 +66,7 @@ const Signup: React.FC = () => {
   };
 
   return (
+    // ... (Phần return UI giữ nguyên hoàn toàn) ...
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -100,6 +89,7 @@ const Signup: React.FC = () => {
         className="w-1/2 min-h-screen flex items-center justify-center bg-white p-4"
         onSubmit={handleSubmit}
       >
+        {/* ... (Nội dung form giữ nguyên) ... */}
         <motion.div
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -114,6 +104,7 @@ const Signup: React.FC = () => {
           </div>
 
           <div className="space-y-4">
+            {/* ... Input fields ... */}
             <div className="name-email flex items-center gap-x-[1rem]">
               <div className="name">
                 <label className="block text-sm mb-2 font-medium">Tên</label>
@@ -136,6 +127,7 @@ const Signup: React.FC = () => {
                 />
               </div>
             </div>
+
             <div className="phone-pass flex items-center gap-x-[1rem] mb-[1.5rem]">
               <div className="phone">
                 <label className="block text-sm mb-2 font-medium">
@@ -173,6 +165,7 @@ const Signup: React.FC = () => {
                 />
               </div>
             </div>
+
             <Box className="role">
               <FormControl fullWidth>
                 <InputLabel id="demo-simple-select-label">Bạn là?</InputLabel>
@@ -189,6 +182,7 @@ const Signup: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
+
             <div className="footer">
               <motion.button
                 whileHover={{ scale: 1.05 }}

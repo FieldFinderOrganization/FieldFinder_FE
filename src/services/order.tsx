@@ -16,19 +16,20 @@ export interface orderItemResponseDTO {
 }
 
 export interface orderResponseDTO {
-  orderId: number;
+  orderId: string;
   userName: string;
   totalAmount: number;
   status: string;
-  paymentMethod: string; // BANK OR CASH
+  paymentMethod: string;
   createdAt: string;
   items: orderItemResponseDTO[];
 }
 
 export interface orderRequestDTO {
-  userId: string;
+  userId: string | undefined;
   items: orderItemRequestDTO[];
-  paymentMethod: string; // BANK OR CASH
+  paymentMethod: string;
+  discountCodes?: string[];
 }
 
 export const createOrder = async (payload: orderRequestDTO) => {
@@ -53,7 +54,7 @@ export const getOrdersByUserId = async (userId: string) => {
   return response.data;
 };
 
-export const updateOrderStatus = async (id: number, status: string) => {
+export const updateOrderStatus = async (id: string, status: string) => {
   const response = await axios.put<orderResponseDTO>(
     `${base_url}/${id}/status`,
     null,

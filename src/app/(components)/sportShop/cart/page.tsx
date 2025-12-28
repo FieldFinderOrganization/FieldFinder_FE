@@ -102,7 +102,7 @@ const CartPage = () => {
   if (loadingCart) {
     return (
       <div className="container mx-auto max-w-6xl p-6 mt-10 text-center">
-        <h1 className="text-3xl font-semibold">Loading Cart...</h1>
+        <h1 className="text-3xl font-semibold">Đang tải...</h1>
       </div>
     );
   }
@@ -138,7 +138,7 @@ const CartPage = () => {
             <div className="bg-gray-50 p-6 rounded-lg sticky top-28">
               <div className="flex justify-between items-center mb-2 text-gray-600">
                 <p>Tạm tính</p>
-                <p>VND {formattedSubtotal}</p>
+                <p>{formattedSubtotal} VND </p>
               </div>
               <div className="flex justify-between items-center mb-6 text-gray-600">
                 <p>Phí vận đơn</p>

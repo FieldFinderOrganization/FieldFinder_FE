@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -19,7 +20,7 @@ import { getItemsByCartId, cartItemRes } from "@/services/cartItem";
 import { discountRes, getAllDiscounts } from "@/services/discount";
 import DiscountModal from "./discountModal";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import { createOrder } from "@/services/order";
+import { createOrder, orderRequestDTO } from "@/services/order";
 
 interface GuestInfo {
   name: string;
@@ -50,6 +51,49 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
   const [customItems, setCustomItems] = useState<cartItemRes[]>([]);
   const [loadingCustom, setLoadingCustom] = useState(false);
+
+  const calculateItemCurrentPrice = (
+    item: any,
+    selectedDiscounts: discountRes[]
+  ) => {
+    const originalPrice = (item as any).originalPrice ?? item.priceAtTime;
+
+    // Nếu không chọn mã nào, trả về giá gốc
+    if (selectedDiscounts.length === 0) return originalPrice;
+
+    const activeCodes = new Set(selectedDiscounts.map((d) => d.code));
+    const itemDiscounts = (item as any).appliedDiscounts || [];
+
+    // Lấy danh sách discount hợp lệ
+    const validDiscounts = itemDiscounts.filter((d: any) =>
+      activeCodes.has(d.code)
+    );
+
+    // Quan trọng: Logic Lũy Tiến của BE phụ thuộc vào thứ tự áp dụng mã.
+    // Ở FE cũng phải lặp tương tự.
+    let currentPrice = originalPrice;
+
+    validDiscounts.forEach((d: any) => {
+      let discountAmount = 0;
+      const val = d.value ?? d.percentage ?? 0; // Đảm bảo lấy đúng value
+
+      if (d.discountType === "FIXED_AMOUNT") {
+        discountAmount = val;
+      } else {
+        // LOGIC LŨY TIẾN (Backend style):
+        // Tính phần trăm dựa trên currentPrice (giá đã giảm ở bước trước)
+        discountAmount = (currentPrice * val) / 100;
+
+        if (d.maxDiscountAmount && discountAmount > d.maxDiscountAmount) {
+          discountAmount = d.maxDiscountAmount;
+        }
+      }
+
+      currentPrice -= discountAmount;
+    });
+
+    return currentPrice < 0 ? 0 : currentPrice;
+  };
 
   useEffect(() => {
     if (open && customCartId) {
@@ -119,13 +163,15 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     }, 0);
   }, [finalCartItems]);
 
-  const totalRealPrice = useMemo(() => {
+  // 2. TÍNH TOÁN LẠI TỔNG TIỀN DỰA TRÊN MÃ ĐANG CHỌN (QUAN TRỌNG)
+  const finalTotal = useMemo(() => {
     return finalCartItems.reduce((total, item) => {
-      return total + item.priceAtTime * item.quantity;
+      return (
+        total +
+        calculateItemCurrentPrice(item, selectedDiscounts) * item.quantity
+      );
     }, 0);
-  }, [finalCartItems]);
-
-  const finalTotal = totalRealPrice;
+  }, [finalCartItems, selectedDiscounts]);
 
   const [paymentMethod, setPaymentMethod] = useState<"BANK" | "CASH">("BANK");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -143,12 +189,10 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
     setIsProcessing(true);
     try {
-      const payload: ShopPaymentRequestDTO = {
+      const orderPayload: orderRequestDTO = {
         userId: isGuest ? "GUEST" : currentUser.userId,
-        amount: finalTotal,
-        description: `Thanh toan don hang ${currentUser.name || "Guest"}`,
         paymentMethod: paymentMethod,
-        discountCodes: selectedDiscounts.map((d) => d.code), // Gửi mã đi
+        discountCodes: selectedDiscounts.map((d) => d.code),
         items: finalCartItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -156,7 +200,21 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         })),
       };
 
-      await createOrder(payload);
+      const orderResponse = await createOrder(orderPayload);
+
+      const payload: ShopPaymentRequestDTO = {
+        orderCode: orderResponse.orderId,
+        userId: isGuest ? "GUEST" : currentUser.userId,
+        amount: finalTotal,
+        description: `Thanh toan don hang ${currentUser.name || "Guest"}`,
+        paymentMethod: paymentMethod,
+        items: finalCartItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          size: item.size,
+        })),
+      };
+
       const paymentRes = await createShopPayment(payload);
 
       if (paymentRes.checkoutUrl) {
@@ -262,55 +320,69 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-                    {finalCartItems.map((item) => (
-                      <div
-                        key={item.id || item.productId}
-                        className="flex gap-4 items-start p-3 border border-gray-100 rounded-lg"
-                      >
-                        <img
-                          src={item.imageUrl || "/placeholder.png"}
-                          alt={item.productName}
-                          className="w-16 h-16 object-cover rounded-md border"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-bold line-clamp-2">
-                            {item.productName}
-                          </p>
-                          <div className="flex justify-between mt-1">
-                            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                              Size: {item.size}
-                            </span>
-                            <span className="text-xs">x{item.quantity}</span>
+                    {finalCartItems.map((item) => {
+                      // Tính giá realtime cho item này
+                      const dynamicPrice = calculateItemCurrentPrice(
+                        item,
+                        selectedDiscounts
+                      );
+                      const originalPrice =
+                        (item as any).originalPrice ?? item.priceAtTime;
+
+                      return (
+                        <div
+                          key={item.id || item.productId}
+                          className="flex gap-4 items-start p-3 border border-gray-100 rounded-lg"
+                        >
+                          <img
+                            src={item.imageUrl || "/placeholder.png"}
+                            alt={item.productName}
+                            className="w-16 h-16 object-cover rounded-md border"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-bold line-clamp-2">
+                              {item.productName}
+                            </p>
+                            <div className="flex justify-between mt-1">
+                              <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                Size: {item.size}
+                              </span>
+                              <span className="text-xs">x{item.quantity}</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold">
-                            {new Intl.NumberFormat("vi-VN").format(
-                              (item as any).originalPrice ?? item.priceAtTime
-                            )}{" "}
-                            ₫
-                          </p>
-                          {(item as any).originalPrice &&
-                            (item as any).originalPrice > item.priceAtTime && (
+
+                          <div className="text-right">
+                            <p className="text-sm font-bold">
+                              {/* Hiển thị giá gốc */}
+                              {new Intl.NumberFormat("vi-VN").format(
+                                originalPrice
+                              )}{" "}
+                              ₫
+                            </p>
+
+                            {/* Logic hiển thị giá sau giảm ĐỘNG */}
+                            {originalPrice > dynamicPrice && (
                               <p className="text-xs text-red-500 font-semibold">
                                 Sau giảm:{" "}
                                 {new Intl.NumberFormat("vi-VN").format(
-                                  item.priceAtTime
+                                  dynamicPrice
                                 )}{" "}
                                 ₫
                               </p>
                             )}
-                          <p className="text-xs text-gray-500 mt-1">
-                            Tổng gốc:{" "}
-                            {new Intl.NumberFormat("vi-VN").format(
-                              ((item as any).originalPrice ??
-                                item.priceAtTime) * item.quantity
-                            )}{" "}
-                            ₫
-                          </p>
+
+                            {/* Tổng tiền của line item này */}
+                            <p className="text-xs text-gray-500 mt-1">
+                              Tổng cộng:{" "}
+                              {new Intl.NumberFormat("vi-VN").format(
+                                dynamicPrice * item.quantity
+                              )}{" "}
+                              ₫
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -527,7 +599,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         onClose={() => setIsDiscountModalOpen(false)}
         selectedDiscounts={selectedDiscounts}
         setSelectedDiscounts={setSelectedDiscounts}
-        orderValue={totalRealPrice}
+        orderValue={finalTotal}
         products={finalCartItems}
       />
     </div>

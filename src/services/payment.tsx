@@ -10,6 +10,7 @@ export interface PaymentRequestDTO {
 }
 
 export interface ShopPaymentRequestDTO {
+  orderCode: string;
   userId: string;
   amount: number;
   description: string;
@@ -18,7 +19,6 @@ export interface ShopPaymentRequestDTO {
     productId: number;
     quantity: number;
   }[];
-  discountCodes?: string[];
 }
 
 export interface paymentRes {

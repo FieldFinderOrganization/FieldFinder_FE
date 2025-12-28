@@ -14,6 +14,7 @@ export interface UserDTO {
 
 export interface AuthState {
   user: UserDTO | null;
+  token: string | null;
   loading: boolean;
   isAuthenticated: boolean;
   showSidebar: boolean;
@@ -21,6 +22,7 @@ export interface AuthState {
 
 const initialState: AuthState = {
   user: null,
+  token: null,
   loading: false,
   isAuthenticated: false,
   showSidebar: false,
@@ -37,10 +39,16 @@ const authSlice = createSlice({
     loginStart: (state) => {
       state.loading = true;
     },
-    loginSuccess: (state, action: PayloadAction<UserDTO>) => {
+    loginSuccess: (
+      state,
+      action: PayloadAction<{ user: UserDTO; token: string }>
+    ) => {
       state.loading = false;
-      state.user = action.payload;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
       state.isAuthenticated = true;
+
+      localStorage.setItem("token", action.payload.token);
     },
     update: (state, action: PayloadAction<Partial<UserDTO>>) => {
       if (state.user) {
@@ -49,14 +57,21 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.user = null;
+      state.token = null;
       state.loading = false;
       state.isAuthenticated = false;
+
       localStorage.removeItem("authState");
+      localStorage.removeItem("token");
       sessionStorage.setItem("justLoggedOut", "true");
       window.location.href = "/login";
     },
     setShowSidebar(state, action: PayloadAction<boolean>) {
       state.showSidebar = action.payload;
+    },
+    setToken: (state, action: PayloadAction<string>) => {
+      state.token = action.payload;
+      localStorage.setItem("token", action.payload);
     },
   },
 });
@@ -68,6 +83,7 @@ export const {
   update,
   logout,
   setShowSidebar,
+  setToken,
 } = authSlice.actions;
 
 export default authSlice.reducer;

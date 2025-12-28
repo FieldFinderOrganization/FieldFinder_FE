@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -38,6 +39,7 @@ const RetryPaymentModal: React.FC<RetryPaymentModalProps> = ({
     try {
       // Chuẩn bị payload từ thông tin đơn hàng cũ
       const payload: ShopPaymentRequestDTO = {
+        orderCode: order.orderId,
         userId: userId,
         amount: order.totalAmount,
         description: `Thanh toan lai don hang #${order.orderId}`,

@@ -19,7 +19,7 @@ interface User1 {
 
 export const updateUser = async (
   userObj: User1,
-  userId: String
+  userId: string
 ): Promise<User1> => {
   return axios.put(`${baseURL}/users/${userId}`, userObj);
 };

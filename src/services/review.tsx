@@ -43,7 +43,7 @@ export const updateReview = async (
 };
 
 export const deleteReview = async (reviewId: string): Promise<void> => {
-  const response = await axios.delete(`${baseURL}/${reviewId}`);
+  await axios.delete(`${baseURL}/${reviewId}`);
 };
 
 export const getAverageRating = async (pitchId: string): Promise<number> => {

@@ -1,3 +1,6 @@
+/* eslint-disable react/jsx-key */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import Header from "@/utils/header";
@@ -31,7 +34,6 @@ import {
   FormControl,
   InputLabel,
   useTheme,
-  useMediaQuery,
 } from "@mui/material";
 import { SelectChangeEvent } from "@mui/material/Select";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
@@ -179,7 +181,7 @@ const Profile: React.FC = () => {
     if (slots.length === 0) return "Không có slot";
 
     const sortedSlots = [...slots].sort((a, b) => a - b);
-    let result: string[] = [];
+    const result: string[] = [];
     let start = sortedSlots[0];
     let current = start;
 

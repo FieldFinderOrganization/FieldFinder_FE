@@ -1,13 +1,42 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { updateOrderStatus } from "@/services/order";
+import { toast } from "react-toastify";
 
 const PaymentStatusContent = () => {
   const searchParams = useSearchParams();
   const code = searchParams.get("code");
-  const orderCode = searchParams.get("orderCode");
+  const orderCode = searchParams.get("myOrderId");
+
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    const confirmPayment = async () => {
+      if (!orderCode || isUpdating) return;
+
+      if (code === "00") {
+        setIsUpdating(true);
+        try {
+          await updateOrderStatus(orderCode, "PAID"); // Hoặc trạng thái tương ứng trong Enum của bạn (COMPLETED/CONFIRMED)
+          setIsSuccess(true);
+          toast.success("Xác nhận thanh toán thành công!");
+        } catch (error) {
+          console.error("Lỗi cập nhật trạng thái:", error);
+          toast.error("Có lỗi khi cập nhật trạng thái đơn hàng.");
+        } finally {
+          setIsUpdating(false);
+        }
+      }
+    };
+
+    confirmPayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, orderCode]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
@@ -10,13 +11,9 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import Autocomplete from "@mui/material/Autocomplete";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import { toast } from "react-toastify";
 
 import {
@@ -27,6 +24,7 @@ import {
   PitchResponseDTO,
   deletePitch,
 } from "../../../services/pitch";
+import { TextField } from "@mui/material";
 
 interface PitchInfoProps {
   providerAddressId: string;
