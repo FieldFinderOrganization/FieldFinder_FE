@@ -140,6 +140,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
       try {
         const allDiscounts = await getAllDiscounts();
+        console.log(allDiscounts);
 
         const fullDiscountsToSelect = allDiscounts.filter((d) =>
           appliedCodes.has(d.code)

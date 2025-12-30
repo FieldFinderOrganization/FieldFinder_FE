@@ -60,48 +60,56 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     const now = dayjs();
 
     return allDiscounts.filter((discount) => {
-      // 1. Check Status
+      const d = discount as any;
+
+      // 1. Kiểm tra trạng thái
       if (discount.status !== "ACTIVE") return false;
 
-      // 2. Check Date
+      // 2. Kiểm tra thời hạn
       const startDate = dayjs(discount.startDate);
       const endDate = dayjs(discount.endDate).endOf("day");
-      if (!now.isAfter(startDate) || !now.isBefore(endDate)) return false;
+      if (now.isBefore(startDate) || now.isAfter(endDate)) return false;
 
-      // 3. Check Min Order
-      const d = discount as any;
+      // 3. Kiểm tra giá trị đơn hàng
       const minOrder = d.minOrderValue || 0;
-      if (minOrder > 0 && orderValue < minOrder) return false;
+      if (orderValue < minOrder) return false;
 
-      // 4. Check Scope
+      // 4. Kiểm tra phạm vi (Scope)
       const scope = d.scope || "GLOBAL";
-
       if (scope === "GLOBAL") return true;
 
-      // Nếu scope đặc biệt mà không có sản phẩm nào để check -> false
       if (!products || products.length === 0) return false;
 
+      // Ép kiểu tất cả ID về String để so sánh chính xác tuyệt đối
       if (scope === "SPECIFIC_PRODUCT") {
-        const applicableProductIds: number[] = d.applicableProductIds || [];
-        const hasMatch = products.some((p) =>
-          applicableProductIds.includes(Number(p.productId))
+        const applicableProductIds = (d.applicableProductIds || []).map(String);
+        return products.some((p) =>
+          applicableProductIds.includes(String(p.productId))
         );
-        if (!hasMatch) return false;
-      } else if (scope === "CATEGORY") {
-        const applicableCategoryIds: number[] = d.applicableCategoryIds || [];
-        const hasMatch = products.some((p) => {
-          const catId = (p as any).categoryId || (p as any).product?.categoryId;
-          return applicableCategoryIds.includes(Number(catId));
-        });
-        if (!hasMatch) return false;
       }
 
-      return true;
+      if (scope === "CATEGORY") {
+        const applicableCategoryIds = (d.applicableCategoryIds || []).map(
+          String
+        );
+        return products.some((p) => {
+          // Kiểm tra mọi đường dẫn có thể chứa categoryId
+          const catId =
+            p.categoryId ||
+            p.product?.categoryId ||
+            p.category?.id ||
+            p.product?.category?.id;
+          return catId && applicableCategoryIds.includes(String(catId));
+        });
+      }
+
+      return false;
     });
   }, [allDiscounts, orderValue, products]);
 
   const toggleDiscountSelection = (discount: discountRes) => {
     const isSelected = selectedDiscounts.some((d) => d.id === discount.id);
+    // if (isSelected) return true;
     if (isSelected) {
       setSelectedDiscounts(
         selectedDiscounts.filter((d) => d.id !== discount.id)
