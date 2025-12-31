@@ -14,6 +14,8 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { getAllDiscounts, discountRes } from "@/services/discount";
+// Đảm bảo bạn đã có service này để lấy danh sách danh mục
+import { getAllCategory } from "@/services/category";
 import dayjs from "dayjs";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { cartItemRes } from "@/services/cartItem";
@@ -36,23 +38,29 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   products = [],
 }) => {
   const [allDiscounts, setAllDiscounts] = useState<discountRes[]>([]);
+  const [allCategories, setAllCategories] = useState<any[]>([]); // State lưu danh sách category
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchDiscounts = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await getAllDiscounts();
-        setAllDiscounts(data);
+        // Fetch song song cả Discounts và Categories
+        const [discountsData, categoriesData] = await Promise.all([
+          getAllDiscounts(),
+          getAllCategory(),
+        ]);
+        setAllDiscounts(discountsData);
+        setAllCategories(categoriesData);
       } catch (error) {
-        console.error("Error fetching discounts:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
 
     if (open) {
-      fetchDiscounts();
+      fetchData();
     }
   }, [open]);
 
@@ -83,9 +91,11 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
       // Ép kiểu tất cả ID về String để so sánh chính xác tuyệt đối
       if (scope === "SPECIFIC_PRODUCT") {
         const applicableProductIds = (d.applicableProductIds || []).map(String);
-        return products.some((p) =>
-          applicableProductIds.includes(String(p.productId))
-        );
+        return products.some((p) => {
+          const pId =
+            p.productId || p.id || p.product?.productId || p.product?.id;
+          return pId && applicableProductIds.includes(String(pId));
+        });
       }
 
       if (scope === "CATEGORY") {
@@ -93,23 +103,39 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
           String
         );
         return products.some((p) => {
-          // Kiểm tra mọi đường dẫn có thể chứa categoryId
-          const catId =
+          // A. Thử lấy ID trực tiếp nếu có
+          let catId =
             p.categoryId ||
-            p.product?.categoryId ||
+            p.category?.categoryId ||
             p.category?.id ||
+            p.product?.categoryId ||
+            p.product?.category?.categoryId ||
             p.product?.category?.id;
+
+          // B. LOGIC MỚI: Nếu không có ID, dùng categoryName để tìm ngược lại ID trong allCategories
+          if (!catId) {
+            const cName = p.categoryName || p.product?.categoryName;
+            if (cName && allCategories.length > 0) {
+              // Tìm category có tên khớp (không phân biệt hoa thường)
+              const foundCat = allCategories.find(
+                (c) => c.name && c.name.toLowerCase() === cName.toLowerCase()
+              );
+              if (foundCat) {
+                catId = foundCat.categoryId || foundCat.id;
+              }
+            }
+          }
+
           return catId && applicableCategoryIds.includes(String(catId));
         });
       }
 
       return false;
     });
-  }, [allDiscounts, orderValue, products]);
+  }, [allDiscounts, allCategories, orderValue, products]);
 
   const toggleDiscountSelection = (discount: discountRes) => {
     const isSelected = selectedDiscounts.some((d) => d.id === discount.id);
-    // if (isSelected) return true;
     if (isSelected) {
       setSelectedDiscounts(
         selectedDiscounts.filter((d) => d.id !== discount.id)

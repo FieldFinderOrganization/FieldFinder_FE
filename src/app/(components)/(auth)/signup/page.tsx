@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
@@ -14,8 +15,13 @@ import FormControl from "@mui/material/FormControl";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import { Box } from "@mui/material";
 import { addProvider } from "@/services/provider";
-// import { useDispatch } from "react-redux"; // Xóa dòng này
-// import { registerSuccess } from "@/redux/features/authSlice"; // Xóa dòng này
+
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+}
 
 const Signup: React.FC = () => {
   const [name, setName] = useState<string>("");
@@ -24,9 +30,10 @@ const Signup: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [role, setRole] = useState<string>("USER");
-  const [status, setStatus] = useState("ACTIVE"); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [status, setStatus] = useState("ACTIVE");
   const router = useRouter();
-  // const dispatch = useDispatch(); // Xóa dòng này
+
+  const [errors, setErrors] = useState<ValidationErrors>({});
 
   const handleShowPassword = (): void => {
     setShowPassword((prev) => !prev);
@@ -36,13 +43,57 @@ const Signup: React.FC = () => {
     setRole(event.target.value as string);
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+    let isValid = true;
+
+    if (!name.trim()) {
+      newErrors.name = "Vui lòng nhập tên của bạn.";
+      isValid = false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      newErrors.email = "Vui lòng nhập email.";
+      isValid = false;
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = "Email không đúng định dạng.";
+      isValid = false;
+    }
+
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phone.trim()) {
+      newErrors.phone = "Vui lòng nhập số điện thoại.";
+      isValid = false;
+    } else if (!phoneRegex.test(phone)) {
+      newErrors.phone = "SĐT không hợp lệ (VD: 0901234567).";
+      isValid = false;
+    }
+
+    if (!password) {
+      newErrors.password = "Vui lòng nhập mật khẩu.";
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error("Vui lòng kiểm tra lại thông tin!");
+      return;
+    }
+
     const user = { name, email, phone, password, role, status };
     try {
       const res = await register(user);
       if (res && res.data) {
-        // Logic tạo provider giữ nguyên
         if (res.data.role === "PROVIDER") {
           const providerData = {
             cardNumber: "",
@@ -51,22 +102,25 @@ const Signup: React.FC = () => {
           await addProvider(providerData, res.data.userId);
         }
 
-        // --- THAY ĐỔI Ở ĐÂY ---
-        // Không dispatch registerSuccess nữa để tránh lỗi state "fake login" không có token.
-        // dispatch(registerSuccess(userData));
-
         toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
         router.push("/login");
       } else {
         toast.error("Đăng ký thất bại");
       }
-    } catch (error) {
-      toast.error("Đăng ký thất bại");
+    } catch (error: any) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Đăng ký thất bại. Vui lòng thử lại sau.");
+      }
     }
   };
 
   return (
-    // ... (Phần return UI giữ nguyên hoàn toàn) ...
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -89,7 +143,6 @@ const Signup: React.FC = () => {
         className="w-1/2 min-h-screen flex items-center justify-center bg-white p-4"
         onSubmit={handleSubmit}
       >
-        {/* ... (Nội dung form giữ nguyên) ... */}
         <motion.div
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -104,44 +157,77 @@ const Signup: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {/* ... Input fields ... */}
-            <div className="name-email flex items-center gap-x-[1rem]">
-              <div className="name">
+            <div className="name-email flex items-start gap-x-[1rem]">
+              <div className="name w-1/2">
                 <label className="block text-sm mb-2 font-medium">Tên</label>
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors({ ...errors, name: undefined }); // Xóa lỗi khi user nhập lại
+                  }}
                   placeholder="Điền tên của bạn"
-                  className="w-full px-5 py-2 border rounded-lg"
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
+                    errors.name
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                 />
+                {errors.name && (
+                  <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+                )}
               </div>
-              <div className="email">
-                <label className="block text font-medium mb-2">Email</label>
+
+              <div className="email w-1/2">
+                <label className="block text-sm font-medium mb-2">Email</label>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors.email)
+                      setErrors({ ...errors, email: undefined });
+                  }}
                   placeholder="Điền email của bạn"
-                  className="w-full px-5 py-2 border rounded-lg"
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
+                    errors.email
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                )}
               </div>
             </div>
 
-            <div className="phone-pass flex items-center gap-x-[1rem] mb-[1.5rem]">
-              <div className="phone">
+            <div className="phone-pass flex items-start gap-x-[1rem] mb-[1.5rem]">
+              <div className="phone w-1/2">
                 <label className="block text-sm mb-2 font-medium">
                   Số điện thoại
                 </label>
                 <input
-                  type="string"
+                  type="text"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    if (errors.phone)
+                      setErrors({ ...errors, phone: undefined });
+                  }}
                   placeholder="Điền số điện thoại"
-                  className="w-full px-5 py-2 border rounded-lg"
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
+                    errors.phone
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                 />
+                {errors.phone && (
+                  <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                )}
               </div>
-              <div className="pass">
+
+              <div className="pass w-1/2">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium">Mật khẩu</label>
                   {showPassword ? (
@@ -159,10 +245,21 @@ const Signup: React.FC = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errors.password)
+                      setErrors({ ...errors, password: undefined });
+                  }}
                   placeholder="Điền mật khẩu"
-                  className="w-full px-5 py-2 border rounded-lg"
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
+                    errors.password
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                 />
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                )}
               </div>
             </div>
 

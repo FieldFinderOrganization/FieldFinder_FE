@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -152,12 +153,12 @@ const CartPage = () => {
               </div>
 
               <div className="flex flex-col gap-3 mt-8">
-                <button
+                {/* <button
                   onClick={handleGuestCheckout}
                   className="bg-gray-800 text-white p-4 rounded-full text-lg font-medium hover:bg-black transition cursor-pointer"
                 >
                   Thanh toán khách
-                </button>
+                </button> */}
 
                 <button
                   onClick={handleMemberCheckout}
