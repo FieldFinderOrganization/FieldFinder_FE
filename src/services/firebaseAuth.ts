@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCMTDFqqGcOy-ewVn5yjbKPzKPJ4oyMIxM",
+  apiKey: process.env.firebase_key,
   authDomain: "fieldfinder-c3a4b.firebaseapp.com",
   projectId: "fieldfinder-c3a4b",
   storageBucket: "fieldfinder-c3a4b.firebasestorage.app",

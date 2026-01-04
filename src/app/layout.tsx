@@ -38,7 +38,7 @@ export default function RootLayout({
               {children}
               <GlobalAIChat />
               <ToastContainer
-                position="top-right"
+                position="bottom-right"
                 autoClose={2000}
                 theme="colored"
               />

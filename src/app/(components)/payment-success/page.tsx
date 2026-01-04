@@ -22,7 +22,7 @@ const PaymentStatusContent = () => {
       if (code === "00") {
         setIsUpdating(true);
         try {
-          await updateOrderStatus(orderCode, "PAID"); // Hoặc trạng thái tương ứng trong Enum của bạn (COMPLETED/CONFIRMED)
+          await updateOrderStatus(orderCode, "PAID");
           setIsSuccess(true);
           toast.success("Xác nhận thanh toán thành công!");
         } catch (error) {

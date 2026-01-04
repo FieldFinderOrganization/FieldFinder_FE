@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { Suspense } from "react";
@@ -8,10 +9,8 @@ import { FiXCircle } from "react-icons/fi";
 const PaymentCancelContent = () => {
   const searchParams = useSearchParams();
 
-  // const code = searchParams.get("code");
-  // const id = searchParams.get("id");
-  const orderCode = searchParams.get("orderCode");
-  // const status = searchParams.get("status");
+  const code = searchParams.get("code");
+  const orderCode = searchParams.get("myOrderId");
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">

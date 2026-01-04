@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node", "jest"],
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -28,7 +29,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/app/(components)/test/auth.mjs",
-    "src/app/test/signup.mjs"
+    "src/app/test/signup.mjs",
+    "jest.config.js"
   ],
   "exclude": ["node_modules"]
 }

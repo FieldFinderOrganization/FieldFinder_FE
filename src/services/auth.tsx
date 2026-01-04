@@ -18,21 +18,21 @@ interface LoginResponse {
   user: UserDTO;
 }
 
-// export const login = (idToken: string): Promise<{ data: LoginResponse }> => {
-//   return axios.post(`${baseURL}/login`, {
-//     idToken,
-//   });
-// };
-
-export const login = (
-  idToken: string,
-  email?: string
-): Promise<{ data: LoginResponse }> => {
+export const login = (idToken: string): Promise<{ data: LoginResponse }> => {
   return axios.post(`${baseURL}/login`, {
     idToken,
-    email, // Gửi email xuống Backend. Nếu undefined, Backend nhận null (vẫn OK cho flow login thường)
   });
 };
+
+// export const login = (
+//   idToken: string,
+//   email?: string
+// ): Promise<{ data: LoginResponse }> => {
+//   return axios.post(`${baseURL}/login`, {
+//     idToken,
+//     email, // Gửi email xuống Backend. Nếu undefined, Backend nhận null (vẫn OK cho flow login thường)
+//   });
+// };
 
 export const loginSocial = (
   idToken: string
