@@ -58,6 +58,27 @@ import dayjs from "dayjs";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import { providerAddress } from "../../../services/provider";
 
+// ===== PRODUCT & DISCOUNT SERVICE =====
+import {
+  getAllProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  ProductRes,
+  ProductReq,
+  applyDiscountToProduct,
+} from "@/services/product";
+
+import {
+  getAllDiscounts,
+  createDiscount,
+  updateDiscount,
+  deleteDiscount,
+  DiscountRes,
+  DiscountReq,
+} from "@/services/discount";
+
+
 export interface PitchData {
   pitchId: string;
   providerAddressId: string;
@@ -142,6 +163,17 @@ const Dashboard: React.FC = () => {
       slots: number[];
     })[]
   >([]);
+  // ===== PRODUCT =====
+  const [products, setProducts] = React.useState<ProductRes[]>([]);
+  const [openProductDialog, setOpenProductDialog] = React.useState(false);
+  const [editingProduct, setEditingProduct] =
+  React.useState<ProductRes | null>(null);
+
+// ===== DISCOUNT =====
+  const [discounts, setDiscounts] = React.useState<DiscountRes[]>([]);
+  const [openDiscountDialog, setOpenDiscountDialog] = React.useState(false);
+  const [editingDiscount, setEditingDiscount] =
+  React.useState<DiscountRes | null>(null);
 
   const [loading, setLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState(0);
@@ -163,6 +195,8 @@ const Dashboard: React.FC = () => {
   const providerTableRef = React.useRef<HTMLDivElement>(null);
   const pitchTableRef = React.useRef<HTMLDivElement>(null);
   const bookingTableRef = React.useRef<HTMLDivElement>(null);
+  const productTableRef = React.useRef<HTMLDivElement>(null);
+  const discountTableRef = React.useRef<HTMLDivElement>(null);  
 
   const [addresses, setAddresses] = React.useState<providerAddress[] | null>(
     null
@@ -184,6 +218,8 @@ const Dashboard: React.FC = () => {
   const weeklyProviderData = [0, 1, 2, providers.length];
   const weeklyPitchData = [0, 2, 3, pitches.length];
   const weeklyInvoiceData = [0, 1, 2, 5];
+  const weeklyProductData = [0, 1, 2, products.length];
+  const weeklyDiscountData = [0, 1, 2, discounts.length];
 
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<UserData | null>(null);
@@ -437,6 +473,78 @@ const Dashboard: React.FC = () => {
     },
   ];
 
+  // ===== PRODUCT COLUMNS =====
+const productColumns: GridColDef<ProductRes>[] = [
+  { field: "name", headerName: "Tên", width: 200 },
+  { field: "brand", headerName: "Brand", width: 120 },
+  { field: "categoryName", headerName: "Danh mục", width: 150 },
+  { field: "price", headerName: "Giá gốc", width: 120 },
+  { field: "salePercent", headerName: "% Giảm", width: 100 },
+  { field: "salePrice", headerName: "Giá sau giảm", width: 140 },
+  { field: "stockQuantity", headerName: "Tồn kho", width: 100 },
+  {
+    field: "actions",
+    type: "actions",
+    width: 120,
+    getActions: (params) => [
+      <GridActionsCellItem
+        icon={<EditOutlinedIcon />}
+        label="Edit"
+        onClick={() => {
+          setEditingProduct(params.row);
+          setOpenProductDialog(true);
+        }}
+      />,
+      <GridActionsCellItem
+        icon={<BlockOutlinedIcon />}
+        label="Delete"
+        onClick={async () => {
+          if (!confirm("Xóa sản phẩm?")) return;
+          await deleteProduct(params.row.id);
+          toast.success("Đã xóa sản phẩm");
+          setProducts(await getAllProducts());
+        }}
+      />,
+    ],
+  },
+];
+
+// ===== DISCOUNT COLUMNS =====
+const discountColumns: GridColDef<DiscountRes>[] = [
+  { field: "code", headerName: "Code", width: 150 },
+  { field: "discountType", headerName: "Loại", width: 120 },
+  { field: "value", headerName: "Giá trị", width: 120 },
+  { field: "status", headerName: "Trạng thái", width: 120 },
+  { field: "startDate", headerName: "Bắt đầu", width: 120 },
+  { field: "endDate", headerName: "Kết thúc", width: 120 },
+  {
+    field: "actions",
+    type: "actions",
+    width: 120,
+    getActions: (params) => [
+      <GridActionsCellItem
+        icon={<EditOutlinedIcon />}
+        label="Edit"
+        onClick={() => {
+          setEditingDiscount(params.row);
+          setOpenDiscountDialog(true);
+        }}
+      />,
+      <GridActionsCellItem
+        icon={<BlockOutlinedIcon />}
+        label="Delete"
+        onClick={async () => {
+          if (!confirm("Xóa discount?")) return;
+          await deleteDiscount(params.row.id);
+          toast.success("Đã xóa discount");
+          setDiscounts(await getAllDiscounts());
+        }}
+      />,
+    ],
+  },
+];
+
+
   const resetUsers = async () => {
     try {
       const userRes = await getAllUsers();
@@ -568,6 +676,12 @@ const Dashboard: React.FC = () => {
         });
 
         setBookings(enhancedBookings || []);
+        const productRes = await getAllProducts();
+        const discountRes = await getAllDiscounts();
+
+        setProducts(productRes || []);
+        setDiscounts(discountRes || []);
+
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         toast.error("Lỗi khi tải dữ liệu thống kê");
@@ -729,6 +843,8 @@ const Dashboard: React.FC = () => {
       providers: weeklyProviderData,
       pitches: weeklyPitchData,
       invoices: weeklyInvoiceData,
+      products: weeklyProductData,
+      discounts: weeklyDiscountData,
     };
 
     const labels: Record<string, string> = {
@@ -736,6 +852,8 @@ const Dashboard: React.FC = () => {
       providers: "Chủ sân",
       pitches: "Sân bóng",
       invoices: "Hóa đơn",
+      products: "Sản phẩm",
+      discounts: "Mã giảm giá",
     };
 
     const colors: Record<string, string> = {
@@ -743,9 +861,11 @@ const Dashboard: React.FC = () => {
       providers: "#d32f2f",
       pitches: "#ed6c02",
       invoices: "#2e7d32",
+      products: "#9c27b0",
+      discounts: "#f57c00",
     };
 
-    const activeDataKey = ["users", "providers", "pitches", "invoices"][
+    const activeDataKey = ["users", "providers", "pitches", "invoices", "products", "discounts"][
       activeTab
     ];
     const activeData = dataMap[activeDataKey];
@@ -924,6 +1044,9 @@ const Dashboard: React.FC = () => {
             <Tab label="Chủ sân" icon={<StoreIcon />} />
             <Tab label="Sân bóng" icon={<SportsSoccerIcon />} />
             <Tab label="Hóa đơn" icon={<ReceiptIcon />} />
+            <Tab label="Sản phẩm" />
+            <Tab label="Discount" />
+
           </Tabs>
           {renderChart()}
         </div>
@@ -1044,7 +1167,332 @@ const Dashboard: React.FC = () => {
             />
           </Box>
         </div>
+            {/* ===== PRODUCT MANAGEMENT ===== */}
+      {(
+  <div ref={productTableRef} className="w-full mt-8">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-semibold">Quản lý sản phẩm</h2>
+
+      <div className="flex gap-2">
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={async () => {
+            const data = await getAllProducts();
+            setProducts(data || []);
+            toast.success("Đã đặt lại danh sách sản phẩm");
+          }}
+          startIcon={<RestartAltOutlinedIcon />}
+        >
+          Đặt lại
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={() => {
+            setEditingProduct(null);
+            setOpenProductDialog(true);
+          }}
+        >
+          + Thêm sản phẩm
+        </Button>
       </div>
+    </div>
+
+    <Box sx={{ height: 400, width: "100%", mb: 4 }}>
+      <DataGrid
+        rows={products || []}
+        columns={productColumns}
+        getRowId={(row) => row.id}
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 5,
+            },
+          },
+        }}
+        pageSizeOptions={[5]}
+        checkboxSelection
+        disableRowSelectionOnClick
+      />
+    </Box>
+  </div>
+)}
+
+
+      {/* ===== DISCOUNT MANAGEMENT ===== */}
+      {(
+  <div ref={discountTableRef} className="w-full mt-8">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-semibold">Quản lý Discount</h2>
+
+      <div className="flex gap-2">
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={async () => {
+            const data = await getAllDiscounts();
+            setDiscounts(data || []);
+            toast.success("Đã đặt lại danh sách discount");
+          }}
+          startIcon={<RestartAltOutlinedIcon />}
+        >
+          Đặt lại
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={() => {
+            setEditingDiscount(null);
+            setOpenDiscountDialog(true);
+          }}
+        >
+          + Thêm Discount
+        </Button>
+      </div>
+    </div>
+
+    <Box sx={{ height: 400, width: "100%", mb: 4 }}>
+      <DataGrid
+        rows={discounts || []}
+        columns={discountColumns}
+        getRowId={(row) => row.id}
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 5,
+            },
+          },
+        }}
+        pageSizeOptions={[5]}
+        checkboxSelection
+        disableRowSelectionOnClick
+      />
+    </Box>
+  </div>
+)}
+      </div>
+
+
+<Dialog
+  open={openProductDialog}
+  onClose={() => setOpenProductDialog(false)}
+  fullWidth
+  maxWidth="md"
+>
+  <DialogTitle>
+    {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
+  </DialogTitle>
+
+  <DialogContent>
+    <div className="grid grid-cols-1 gap-4 mt-2">
+      <TextField
+        label="Tên sản phẩm"
+        fullWidth
+        value={editingProduct?.name || ""}
+        onChange={(e) =>
+          setEditingProduct((prev) => ({
+            ...(prev ?? ({} as any)),
+            name: e.target.value,
+          }))
+        }
+      />
+
+      <TextField
+        label="Brand"
+        fullWidth
+        value={editingProduct?.brand || ""}
+        onChange={(e) =>
+          setEditingProduct((prev) => ({
+            ...(prev ?? ({} as any)),
+            brand: e.target.value,
+          }))
+        }
+      />
+
+      <TextField
+        label="Giá"
+        type="number"
+        fullWidth
+        value={editingProduct?.price || 0}
+        onChange={(e) =>
+          setEditingProduct((prev) => ({
+            ...(prev ?? ({} as any)),
+            price: Number(e.target.value),
+          }))
+        }
+      />
+
+      <TextField
+        label="Tồn kho"
+        type="number"
+        fullWidth
+        value={editingProduct?.stockQuantity || 0}
+        onChange={(e) =>
+          setEditingProduct((prev) => ({
+            ...(prev ?? ({} as any)),
+            stockQuantity: Number(e.target.value),
+          }))
+        }
+      />
+    </div>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setOpenProductDialog(false)}>Hủy</Button>
+    <Button
+      variant="contained"
+      onClick={async () => {
+        try {
+          if (editingProduct?.id) {
+            await updateProduct(editingProduct, editingProduct.id);
+            toast.success("Cập nhật sản phẩm thành công");
+          } else {
+            await createProduct(editingProduct as any);
+            toast.success("Thêm sản phẩm thành công");
+          }
+
+          setProducts(await getAllProducts());
+          setOpenProductDialog(false);
+        } catch (err) {
+          toast.error("Lỗi khi lưu sản phẩm");
+        }
+      }}
+    >
+      Lưu
+    </Button>
+  </DialogActions>
+</Dialog>
+
+
+<Dialog
+  open={openDiscountDialog}
+  onClose={() => setOpenDiscountDialog(false)}
+  fullWidth
+  maxWidth="md"
+>
+  <DialogTitle>
+    {editingDiscount ? "Chỉnh sửa Discount" : "Thêm Discount"}
+  </DialogTitle>
+
+  <DialogContent>
+    <div className="grid grid-cols-1 gap-4 mt-2">
+      <TextField
+        label="Mã Discount"
+        fullWidth
+        value={editingDiscount?.code || ""}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            code: e.target.value,
+          }))
+        }
+      />
+
+      <TextField
+        label="Mô tả"
+        fullWidth
+        value={editingDiscount?.description || ""}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            description: e.target.value,
+          }))
+        }
+      />
+
+      <TextField
+        select
+        label="Loại Discount"
+        fullWidth
+        value={editingDiscount?.discountType || "FIXED_AMOUNT"}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            discountType: e.target.value,
+          }))
+        }
+      >
+        <MenuItem value="FIXED_AMOUNT">Giảm tiền cố định</MenuItem>
+        <MenuItem value="PERCENTAGE">Giảm theo %</MenuItem>
+      </TextField>
+
+      <TextField
+        label="Giá trị"
+        type="number"
+        fullWidth
+        value={editingDiscount?.value || 0}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            value: Number(e.target.value),
+          }))
+        }
+      />
+
+      <TextField
+        type="date"
+        label="Ngày bắt đầu"
+        InputLabelProps={{ shrink: true }}
+        fullWidth
+        value={editingDiscount?.startDate || ""}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            startDate: e.target.value,
+          }))
+        }
+      />
+
+      <TextField
+        type="date"
+        label="Ngày kết thúc"
+        InputLabelProps={{ shrink: true }}
+        fullWidth
+        value={editingDiscount?.endDate || ""}
+        onChange={(e) =>
+          setEditingDiscount((prev) => ({
+            ...(prev ?? ({} as any)),
+            endDate: e.target.value,
+          }))
+        }
+      />
+    </div>
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => setOpenDiscountDialog(false)}>Hủy</Button>
+    <Button
+      variant="contained"
+      onClick={async () => {
+        try {
+          if (editingDiscount?.id) {
+            await updateDiscount(
+              editingDiscount as any,
+              editingDiscount.id
+            );
+            toast.success("Cập nhật discount thành công");
+          } else {
+            await createDiscount(editingDiscount as any);
+            toast.success("Thêm discount thành công");
+          }
+
+          setDiscounts(await getAllDiscounts());
+          setOpenDiscountDialog(false);
+        } catch (err) {
+          console.error(err);
+          toast.error("Lỗi khi lưu discount");
+        }
+      }}
+    >
+      Lưu
+    </Button>
+  </DialogActions>
+</Dialog>
+
+
+
+
       <Dialog
         open={editUserDialogOpen}
         onClose={() => setEditUserDialogOpen(false)}

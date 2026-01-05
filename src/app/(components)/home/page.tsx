@@ -27,7 +27,7 @@ import { GiSoccerField } from "react-icons/gi";
 import SearchBar from "@/utils/searchBar";
 import {} from "@mui/material";
 import { toast } from "react-toastify";
-import "react-multi-carousel/lib/styles.css";
+//import "react-multi-carousel/lib/styles.css";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import {
   discountRes,
