@@ -26,7 +26,7 @@ import { useProductContext } from "@/context/ProductContext";
 import { useRouter } from "next/navigation";
 import { IoMdHeart } from "react-icons/io";
 import { useSelector, useDispatch, TypedUseSelectorHook } from "react-redux";
-import { RootState, AppDispatch } from "@/redux/store";
+import { RootState, AppDispatch, persistor } from "@/redux/store";
 import { logout, setShowSidebar } from "@/redux/features/authSlice";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import HistoryIcon from "@mui/icons-material/History";
@@ -111,6 +111,7 @@ const TopBar: React.FC<TopBarProps> = ({
   };
   const handleLogout = () => {
     dispatch(logout());
+    persistor.purge();
     handleMenuClose();
     router.push("/login");
   };

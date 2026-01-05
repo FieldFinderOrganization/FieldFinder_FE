@@ -47,23 +47,10 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", action.payload.token);
-        // Lưu thông tin user (authState) để F5 lấy lại được
-        localStorage.setItem(
-          "authState",
-          JSON.stringify({ user: action.payload.user })
-        );
-      }
     },
     update: (state, action: PayloadAction<Partial<UserDTO>>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
-      }
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("authState", JSON.stringify({ user: state.user }));
       }
     },
     logout: (state) => {
@@ -71,20 +58,12 @@ const authSlice = createSlice({
       state.token = null;
       state.loading = false;
       state.isAuthenticated = false;
-
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("authState");
-        localStorage.removeItem("token");
-        sessionStorage.setItem("justLoggedOut", "true");
-      }
-      window.location.href = "/login";
     },
     setShowSidebar(state, action: PayloadAction<boolean>) {
       state.showSidebar = action.payload;
     },
     setToken: (state, action: PayloadAction<string>) => {
       state.token = action.payload;
-      localStorage.setItem("token", action.payload);
     },
   },
 });

@@ -40,6 +40,7 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { toast } from "react-toastify";
+import { persistor } from "@/redux/store";
 
 interface PitchResponseDTO {
   pitchId: string;
@@ -133,6 +134,7 @@ const reviewHistory: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    persistor.purge();
     router.push("/login");
   };
 

@@ -6,8 +6,8 @@ import React, { FormEvent, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye } from "react-icons/fa";
 import { LuEyeClosed } from "react-icons/lu";
-import { useDispatch } from "react-redux"; // 1. Import useDispatch
-import { loginSuccess, UserDTO } from "@/redux/features/authSlice"; // 2. Import action mới
+import { useDispatch } from "react-redux";
+import { loginSuccess, UserDTO } from "@/redux/features/authSlice";
 import { login } from "../../../../services/auth";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { googleLogin, auth } from "@/services/firebaseAuth";
 import ForgotPasswordModal from "@/utils/forgotPasswordModal";
 import OtpModal from "@/utils/otpModal";
 import { sendOtp } from "@/services/otpservice";
+import LoadingSpinner from "@/utils/LoadingSpinner";
 
 const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,11 +32,10 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  const dispatch = useDispatch(); // 3. Sử dụng dispatch
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // 4. State lưu tạm dữ liệu login trong lúc chờ OTP
   const [tempLoginData, setTempLoginData] = useState<{
     user: UserDTO;
     token: string;
@@ -44,7 +44,6 @@ const Login: React.FC = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  // ... (Giữ nguyên các hàm handleEmailChange, handlePasswordChange, isFormInvalid...)
   const handleEmailChange = (value: string) => {
     setEmail(value);
     if (!value) {
@@ -85,7 +84,6 @@ const Login: React.FC = () => {
     e.preventDefault();
 
     if (isFormInvalid) {
-      // ... (Giữ nguyên validate)
       if (!email || !password) {
         toast.error("Vui lòng nhập đủ Email và Mật khẩu!");
       } else if (emailError || passwordError) {
@@ -97,7 +95,6 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // 1. Firebase Login -> Lấy Token
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -106,17 +103,14 @@ const Login: React.FC = () => {
       const user = userCredential.user;
       const idToken = await user.getIdToken();
 
-      // 2. Gọi API Backend (để lấy thông tin user trong DB)
       const res = await login(idToken);
 
       if (res?.data?.user) {
-        // 3. Login thành công -> Lưu tạm dữ liệu + Token
         setTempLoginData({
           user: res.data.user,
-          token: idToken, // Quan trọng: Lưu token này để dispatch sau
+          token: idToken,
         });
 
-        // 4. Gửi OTP
         await sendOtp(email);
         toast.info("OTP đã được gửi tới email của bạn!");
         setIsOtpOpen(true);
@@ -125,7 +119,6 @@ const Login: React.FC = () => {
         setLoading(false);
       }
     } catch (error: any) {
-      // ... (Giữ nguyên catch error)
       console.error("Login error:", error);
       if (
         error.code === "auth/invalid-credential" ||
@@ -157,16 +150,14 @@ const Login: React.FC = () => {
       if (res && res.data) {
         const userEmail = res.data.user.email;
         if (userEmail) {
-          // Lưu tạm user và token Google
           setTempLoginData({
             user: res.data.user,
             token: idToken,
           });
 
-          // Gửi OTP
           await sendOtp(userEmail);
           toast.info(`OTP đã được gửi tới email ${userEmail}`);
-          setEmail(userEmail); // Set email để OTP modal hiển thị
+          setEmail(userEmail);
           setIsOtpOpen(true);
         } else {
           // ...
@@ -175,17 +166,14 @@ const Login: React.FC = () => {
         }
       }
     } catch (err: any) {
-      // ... (Giữ nguyên catch error)
       console.error("Google login error:", err);
       toast.error("Đăng nhập Google thất bại");
       setLoading(false);
     }
   };
 
-  // 5. Hàm xử lý khi OTP thành công
   const handleOtpSuccess = () => {
     if (tempLoginData) {
-      // DISPATCH VÀO REDUX (User + Token)
       dispatch(
         loginSuccess({
           user: tempLoginData.user,
@@ -193,19 +181,17 @@ const Login: React.FC = () => {
         })
       );
 
+      setLoading(true);
       toast.success("Đăng nhập thành công!");
 
-      // Chuyển hướng
       if (tempLoginData.user.role === "ADMIN") router.push("/admin/dashboard");
       else router.push("/");
     }
     setIsOtpOpen(false);
-    setLoading(false);
   };
 
   return (
     <motion.div
-      // ... (Giữ nguyên animation)
       initial={{ opacity: 0, x: -50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
@@ -216,9 +202,7 @@ const Login: React.FC = () => {
         className="w-1/2 min-h-screen flex items-center justify-center bg-white p-4"
         onSubmit={handleSubmit}
       >
-        {/* ... (Giữ nguyên phần UI form login) ... */}
         <div className="w-full max-w-[400px]">
-          {/* ... nội dung form ... */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold mb-2">Xin chào</h1>
             <p className="text-gray-600">
@@ -226,7 +210,6 @@ const Login: React.FC = () => {
             </p>
           </div>
           <div className="space-y-4">
-            {/* Input Email */}
             <div>
               <label className="block text-sm font-medium mb-2">Email</label>
               <input
@@ -242,7 +225,6 @@ const Login: React.FC = () => {
               )}
             </div>
 
-            {/* Input Password */}
             <div className="pass relative">
               <label className="block text-sm font-medium mb-2">Mật khẩu</label>
               <input
@@ -270,12 +252,20 @@ const Login: React.FC = () => {
             </div>
 
             <motion.button
+              name="Login"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               disabled={loading}
               className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-red-700 disabled:bg-gray-400"
             >
-              {loading ? "Đang xử lý..." : "Đăng nhập"}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <LoadingSpinner size={20} color="border-white" />
+                  <span>Đang xử lý...</span>
+                </div>
+              ) : (
+                "Đăng nhập"
+              )}
             </motion.button>
 
             <div className="footer mt-[0.4rem] text-center">
@@ -317,7 +307,6 @@ const Login: React.FC = () => {
           setIsOtpOpen(false);
           setLoading(false);
         }}
-        // 6. Sửa onSuccess: Gọi hàm handleOtpSuccess thay vì set localStorage thủ công
         onSuccess={handleOtpSuccess}
       />
 
@@ -325,7 +314,6 @@ const Login: React.FC = () => {
         isOpen={isForgotOpen}
         onClose={() => setIsForgotOpen(false)}
       />
-      {/* ... (Background image giữ nguyên) */}
       <div className="w-1/2 h-screen relative overflow-hidden bg-container">
         <motion.img
           src="/images/login.jpg"

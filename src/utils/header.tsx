@@ -25,7 +25,7 @@ import {
   ListItemButton,
 } from "@mui/material";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, AppDispatch } from "../redux/store";
+import { RootState, AppDispatch, persistor } from "../redux/store";
 import { logout, setShowSidebar } from "../redux/features/authSlice";
 import Divider from "@mui/material/Divider";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
@@ -161,6 +161,7 @@ const Header: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    persistor.purge();
     handleMenuClose();
     router.push("/login");
   };

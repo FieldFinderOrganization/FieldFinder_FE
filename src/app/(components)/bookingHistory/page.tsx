@@ -15,6 +15,7 @@ import { getAllUsers } from "@/services/user";
 import { getAllProviders } from "@/services/provider";
 import { getAllPitches } from "@/services/pitch";
 import dayjs from "dayjs";
+import { persistor } from "@/redux/store";
 
 interface EnhancedBooking extends BookingResponseDTO {
   providerName: string;
@@ -91,6 +92,7 @@ const BookingHistory: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    persistor.purge();
     router.push("/login");
   };
 

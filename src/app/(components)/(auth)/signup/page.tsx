@@ -15,6 +15,7 @@ import FormControl from "@mui/material/FormControl";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import { Box } from "@mui/material";
 import { addProvider } from "@/services/provider";
+import LoadingSpinner from "@/utils/LoadingSpinner";
 
 interface ValidationErrors {
   name?: string;
@@ -32,6 +33,8 @@ const Signup: React.FC = () => {
   const [role, setRole] = useState<string>("USER");
   const [status, setStatus] = useState("ACTIVE");
   const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -85,6 +88,8 @@ const Signup: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
 
+    setLoading(true);
+
     if (!validateForm()) {
       toast.error("Vui lòng kiểm tra lại thông tin!");
       return;
@@ -106,6 +111,7 @@ const Signup: React.FC = () => {
         router.push("/login");
       } else {
         toast.error("Đăng ký thất bại");
+        setLoading(false);
       }
     } catch (error: any) {
       if (
@@ -114,8 +120,10 @@ const Signup: React.FC = () => {
         error.response.data.message
       ) {
         toast.error(error.response.data.message);
+        setLoading(false);
       } else {
         toast.error("Đăng ký thất bại. Vui lòng thử lại sau.");
+        setLoading(false);
       }
     }
   };
@@ -287,7 +295,14 @@ const Signup: React.FC = () => {
                 name="Signup"
                 className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-red-700"
               >
-                Đăng ký
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <LoadingSpinner size={20} color="border-white" />
+                    <span>Đang xử lý...</span>
+                  </div>
+                ) : (
+                  "Đăng ký"
+                )}
               </motion.button>
               <div className="mt-[1rem] text-center">
                 <p className="text-xl">

@@ -75,6 +75,7 @@ import {
 import { getAllPayments } from "@/services/payment";
 import dayjs from "dayjs";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
+import { persistor } from "@/redux/store";
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
@@ -659,6 +660,7 @@ const Profile: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    persistor.purge();
     router.push("/login");
   };
 
@@ -882,7 +884,7 @@ const Profile: React.FC = () => {
                     />
                     <div className="flex flex-col gap-y-[0.3rem]">
                       <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                        {user?.name || "Nguyễn Văn A"}
+                        {editedUser?.name || "Nguyễn Văn A"}
                       </Typography>
                       <Typography
                         className="text-[1.2rem]"

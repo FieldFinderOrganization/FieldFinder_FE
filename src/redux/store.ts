@@ -1,26 +1,41 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import authReducer from "./features/authSlice";
-import type { AuthState } from "./features/authSlice";
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from "redux-persist";
+import storage from "redux-persist/lib/storage";
 
-const saveState = (state: AuthState) => {
-  try {
-    const serializedState = JSON.stringify(state);
-    localStorage.setItem("authState", serializedState);
-  } catch (err) {
-    console.error("Lỗi khi lưu trạng thái vào localStorage:", err);
-  }
+const persistConfig = {
+  key: "root",
+  version: 1,
+  storage,
+  whitelist: ["auth"],
 };
 
-export const store = configureStore({
-  reducer: {
-    auth: authReducer,
-  },
+const rootReducer = combineReducers({
+  auth: authReducer,
 });
 
-store.subscribe(() => {
-  const state = store.getState().auth;
-  saveState(state);
+const persistedReducer = persistReducer(persistConfig, rootReducer);
+
+export const store = configureStore({
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
 });
+
+export const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
