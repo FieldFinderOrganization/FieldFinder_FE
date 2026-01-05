@@ -20,6 +20,7 @@ export interface AuthState {
   showSidebar: boolean;
 }
 
+// 1. Initial State PHẢI RỖNG (để khớp với Server)
 const initialState: AuthState = {
   user: null,
   token: null,
@@ -47,6 +48,7 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
+      // 2. XÓA hết các dòng localStorage.setItem thủ công ở đây
     },
     update: (state, action: PayloadAction<Partial<UserDTO>>) => {
       if (state.user) {
@@ -58,6 +60,8 @@ const authSlice = createSlice({
       state.token = null;
       state.loading = false;
       state.isAuthenticated = false;
+      // 3. XÓA localStorage.removeItem thủ công.
+      // Redux-persist sẽ tự xử lý khi state thay đổi.
     },
     setShowSidebar(state, action: PayloadAction<boolean>) {
       state.showSidebar = action.payload;
