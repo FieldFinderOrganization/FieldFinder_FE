@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useMemo } from "react";
@@ -14,10 +15,8 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { getAllDiscounts, discountRes } from "@/services/discount";
-// Đảm bảo bạn đã có service này để lấy danh sách danh mục
 import { getAllCategory } from "@/services/category";
 import dayjs from "dayjs";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { cartItemRes } from "@/services/cartItem";
 
 interface DiscountModalProps {
@@ -37,6 +36,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   orderValue,
   products = [],
 }) => {
+  // console.log(products);
   const [allDiscounts, setAllDiscounts] = useState<discountRes[]>([]);
   const [allCategories, setAllCategories] = useState<any[]>([]); // State lưu danh sách category
   const [loading, setLoading] = useState(false);
@@ -64,75 +64,123 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     }
   }, [open]);
 
+  const getAllRelatedCategoryIds = (
+    currentCatId: string | number,
+    categories: any[]
+  ): string[] => {
+    const relatedIds = new Set<string>();
+    let currentId = String(currentCatId);
+    relatedIds.add(currentId);
+
+    // Duyệt ngược lên 5 cấp cha
+    for (let i = 0; i < 5; i++) {
+      const catNode = categories.find((c) => String(c.id) === currentId);
+      if (!catNode || !catNode.parentName) break;
+
+      const parentNode = categories.find((c) => c.name === catNode.parentName);
+      if (parentNode) {
+        currentId = String(parentNode.id);
+        relatedIds.add(currentId);
+      } else {
+        break;
+      }
+    }
+    return Array.from(relatedIds);
+  };
+
+  // 2. Sửa lại useMemo validDiscounts
   const validDiscounts = useMemo(() => {
     const now = dayjs();
 
-    return allDiscounts.filter((discount) => {
+    const filtered = allDiscounts.filter((discount) => {
       const d = discount as any;
 
-      // 1. Kiểm tra trạng thái
+      // 1. Check Status & Date (Giữ nguyên)
       if (discount.status !== "ACTIVE") return false;
-
-      // 2. Kiểm tra thời hạn
       const startDate = dayjs(discount.startDate);
       const endDate = dayjs(discount.endDate).endOf("day");
       if (now.isBefore(startDate) || now.isAfter(endDate)) return false;
 
-      // 3. Kiểm tra giá trị đơn hàng
+      // 2. Check Min Order (Dùng orderValue - tức là totalOriginalPrice bạn mới sửa)
       const minOrder = d.minOrderValue || 0;
       if (orderValue < minOrder) return false;
 
-      // 4. Kiểm tra phạm vi (Scope)
+      // 3. Check Scope
       const scope = d.scope || "GLOBAL";
       if (scope === "GLOBAL") return true;
-
       if (!products || products.length === 0) return false;
 
-      // Ép kiểu tất cả ID về String để so sánh chính xác tuyệt đối
+      // 4. SPECIFIC_PRODUCT
       if (scope === "SPECIFIC_PRODUCT") {
         const applicableProductIds = (d.applicableProductIds || []).map(String);
         return products.some((p) => {
-          const pId =
-            p.productId || p.id || p.product?.productId || p.product?.id;
+          const pId = p.productId || p.id || p.product?.id;
           return pId && applicableProductIds.includes(String(pId));
         });
       }
 
+      // 5. CATEGORY (SỬA ĐOẠN NÀY)
       if (scope === "CATEGORY") {
         const applicableCategoryIds = (d.applicableCategoryIds || []).map(
           String
         );
-        return products.some((p) => {
-          // A. Thử lấy ID trực tiếp nếu có
+
+        // Check xem có ít nhất 1 sản phẩm trong giỏ thuộc Category khuyến mãi
+        const hasMatch = products.some((p) => {
+          // Cố gắng tìm mọi ngóc ngách để lấy categoryId
           let catId =
             p.categoryId ||
-            p.category?.categoryId ||
             p.category?.id ||
             p.product?.categoryId ||
-            p.product?.category?.categoryId ||
             p.product?.category?.id;
 
-          // B. LOGIC MỚI: Nếu không có ID, dùng categoryName để tìm ngược lại ID trong allCategories
+          // Debug: Nếu không tìm thấy ID, log ra để kiểm tra data đầu vào
+          if (!catId) {
+            console.warn("⚠️ Sản phẩm thiếu CategoryId:", p.productName, p);
+            // FALLBACK QUAN TRỌNG:
+            // Nếu data giỏ hàng bị thiếu categoryId, ta thử tìm qua tên (nếu có)
+            // Hoặc nếu bạn muốn "thả lỏng" để ko bị ẩn mã, có thể return true tạm thời (không khuyến khích)
+          }
+
+          // Fallback tìm qua tên category trong list allCategories
           if (!catId) {
             const cName = p.categoryName || p.product?.categoryName;
             if (cName && allCategories.length > 0) {
-              // Tìm category có tên khớp (không phân biệt hoa thường)
               const foundCat = allCategories.find(
-                (c) => c.name && c.name.toLowerCase() === cName.toLowerCase()
+                (c) => c.name?.toLowerCase() === cName?.toLowerCase()
               );
-              if (foundCat) {
-                catId = foundCat.categoryId || foundCat.id;
-              }
+              if (foundCat) catId = foundCat.id;
             }
           }
 
-          return catId && applicableCategoryIds.includes(String(catId));
+          if (!catId) return false;
+
+          // Lấy danh sách ID cha con
+          const familyIds = getAllRelatedCategoryIds(catId, allCategories);
+
+          // So sánh string vs string để chắc chắn
+          return familyIds.some((fid) =>
+            applicableCategoryIds.includes(String(fid))
+          );
         });
+
+        return hasMatch;
       }
 
       return false;
     });
-  }, [allDiscounts, allCategories, orderValue, products]);
+
+    // ... (Đoạn merge selectedDiscounts giữ nguyên)
+    const selectedIds = new Set(selectedDiscounts.map((d) => d.id));
+    const mergedList = [...filtered];
+    selectedDiscounts.forEach((sel) => {
+      if (!mergedList.find((item) => item.id === sel.id)) {
+        mergedList.push(sel);
+      }
+    });
+
+    return mergedList;
+  }, [allDiscounts, allCategories, orderValue, products, selectedDiscounts]);
 
   const toggleDiscountSelection = (discount: discountRes) => {
     const isSelected = selectedDiscounts.some((d) => d.id === discount.id);

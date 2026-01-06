@@ -51,11 +51,11 @@ const BookingModal: React.FC<BookingModalProps> = ({
   // DEBUG GIÁ TIỀN
   useEffect(() => {
     if (open) {
-      console.log(
-        "💰 Field Data Price:",
-        fieldData.price,
-        typeof fieldData.price
-      );
+      // console.log(
+      //   "💰 Field Data Price:",
+      //   fieldData.price,
+      //   typeof fieldData.price
+      // );
     }
   }, [open, fieldData.price]);
 

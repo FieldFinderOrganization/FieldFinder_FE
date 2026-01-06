@@ -22,6 +22,8 @@ export interface cartItemRes {
   priceAtTime: number;
   originalPrice?: number;
   appliedDiscounts?: discountRes[];
+  categoryId: number;
+  categoryName: string;
 }
 
 export const addItemToCart = async (payload: cartItemReq) => {

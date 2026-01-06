@@ -140,7 +140,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
       try {
         const allDiscounts = await getAllDiscounts();
-        console.log(allDiscounts);
+        // console.log(allDiscounts);
 
         const fullDiscountsToSelect = allDiscounts.filter((d) =>
           appliedCodes.has(d.code)
@@ -600,7 +600,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         onClose={() => setIsDiscountModalOpen(false)}
         selectedDiscounts={selectedDiscounts}
         setSelectedDiscounts={setSelectedDiscounts}
-        orderValue={finalTotal}
+        orderValue={totalOriginalPrice}
         products={finalCartItems}
       />
     </div>

@@ -218,7 +218,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               headers: token ? { Authorization: `Bearer ${token}` } : {},
             }
           );
-          console.log("Chat session registered for user:", user.userId);
+          // console.log("Chat session registered for user:", user.userId);
         } catch (err) {
           console.error("Failed to register chat session", err);
         }
