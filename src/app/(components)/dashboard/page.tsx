@@ -20,6 +20,9 @@ import StoreIcon from "@mui/icons-material/Store";
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import Inventory2Icon from "@mui/icons-material/Inventory2";
+
 import {
   Button,
   Dialog,
@@ -1051,8 +1054,8 @@ const discountColumns: GridColDef<DiscountRes>[] = [
             <Tab label="Chủ sân" icon={<StoreIcon />} />
             <Tab label="Sân bóng" icon={<SportsSoccerIcon />} />
             <Tab label="Hóa đơn" icon={<ReceiptIcon />} />
-            <Tab label="Sản phẩm" />
-            <Tab label="Discount" />
+            <Tab label="Sản phẩm" icon={<Inventory2Icon  />}/>
+            <Tab label="Discount" icon={<LocalOfferIcon  />}/>
 
           </Tabs>
           {renderChart()}
