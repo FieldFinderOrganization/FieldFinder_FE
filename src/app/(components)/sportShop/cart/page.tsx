@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -133,7 +134,6 @@ const CartPage = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI: SUMMARY */}
           <div className="lg:col-span-1">
             <h2 className="text-3xl font-medium mb-8">Tổng kết</h2>
             <div className="bg-gray-50 p-6 rounded-lg sticky top-28">

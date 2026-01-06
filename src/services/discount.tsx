@@ -28,9 +28,11 @@ export interface discountRes {
   status: string; // "ACTIVE", "INACTIVE", "EXPIRED"
   minOrderValue?: number;
   maxDiscountAmount?: number;
+  quantity: number;
 }
 
 export interface userDiscountRes {
+  id: string;
   userDiscountId: string;
   discountCode: string;
   description: string;
@@ -40,6 +42,9 @@ export interface userDiscountRes {
   startDate: string;
   endDate: string;
   minOrderValue: number;
+  discountType: string;
+  maxDiscountAmount?: number;
+  quantity: number;
 }
 
 export interface userDiscountReq {

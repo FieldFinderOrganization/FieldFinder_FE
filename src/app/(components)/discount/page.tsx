@@ -265,7 +265,8 @@ const DiscountPage = () => {
         const isSaved = mySavedCodes.has(d.code);
         const isActive = d.status === "ACTIVE";
         const isNotExpired = now.isBefore(dayjs(d.endDate).endOf("day"));
-        return !isSaved && isActive && isNotExpired;
+        const isStockAvailable = d.quantity > 0;
+        return !isSaved && isActive && isNotExpired && isStockAvailable;
       });
 
       setAvailableDiscounts(notSaved);
@@ -297,7 +298,7 @@ const DiscountPage = () => {
     try {
       await saveDiscountToWallet(user.userId, { discountCode: code });
       toast.success("Lưu mã thành công!");
-      fetchData(); // Reload lại dữ liệu để cập nhật danh sách
+      fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Lỗi khi lưu mã");
     }

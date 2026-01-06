@@ -14,10 +14,9 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import { getAllDiscounts, discountRes } from "@/services/discount";
+import { getAllDiscounts, discountRes, getMyWallet } from "@/services/discount";
 import { getAllCategory } from "@/services/category";
 import dayjs from "dayjs";
-import { cartItemRes } from "@/services/cartItem";
 
 interface DiscountModalProps {
   open: boolean;
@@ -26,6 +25,7 @@ interface DiscountModalProps {
   setSelectedDiscounts: (discounts: discountRes[]) => void;
   orderValue: number;
   products?: any[];
+  userId?: string;
 }
 
 const DiscountModal: React.FC<DiscountModalProps> = ({
@@ -35,23 +35,62 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   setSelectedDiscounts,
   orderValue,
   products = [],
+  userId,
 }) => {
-  // console.log(products);
   const [allDiscounts, setAllDiscounts] = useState<discountRes[]>([]);
-  const [allCategories, setAllCategories] = useState<any[]>([]); // State lưu danh sách category
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch song song cả Discounts và Categories
-        const [discountsData, categoriesData] = await Promise.all([
-          getAllDiscounts(),
-          getAllCategory(),
-        ]);
-        setAllDiscounts(discountsData);
+        const categoriesData = await getAllCategory();
         setAllCategories(categoriesData);
+
+        let discountsData: discountRes[] = [];
+
+        if (userId) {
+          const walletData = await getMyWallet(userId);
+
+          if (Array.isArray(walletData)) {
+            discountsData = walletData
+              .filter((item: any) => {
+                // Lọc bỏ mã đã dùng
+                const isUsed = item.isUsed === true || item.status === "USED";
+                return !isUsed;
+              })
+              .map((item: any) => {
+                if (item.discount) {
+                  return {
+                    ...item.discount,
+                  };
+                }
+
+                return {
+                  id: item.discountId || item.id,
+                  code: item.discountCode || item.code,
+                  description: item.description,
+                  discountType: item.type || item.discountType,
+                  value: item.value,
+                  minOrderValue: item.minOrderValue,
+                  maxDiscountAmount: item.maxDiscountAmount,
+                  quantity: item.quantity || 0,
+                  startDate: item.startDate,
+                  endDate: item.endDate,
+                  status: "ACTIVE",
+                  scope: item.scope || "GLOBAL",
+                  applicableProductIds: item.applicableProductIds || [],
+                  applicableCategoryIds: item.applicableCategoryIds || [],
+                } as discountRes;
+              });
+          }
+        } else {
+          discountsData = await getAllDiscounts();
+        }
+
+        setAllDiscounts(discountsData);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -62,7 +101,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     if (open) {
       fetchData();
     }
-  }, [open]);
+  }, [open, userId]);
 
   const getAllRelatedCategoryIds = (
     currentCatId: string | number,
@@ -72,7 +111,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     let currentId = String(currentCatId);
     relatedIds.add(currentId);
 
-    // Duyệt ngược lên 5 cấp cha
     for (let i = 0; i < 5; i++) {
       const catNode = categories.find((c) => String(c.id) === currentId);
       if (!catNode || !catNode.parentName) break;
@@ -88,29 +126,24 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
     return Array.from(relatedIds);
   };
 
-  // 2. Sửa lại useMemo validDiscounts
   const validDiscounts = useMemo(() => {
     const now = dayjs();
 
     const filtered = allDiscounts.filter((discount) => {
       const d = discount as any;
 
-      // 1. Check Status & Date (Giữ nguyên)
       if (discount.status !== "ACTIVE") return false;
       const startDate = dayjs(discount.startDate);
       const endDate = dayjs(discount.endDate).endOf("day");
       if (now.isBefore(startDate) || now.isAfter(endDate)) return false;
 
-      // 2. Check Min Order (Dùng orderValue - tức là totalOriginalPrice bạn mới sửa)
       const minOrder = d.minOrderValue || 0;
       if (orderValue < minOrder) return false;
 
-      // 3. Check Scope
       const scope = d.scope || "GLOBAL";
       if (scope === "GLOBAL") return true;
       if (!products || products.length === 0) return false;
 
-      // 4. SPECIFIC_PRODUCT
       if (scope === "SPECIFIC_PRODUCT") {
         const applicableProductIds = (d.applicableProductIds || []).map(String);
         return products.some((p) => {
@@ -119,30 +152,18 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
         });
       }
 
-      // 5. CATEGORY (SỬA ĐOẠN NÀY)
       if (scope === "CATEGORY") {
         const applicableCategoryIds = (d.applicableCategoryIds || []).map(
           String
         );
 
-        // Check xem có ít nhất 1 sản phẩm trong giỏ thuộc Category khuyến mãi
         const hasMatch = products.some((p) => {
-          // Cố gắng tìm mọi ngóc ngách để lấy categoryId
           let catId =
             p.categoryId ||
             p.category?.id ||
             p.product?.categoryId ||
             p.product?.category?.id;
 
-          // Debug: Nếu không tìm thấy ID, log ra để kiểm tra data đầu vào
-          if (!catId) {
-            console.warn("⚠️ Sản phẩm thiếu CategoryId:", p.productName, p);
-            // FALLBACK QUAN TRỌNG:
-            // Nếu data giỏ hàng bị thiếu categoryId, ta thử tìm qua tên (nếu có)
-            // Hoặc nếu bạn muốn "thả lỏng" để ko bị ẩn mã, có thể return true tạm thời (không khuyến khích)
-          }
-
-          // Fallback tìm qua tên category trong list allCategories
           if (!catId) {
             const cName = p.categoryName || p.product?.categoryName;
             if (cName && allCategories.length > 0) {
@@ -155,10 +176,8 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
 
           if (!catId) return false;
 
-          // Lấy danh sách ID cha con
           const familyIds = getAllRelatedCategoryIds(catId, allCategories);
 
-          // So sánh string vs string để chắc chắn
           return familyIds.some((fid) =>
             applicableCategoryIds.includes(String(fid))
           );
@@ -170,7 +189,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
       return false;
     });
 
-    // ... (Đoạn merge selectedDiscounts giữ nguyên)
     const selectedIds = new Set(selectedDiscounts.map((d) => d.id));
     const mergedList = [...filtered];
     selectedDiscounts.forEach((sel) => {
@@ -220,7 +238,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
           outline: "none",
         }}
       >
-        {/* Header */}
         <Box
           sx={{
             display: "flex",
@@ -241,7 +258,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
           </IconButton>
         </Box>
 
-        {/* List Content */}
         <Box sx={{ overflowY: "auto", p: 2, flex: 1, bgcolor: "#f3f4f6" }}>
           {loading ? (
             <Typography align="center" py={3} color="text.secondary">
@@ -293,7 +309,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
                   >
                     <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
                       <Box sx={{ display: "flex", gap: 2 }}>
-                        {/* Left Icon Part */}
                         <Box
                           sx={{
                             background: isSelected
@@ -321,7 +336,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
                           </Typography>
                         </Box>
 
-                        {/* Right Content Part */}
                         <Box sx={{ flex: 1 }}>
                           <Box display="flex" justifyContent="space-between">
                             <Typography
@@ -393,7 +407,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
                           </Box>
                         </Box>
 
-                        {/* Checkmark */}
                         {isSelected && (
                           <Box
                             sx={{
@@ -434,7 +447,6 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
           )}
         </Box>
 
-        {/* Footer */}
         <Box
           sx={{
             p: 2,

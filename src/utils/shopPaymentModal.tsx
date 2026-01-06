@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -17,7 +18,7 @@ import { useCart } from "@/context/CartContext";
 import { toast } from "react-toastify";
 import { createShopPayment, ShopPaymentRequestDTO } from "@/services/payment";
 import { getItemsByCartId, cartItemRes } from "@/services/cartItem";
-import { discountRes, getAllDiscounts } from "@/services/discount";
+import { discountRes, getAllDiscounts, getMyWallet } from "@/services/discount";
 import DiscountModal from "./discountModal";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import { createOrder, orderRequestDTO } from "@/services/order";
@@ -47,6 +48,8 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
   const currentUser = guestInfo || reduxUser;
   const isGuest = !!guestInfo;
 
+  const currentUserId = currentUser?.userId;
+
   const { cartItems: contextCartItems, clearCart } = useCart();
 
   const [customItems, setCustomItems] = useState<cartItemRes[]>([]);
@@ -58,30 +61,24 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
   ) => {
     const originalPrice = (item as any).originalPrice ?? item.priceAtTime;
 
-    // Nếu không chọn mã nào, trả về giá gốc
     if (selectedDiscounts.length === 0) return originalPrice;
 
     const activeCodes = new Set(selectedDiscounts.map((d) => d.code));
     const itemDiscounts = (item as any).appliedDiscounts || [];
 
-    // Lấy danh sách discount hợp lệ
     const validDiscounts = itemDiscounts.filter((d: any) =>
       activeCodes.has(d.code)
     );
 
-    // Quan trọng: Logic Lũy Tiến của BE phụ thuộc vào thứ tự áp dụng mã.
-    // Ở FE cũng phải lặp tương tự.
     let currentPrice = originalPrice;
 
     validDiscounts.forEach((d: any) => {
       let discountAmount = 0;
-      const val = d.value ?? d.percentage ?? 0; // Đảm bảo lấy đúng value
+      const val = d.value ?? d.percentage ?? 0;
 
       if (d.discountType === "FIXED_AMOUNT") {
         discountAmount = val;
       } else {
-        // LOGIC LŨY TIẾN (Backend style):
-        // Tính phần trăm dựa trên currentPrice (giá đã giảm ở bước trước)
         discountAmount = (currentPrice * val) / 100;
 
         if (d.maxDiscountAmount && discountAmount > d.maxDiscountAmount) {
@@ -139,8 +136,36 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
       }
 
       try {
-        const allDiscounts = await getAllDiscounts();
-        // console.log(allDiscounts);
+        let allDiscounts: discountRes[] = [];
+
+        if (currentUserId && !isGuest) {
+          const walletData = await getMyWallet(currentUserId);
+          if (Array.isArray(walletData)) {
+            allDiscounts = walletData.map((item: any) => {
+              if (item.discount) {
+                return { ...item.discount };
+              }
+              return {
+                id: item.discountId || item.id,
+                code: item.discountCode || item.code,
+                description: item.description,
+                discountType: item.type || item.discountType,
+                value: item.value,
+                minOrderValue: item.minOrderValue,
+                maxDiscountAmount: item.maxDiscountAmount,
+                quantity: item.quantity || 0,
+                startDate: item.startDate,
+                endDate: item.endDate,
+                status: "ACTIVE",
+                scope: item.scope || "GLOBAL",
+                applicableProductIds: item.applicableProductIds || [],
+                applicableCategoryIds: item.applicableCategoryIds || [],
+              } as discountRes;
+            });
+          }
+        } else {
+          allDiscounts = await getAllDiscounts();
+        }
 
         const fullDiscountsToSelect = allDiscounts.filter((d) =>
           appliedCodes.has(d.code)
@@ -155,7 +180,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     };
 
     enrichAndSelectDiscounts();
-  }, [finalCartItems, open]);
+  }, [finalCartItems, open, currentUserId, isGuest]);
 
   const totalOriginalPrice = useMemo(() => {
     return finalCartItems.reduce((total, item) => {
@@ -164,7 +189,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     }, 0);
   }, [finalCartItems]);
 
-  // 2. TÍNH TOÁN LẠI TỔNG TIỀN DỰA TRÊN MÃ ĐANG CHỌN (QUAN TRỌNG)
   const finalTotal = useMemo(() => {
     return finalCartItems.reduce((total, item) => {
       return (
@@ -257,7 +281,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
             outline: "none",
           }}
         >
-          {/* Header */}
           <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
             <Typography variant="h6" fontWeight={700} color="text.primary">
               Xác nhận đơn hàng {isGuest ? "(Khách)" : ""}
@@ -269,7 +292,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
           <div className="p-4 md:p-6 flex flex-col md:flex-row gap-6 md:gap-8">
             <div className="w-full md:w-3/5 flex flex-col gap-6">
-              {/* User Info */}
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <Typography
                   variant="subtitle1"
@@ -309,7 +331,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                 </div>
               </div>
 
-              {/* Product List */}
               <div>
                 <Typography variant="subtitle1" fontWeight={700} mb={2}>
                   📦 Sản phẩm ({finalCartItems.length})
@@ -322,7 +343,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                 ) : (
                   <div className="flex flex-col gap-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
                     {finalCartItems.map((item) => {
-                      // Tính giá realtime cho item này
                       const dynamicPrice = calculateItemCurrentPrice(
                         item,
                         selectedDiscounts
@@ -354,14 +374,12 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
                           <div className="text-right">
                             <p className="text-sm font-bold">
-                              {/* Hiển thị giá gốc */}
                               {new Intl.NumberFormat("vi-VN").format(
                                 originalPrice
                               )}{" "}
                               ₫
                             </p>
 
-                            {/* Logic hiển thị giá sau giảm ĐỘNG */}
                             {originalPrice > dynamicPrice && (
                               <p className="text-xs text-red-500 font-semibold">
                                 Sau giảm:{" "}
@@ -372,7 +390,6 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                               </p>
                             )}
 
-                            {/* Tổng tiền của line item này */}
                             <p className="text-xs text-gray-500 mt-1">
                               Tổng cộng:{" "}
                               {new Intl.NumberFormat("vi-VN").format(
@@ -602,6 +619,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         setSelectedDiscounts={setSelectedDiscounts}
         orderValue={totalOriginalPrice}
         products={finalCartItems}
+        userId={currentUser?.userId}
       />
     </div>
   );
