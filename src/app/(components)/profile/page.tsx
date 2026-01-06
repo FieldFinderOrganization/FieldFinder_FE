@@ -65,7 +65,7 @@ import {
   updatePitch,
   getAllPitches,
 } from "../../../services/pitch";
-import { getAllUsers, updateUser } from "@/services/user";
+import { getAllUsers, updateUser , getUserById } from "@/services/user";
 import {
   BookingResponseDTO,
   getAllBookings,
@@ -394,6 +394,7 @@ const Profile: React.FC = () => {
   };
 
   useEffect(() => {
+    
     fetchBooking(user?.providerId)
       .then((data) => {
         const rows = data.map((booking) => ({
@@ -407,6 +408,24 @@ const Profile: React.FC = () => {
       });
   }, [user?.userId]);
 
+useEffect(() => {
+  const fetchUser = async () => {
+    if (!user?.userId) return;
+
+    const freshUser = await getUserById(user.userId);
+
+    dispatch(update({
+      role: freshUser.role,
+      name: freshUser.name,
+      email: freshUser.email,
+      phone: freshUser.phone,
+    }));
+  };
+
+  fetchUser();
+}, [user?.userId]);
+
+  
   const getPitchTypeName = (type: string) => {
     switch (type) {
       case "FIVE_A_SIDE":
@@ -522,32 +541,32 @@ const Profile: React.FC = () => {
     status: "ACTIVE",
   });
 
-  useEffect(() => {
-    const loadState = async () => {
-      try {
-        const serializedState = localStorage.getItem("authState");
-        if (serializedState) {
-          const state = JSON.parse(serializedState);
-          if (state.user) {
-            dispatch(loginSuccess(state.user));
-            setEditedUser({
-              name: state.user.name,
-              email: state.user.email,
-              phone: state.user.phone,
-              status: "ACTIVE",
-            });
-            setProviderUser({
-              cardNumber: state.user.cardNumber || "Chưa có thông tin",
-              bank: state.user.bank || "Chưa có thông tin",
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi khi khôi phục trạng thái từ localStorage:", err);
-      }
-    };
-    loadState();
-  }, [dispatch]);
+  // useEffect(() => {
+  //   const loadState = async () => {
+  //     try {
+  //       const serializedState = localStorage.getItem("authState");
+  //       if (serializedState) {
+  //         const state = JSON.parse(serializedState);
+  //         if (state.user) {
+  //           dispatch(loginSuccess(state.user));
+  //           setEditedUser({
+  //             name: state.user.name,
+  //             email: state.user.email,
+  //             phone: state.user.phone,
+  //             status: "ACTIVE",
+  //           });
+  //           setProviderUser({
+  //             cardNumber: state.user.cardNumber || "Chưa có thông tin",
+  //             bank: state.user.bank || "Chưa có thông tin",
+  //           });
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Lỗi khi khôi phục trạng thái từ localStorage:", err);
+  //     }
+  //   };
+  //   loadState();
+  // }, [dispatch]);
 
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);

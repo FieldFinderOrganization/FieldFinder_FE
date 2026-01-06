@@ -57,6 +57,7 @@ import { getAllUsers, updateUser, changeUserStatus } from "@/services/user";
 import dayjs from "dayjs";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import { providerAddress } from "../../../services/provider";
+import { getAllCategory } from "@/services/category";
 
 // ===== PRODUCT & DISCOUNT SERVICE =====
 import {
@@ -168,6 +169,9 @@ const Dashboard: React.FC = () => {
   const [openProductDialog, setOpenProductDialog] = React.useState(false);
   const [editingProduct, setEditingProduct] =
   React.useState<ProductRes | null>(null);
+  const [categories, setCategories] = React.useState<
+    { id: number; name: string }[]
+  >([]);
 
 // ===== DISCOUNT =====
   const [discounts, setDiscounts] = React.useState<DiscountRes[]>([]);
@@ -678,9 +682,12 @@ const discountColumns: GridColDef<DiscountRes>[] = [
         setBookings(enhancedBookings || []);
         const productRes = await getAllProducts();
         const discountRes = await getAllDiscounts();
+        const categoryRes = await getAllCategory(); // 👈 THÊM
 
         setProducts(productRes || []);
         setDiscounts(discountRes || []);
+        setCategories(categoryRes || []); // 👈 THÊM
+
 
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
@@ -1188,14 +1195,22 @@ const discountColumns: GridColDef<DiscountRes>[] = [
         </Button>
 
         <Button
-          variant="contained"
-          onClick={() => {
-            setEditingProduct(null);
-            setOpenProductDialog(true);
-          }}
-        >
-          + Thêm sản phẩm
-        </Button>
+  variant="contained"
+  onClick={() => {
+    setEditingProduct({
+      name: "",
+      brand: "",
+      price: 0,
+      stockQuantity: 0,
+      imageUrl: "",
+      categoryId: undefined, // 👈 BẮT BUỘC
+    } as any);
+    setOpenProductDialog(true);
+  }}
+>
+  + Thêm sản phẩm
+</Button>
+
       </div>
     </div>
 
@@ -1286,6 +1301,7 @@ const discountColumns: GridColDef<DiscountRes>[] = [
 
   <DialogContent>
     <div className="grid grid-cols-1 gap-4 mt-2">
+      {/* TÊN SẢN PHẨM */}
       <TextField
         label="Tên sản phẩm"
         fullWidth
@@ -1298,6 +1314,7 @@ const discountColumns: GridColDef<DiscountRes>[] = [
         }
       />
 
+      {/* BRAND */}
       <TextField
         label="Brand"
         fullWidth
@@ -1310,8 +1327,38 @@ const discountColumns: GridColDef<DiscountRes>[] = [
         }
       />
 
+      {/* IMAGE URL */}
       <TextField
-        label="Giá"
+        label="Link ảnh (Cloudinary)"
+        fullWidth
+        placeholder="https://res.cloudinary.com/..."
+        value={editingProduct?.imageUrl || ""}
+        onChange={(e) =>
+          setEditingProduct((prev) => ({
+            ...(prev ?? ({} as any)),
+            imageUrl: e.target.value,
+          }))
+        }
+      />
+
+      {/* IMAGE PREVIEW */}
+      {editingProduct?.imageUrl && (
+        <div className="flex justify-center mt-2">
+          <img
+            src={editingProduct.imageUrl}
+            alt="Preview"
+            className="max-h-[200px] rounded border object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src =
+                "https://via.placeholder.com/300x200?text=Invalid+Image";
+            }}
+          />
+        </div>
+      )}
+
+      {/* GIÁ */}
+      <TextField
+        label="Giá (VND)"
         type="number"
         fullWidth
         value={editingProduct?.price || 0}
@@ -1322,7 +1369,26 @@ const discountColumns: GridColDef<DiscountRes>[] = [
           }))
         }
       />
+<TextField
+  select
+  label="Danh mục"
+  fullWidth
+  value={editingProduct?.categoryId || ""}
+  onChange={(e) =>
+    setEditingProduct((prev) => ({
+      ...(prev ?? {}),
+      categoryId: Number(e.target.value),
+    }))
+  }
+>
+  {categories.map((cat) => (
+    <MenuItem key={cat.id} value={cat.id}>
+      {cat.name}
+    </MenuItem>
+  ))}
+</TextField>
 
+      {/* TỒN KHO */}
       <TextField
         label="Tồn kho"
         type="number"
@@ -1340,21 +1406,34 @@ const discountColumns: GridColDef<DiscountRes>[] = [
 
   <DialogActions>
     <Button onClick={() => setOpenProductDialog(false)}>Hủy</Button>
+
     <Button
       variant="contained"
       onClick={async () => {
         try {
           if (editingProduct?.id) {
-            await updateProduct(editingProduct, editingProduct.id);
+            // UPDATE
+            await updateProduct(editingProduct as any, editingProduct.id);
             toast.success("Cập nhật sản phẩm thành công");
           } else {
+                if (!editingProduct?.categoryId) {
+                    toast.error("Vui lòng chọn danh mục");
+                    return;
+                  }
+
+            // CREATE
             await createProduct(editingProduct as any);
             toast.success("Thêm sản phẩm thành công");
           }
 
-          setProducts(await getAllProducts());
+          // Reload list
+          const data = await getAllProducts();
+          setProducts(data || []);
+
           setOpenProductDialog(false);
-        } catch (err) {
+          setEditingProduct(null);
+        } catch (error) {
+          console.error(error);
           toast.error("Lỗi khi lưu sản phẩm");
         }
       }}
@@ -1363,6 +1442,7 @@ const discountColumns: GridColDef<DiscountRes>[] = [
     </Button>
   </DialogActions>
 </Dialog>
+
 
 
 <Dialog

@@ -38,3 +38,7 @@ export const changeUserStatus = async (
   );
   return response.data;
 };
+export const getUserById = async (userId: string): Promise<User> => {
+  const response = await axios.get(`${baseURL}/users/${userId}`);
+  return response.data;
+};
