@@ -92,6 +92,21 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     return currentPrice < 0 ? 0 : currentPrice;
   };
 
+const normalizeDiscount = (raw: any): discountRes => ({
+  id: raw.id ?? raw.discountId ?? raw.userDiscountId ?? raw.code,
+  code: raw.code ?? raw.discountCode,
+  description: raw.description,
+  discountType: raw.discountType ?? raw.type,
+  value: raw.value,
+  minOrderValue: raw.minOrderValue,
+  maxDiscountAmount: raw.maxDiscountAmount,
+  quantity: raw.quantity ?? 0,
+  startDate: raw.startDate,
+  endDate: raw.endDate,
+  status: raw.status ?? "ACTIVE",
+});
+
+
   useEffect(() => {
     if (open && customCartId) {
       const fetchCustomCartItems = async () => {
@@ -141,27 +156,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         if (currentUserId && !isGuest) {
           const walletData = await getMyWallet(currentUserId);
           if (Array.isArray(walletData)) {
-            allDiscounts = walletData.map((item: any) => {
-              if (item.discount) {
-                return { ...item.discount };
-              }
-              return {
-                id: item.discountId || item.id,
-                code: item.discountCode || item.code,
-                description: item.description,
-                discountType: item.type || item.discountType,
-                value: item.value,
-                minOrderValue: item.minOrderValue,
-                maxDiscountAmount: item.maxDiscountAmount,
-                quantity: item.quantity || 0,
-                startDate: item.startDate,
-                endDate: item.endDate,
-                status: "ACTIVE",
-                scope: item.scope || "GLOBAL",
-                applicableProductIds: item.applicableProductIds || [],
-                applicableCategoryIds: item.applicableCategoryIds || [],
-              } as discountRes;
-            });
+            allDiscounts = walletData.map(normalizeDiscount);
           }
         } else {
           allDiscounts = await getAllDiscounts();

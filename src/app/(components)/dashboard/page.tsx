@@ -524,6 +524,7 @@ const discountColumns: GridColDef<DiscountRes>[] = [
   { field: "status", headerName: "Trạng thái", width: 120 },
   { field: "startDate", headerName: "Bắt đầu", width: 120 },
   { field: "endDate", headerName: "Kết thúc", width: 120 },
+  { field: "quantity", headerName: "Giới hạn sử dụng", width: 150 },
   {
     field: "actions",
     type: "actions",
@@ -1532,6 +1533,22 @@ const discountColumns: GridColDef<DiscountRes>[] = [
   <MenuItem value="SPECIFIC_PRODUCT">Sản phẩm cụ thể</MenuItem>
   <MenuItem value="CATEGORY">Danh mục</MenuItem>
 </TextField>
+
+<TextField
+  label="Số lượt sử dụng"
+  type="number"
+  fullWidth
+  value={editingDiscount?.quantity ?? 0}
+  onChange={(e) =>
+    setEditingDiscount((prev) => ({
+      ...(prev ?? {}),
+      quantity: Number(e.target.value),
+    }))
+  }
+  helperText="Nhập 0 nếu không giới hạn"
+/>
+
+
 <TextField
   select
   label="Trạng thái"
