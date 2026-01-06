@@ -1501,17 +1501,53 @@ const discountColumns: GridColDef<DiscountRes>[] = [
       </TextField>
 
       <TextField
-        label="Giá trị"
-        type="number"
-        fullWidth
-        value={editingDiscount?.value || 0}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            value: Number(e.target.value),
-          }))
-        }
-      />
+  label={
+    editingDiscount?.discountType === "PERCENTAGE"
+      ? "Phần trăm giảm (%)"
+      : "Số tiền giảm"
+  }
+  type="number"
+  fullWidth
+  value={editingDiscount?.value || 0}
+  onChange={(e) =>
+    setEditingDiscount((prev) => ({
+      ...(prev ?? {}),
+      value: Number(e.target.value),
+    }))
+  }
+/>
+<TextField
+  select
+  label="Phạm vi áp dụng"
+  fullWidth
+  value={editingDiscount?.scope || "GLOBAL"}
+  onChange={(e) =>
+    setEditingDiscount((prev) => ({
+      ...(prev ?? {}),
+      scope: e.target.value,
+    }))
+  }
+>
+  <MenuItem value="GLOBAL">Toàn hệ thống</MenuItem>
+  <MenuItem value="SPECIFIC_PRODUCT">Sản phẩm cụ thể</MenuItem>
+  <MenuItem value="CATEGORY">Danh mục</MenuItem>
+</TextField>
+<TextField
+  select
+  label="Trạng thái"
+  fullWidth
+  value={editingDiscount?.status || "ACTIVE"}
+  onChange={(e) =>
+    setEditingDiscount((prev) => ({
+      ...(prev ?? {}),
+      status: e.target.value,
+    }))
+  }
+>
+  <MenuItem value="ACTIVE">Hoạt động</MenuItem>
+  <MenuItem value="INACTIVE">Tạm ngưng</MenuItem>
+</TextField>
+
 
       <TextField
         type="date"
