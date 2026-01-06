@@ -1,3 +1,6 @@
+/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -6,7 +9,6 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Divider,
   IconButton,
   Typography,
@@ -23,16 +25,16 @@ import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { useSearchParams } from "next/navigation";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import dayjs from "dayjs";
-import BookingModal from "@/utils/bookingModal";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { toast } from "react-toastify";
+
 import { getBookingSlot } from "@/services/booking";
 import { getReviewByPitch } from "@/services/review";
 import { getAllUsers } from "@/services/user";
-import f from "../../../../../../public/images/field3.jpg"; // Điều chỉnh path ảnh nếu cần
+import BookingModal from "@/utils/bookingModal";
+import f from "../../../../../../public/images/field3.jpg";
 
 interface reviewResponseDTO {
   reviewId: string;
@@ -59,21 +61,18 @@ const FieldDetail: React.FC = () => {
   const address = searchParams.get("address");
   const rating = searchParams.get("rating");
   const parsedRating = rating ? parseFloat(rating) : null;
+
   const [date, setDate] = useState<dayjs.Dayjs | null>(dayjs());
   const [reviews, setReviews] = useState<reviewResponseDTO[]>([]);
   const [users, setUsers] = useState<{ [key: string]: User }>({});
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal zoom ảnh
   const [selectedImage, setSelectedImage] = useState(null);
-  const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
-  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
+  const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<number[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
-
-  useEffect(() => {
-    setSelectedTimeSlots([]);
-  }, [date]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
 
   const fieldData = {
     id: id ?? "",
@@ -82,13 +81,16 @@ const FieldDetail: React.FC = () => {
     price: price ?? "",
     description: description ?? "",
     date: date ? date.format("DD/MM/YYYY") : "",
-    time: selectedTimeSlots.join(", "),
+    time: "",
   };
+
+  useEffect(() => {
+    setSelectedTimeSlots([]);
+  }, [date]);
 
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
-
       try {
         const [pitchReviews, usersData] = await Promise.all([
           getReviewByPitch(id),
@@ -96,28 +98,56 @@ const FieldDetail: React.FC = () => {
         ]);
 
         setReviews(pitchReviews);
-
         const userMap: { [key: string]: User } = {};
         usersData.forEach((user) => {
           userMap[user.userId] = user;
         });
-
         setUsers(userMap);
-
-        if (date) {
-          await fetchBookedSlots();
-        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Không thể tải dữ liệu sân");
       }
     };
     loadData();
-  }, [date, id]);
+  }, [id]);
 
-  const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
-  const handleOpen = () => setIsModalBookingOpen(true);
-  const handleClose = () => setIsModalBookingOpen(false);
+  const fetchBookedSlots = async () => {
+    if (!id || !date) return;
+    try {
+      setIsLoadingSlots(true);
+      const formattedDate = date.format("YYYY-MM-DD");
+      const response = await getBookingSlot(id, formattedDate);
+      setBookedSlots(response);
+    } catch (error) {
+      console.error("Error fetching slots:", error);
+      toast.error("Không thể cập nhật khung giờ");
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  };
+
+  const handleOpenBooking = async () => {
+    if (!date) {
+      toast.warn("Vui lòng chọn ngày trước");
+      return;
+    }
+    if (date.isBefore(dayjs(), "day")) {
+      toast.warn("Không thể đặt sân cho ngày đã qua");
+      return;
+    }
+    await fetchBookedSlots();
+    setIsModalBookingOpen(true);
+  };
+
+  const handleCloseBooking = () => {
+    setIsModalBookingOpen(false);
+    setSelectedTimeSlots([]);
+  };
+
+  const handleBookingSuccess = () => {
+    fetchBookedSlots();
+    setSelectedTimeSlots([]);
+  };
 
   const toggleTimeSlot = (slot: string) => {
     setSelectedTimeSlots((prev) =>
@@ -125,14 +155,16 @@ const FieldDetail: React.FC = () => {
     );
   };
 
-  const removeTimeSlot = (slot: string) => {
-    setSelectedTimeSlots((prev) => prev.filter((s) => s !== slot));
-  };
-
   const [currentPage, setCurrentPage] = useState(0);
   const reviewsPerPage = 8;
   const startIndex = currentPage * reviewsPerPage;
   const endIndex = startIndex + reviewsPerPage;
+  const currentReviews = reviews.slice(startIndex, endIndex);
+
+  const [reviewsRef, reviewsInView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  });
 
   const handleImageClick = (imageSrc: any) => {
     setSelectedImage(imageSrc);
@@ -144,77 +176,13 @@ const FieldDetail: React.FC = () => {
     setSelectedImage(null);
   };
 
-  const openTimeModal = async () => {
-    if (!date || !id) {
-      toast.error("Vui lòng chọn ngày trước khi đặt giờ");
-      return;
-    }
-
-    if (date.isBefore(dayjs(), "day")) {
-      toast.error("Không thể đặt sân cho ngày đã qua");
-      return;
-    }
-
-    try {
-      setIsLoadingSlots(true);
-      const formattedDate = date.format("YYYY-MM-DD");
-      const response = await getBookingSlot(id, formattedDate);
-      setBookedSlots(response);
-      setIsTimeModalOpen(true);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-      toast.error("Không thể tải thông tin khung giờ");
-    } finally {
-      setIsLoadingSlots(false);
-    }
-  };
-
-  const closeTimeModal = () => {
-    setIsTimeModalOpen(false);
-  };
-
-  const [reviewsRef, reviewsInView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
-
-  const currentReviews = reviews.slice(startIndex, endIndex);
-
   const handlePrevRe = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
+    if (currentPage > 0) setCurrentPage(currentPage - 1);
   };
 
   const handleNextRe = () => {
-    if ((currentPage + 1) * reviewsPerPage < reviews.length) {
+    if ((currentPage + 1) * reviewsPerPage < reviews.length)
       setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const renderStars = (rating: number | null): React.ReactNode[] => {
-    const stars: React.ReactNode[] = [];
-    const starRating = rating ? rating / 2 : 0;
-    const fullStars = Math.floor(starRating);
-    const hasHalfStar = starRating % 1 >= 0.5;
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(
-          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
-        );
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(
-          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
-        );
-      } else {
-        stars.push(
-          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
-        );
-      }
-    }
-
-    return stars;
   };
 
   const getPitchType = (pitchType: string) => {
@@ -230,126 +198,106 @@ const FieldDetail: React.FC = () => {
     }
   };
 
+  const renderStars = (rating: number | null): React.ReactNode[] => {
+    const stars: React.ReactNode[] = [];
+    const starRating = rating ? rating / 2 : 0;
+    const fullStars = Math.floor(starRating);
+    const hasHalfStar = starRating % 1 >= 0.5;
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars)
+        stars.push(
+          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
+        );
+      else if (i === fullStars && hasHalfStar)
+        stars.push(
+          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
+        );
+      else
+        stars.push(
+          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
+        );
+    }
+    return stars;
+  };
+
   const truncateName = (name: string, maxLength: number = 15) => {
-    if (name.length > maxLength) {
-      return name.substring(0, 12) + "...";
-    }
+    if (name.length > maxLength) return name.substring(0, 12) + "...";
     return name;
-  };
-
-  const timeSlots = [
-    "6:00 - 7:00",
-    "7:00 - 8:00",
-    "8:00 - 9:00",
-    "9:00 - 10:00",
-    "10:00 - 11:00",
-    "11:00 - 12:00",
-    "12:00 - 13:00",
-    "13:00 - 14:00",
-    "14:00 - 15:00",
-    "15:00 - 16:00",
-    "16:00 - 17:00",
-    "17:00 - 18:00",
-    "18:00 - 19:00",
-    "19:00 - 20:00",
-    "20:00 - 21:00",
-    "21:00 - 22:00",
-    "22:00 - 23:00",
-    "23:00 - 24:00",
-  ];
-
-  const getSlotNumber = (timeSlot: string) => {
-    return timeSlots.indexOf(timeSlot) + 1;
-  };
-
-  const isSlotBooked = (timeSlot: string) => {
-    return bookedSlots.includes(getSlotNumber(timeSlot));
-  };
-
-  const fetchBookedSlots = async () => {
-    if (!id || !date) return;
-
-    try {
-      const formattedDate = date.format("YYYY-MM-DD");
-      const response = await getBookingSlot(id, formattedDate);
-      setBookedSlots(response);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-      toast.error("Không thể cập nhật khung giờ");
-    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 mx-auto px-4 sm:px-8 flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[100px] pb-[100px]">
       <Header />
       <div className="main flex gap-y-8 max-w-7xl w-full px-0 sm:px-4 mt-[2rem] flex-col mx-auto">
-        {/* Breadcrumb */}
         <div className="inline-flex items-center gap-[1rem] relative ml-0 sm:ml-[1.8rem] flex-wrap">
           <p
-            className="relative w-fit mt-[-1.00px] [font-family:'Inter-Bold',Helvetica] font-bold text-[#188862] text-[1.1rem] sm:text-[1.3rem] tracking-[0] leading-[normal] whitespace-nowrap cursor-pointer"
+            className="relative w-fit mt-[-1.00px] font-bold text-[#188862] text-[1.1rem] sm:text-[1.3rem] cursor-pointer hover:underline"
             onClick={() => window.history.back()}
           >
             Danh sách sân
           </p>
-          <KeyboardArrowRightOutlinedIcon className="text-[#188862] mt-[-1.00px]" />
-          <p className="relative w-fit [font-family:'Inter-Regular',Helvetica] font-normal text-black text-[1.1rem] sm:text-[1.3rem] tracking-[0] leading-[normal]">
+          <KeyboardArrowRightOutlinedIcon className="text-[#188862]" />
+          <p className="relative w-fit font-normal text-black text-[1.1rem] sm:text-[1.3rem]">
             Chi tiết sân
           </p>
         </div>
 
-        {/* Pitch Card Details */}
-        <div className="pitch-card w-full max-w-6xl mx-auto flex flex-col-reverse lg:flex-row items-center bg-white p-6 sm:p-12 rounded-md shadow-md gap-8 lg:gap-x-[5rem] mt-[1rem]">
-          {/* Left Content: Info */}
-          <div className="left-content w-full lg:flex-1 flex flex-col gap-y-[1.2rem]">
+        <div className="pitch-card w-full max-w-6xl mx-auto flex flex-col-reverse lg:flex-row items-center bg-white p-6 sm:p-12 rounded-2xl shadow-lg gap-8 lg:gap-x-[5rem] mt-[1rem]">
+          <div className="left-content w-full lg:flex-1 flex flex-col gap-y-[1.5rem]">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-x-[2rem]">
               <Typography
                 variant="h4"
-                fontWeight={700}
-                className="text-2xl sm:text-3xl"
+                fontWeight={800}
+                className="text-2xl sm:text-3xl text-gray-800"
               >
                 Sân {name || "Sân không xác định"}
               </Typography>
-              <div className="ratings flex items-center justify-center gap-x-[0.5rem]">
+              <div className="flex items-center gap-x-[0.5rem] bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
                 {parsedRating !== null
                   ? renderStars(parsedRating)
                   : "Chưa có đánh giá"}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-[2.4rem] gap-y-2">
-              <div className="bg-blue-600 text-white font-bold rounded-md py-[0.3rem] px-[0.3rem] text-[0.8rem] w-[50px] flex-shrink-0 text-center">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="bg-[#188862] text-white font-bold rounded-lg py-1 px-3 text-sm shadow-md">
                 {parsedRating !== null ? parsedRating.toFixed(1) : "0"}/10
               </div>
-              <div className="field-info text-[1rem] flex-1 font-bold break-words">
-                {description || "Không có mô tả"}
+              <div className="text-gray-600 flex-1 font-medium break-words italic">
+                {description || "Chưa có mô tả cho sân này."}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-x-[4rem]">
-              <div className="flex items-center gap-2 flex-1">
-                <BsPinMap className="text-[1.5rem] text-gray-600 flex-shrink-0" />
-                <div className="field-info text-[1rem] break-words">
-                  {address || "Lỗi lấy địa chỉ"}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-x-[3rem]">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <BsPinMap className="text-[1.2rem] text-blue-600" />
+                </div>
+                <div className="text-[1rem] font-medium text-gray-700 break-words">
+                  {address || "Đang cập nhật địa chỉ..."}
                 </div>
               </div>
+
               <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DatePicker
-                  label="Ngày đặt"
+                  label="Chọn ngày đặt sân"
                   value={date}
-                  onChange={(newValue) => {
-                    if (newValue && newValue.isBefore(dayjs(), "day")) return;
-                    setDate(newValue);
-                  }}
+                  onChange={(newValue) => setDate(newValue)}
                   format="DD/MM/YYYY"
-                  slots={{
-                    openPickerIcon: CalendarTodayIcon,
-                  }}
+                  slots={{ openPickerIcon: CalendarTodayIcon }}
                   slotProps={{
                     textField: {
-                      sx: { width: "100%", maxWidth: "300px" },
-                    },
-                    actionBar: {
-                      actions: ["clear", "today"],
+                      variant: "outlined",
+                      sx: {
+                        bgcolor: "white",
+                        width: "100%",
+                        minWidth: "220px",
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "10px",
+                          "&.Mui-focused fieldset": { borderColor: "#188862" },
+                        },
+                      },
                     },
                   }}
                   disablePast
@@ -357,368 +305,177 @@ const FieldDetail: React.FC = () => {
               </LocalizationProvider>
             </div>
 
-            <div className="flex flex-col gap-y-4">
-              <div className="flex items-center gap-x-4">
-                <Typography variant="body1" fontWeight={600}>
-                  Khung giờ
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  size="small"
-                  startIcon={<AccessTimeIcon fontSize="small" />}
-                  onClick={openTimeModal}
-                  sx={{
-                    width: "fit-content",
-                    py: 0.5,
-                    px: 2,
-                    fontSize: "0.875rem",
-                    textTransform: "none",
-                    bgcolor: "#188862",
-                  }}
-                >
-                  Chọn khung giờ
-                </Button>
+            <div className="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500 font-semibold mb-1">
+                  Loại sân
+                </p>
+                <p className="text-lg font-bold text-gray-800">
+                  {type ? getPitchType(type as string) : "..."}
+                </p>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {selectedTimeSlots.length > 0 ? (
-                  selectedTimeSlots.map((slot) => (
-                    <div
-                      key={slot}
-                      className="bg-[#188862] text-white font-bold rounded-md px-3 py-1 text-sm flex items-center justify-between"
-                    >
-                      <span className="truncate mr-1">{slot}</span>
-                      <button
-                        onClick={() => removeTimeSlot(slot)}
-                        className="hover:text-red-200 cursor-pointer flex-shrink-0"
-                      >
-                        <CloseIcon fontSize="small" />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <Typography variant="body2" color="textSecondary">
-                    Chưa chọn khung giờ
-                  </Typography>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 sm:gap-x-[6.1rem]">
-              <div className="flex items-center gap-x-2">
-                <div className="field-info text-[1rem] font-bold">
-                  Loại sân:
-                </div>
-                <div className="field-info text-[1rem]">
-                  {type ? getPitchType(type as string) : "Không xác định"}
-                </div>
-              </div>
-              <div className="flex items-center gap-x-2">
-                <div className="field-info text-[1rem] font-bold">Giá:</div>
-                <div className="field-info text-[1rem] text-[#FE2A00] font-bold">
-                  {price
-                    ? `${parseInt(price).toLocaleString()} VNĐ`
-                    : "Không xác định"}
-                </div>
+              <div>
+                <p className="text-sm text-gray-500 font-semibold mb-1">
+                  Đơn giá
+                </p>
+                <p className="text-lg font-extrabold text-[#FE2A00]">
+                  {price ? `${parseInt(price).toLocaleString()} VNĐ` : "..."}{" "}
+                  <span className="text-xs font-normal text-gray-400">
+                    /giờ
+                  </span>
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Right Content: Images (ĐÃ SỬA LỖI MẤT ẢNH) */}
-          {/* Sửa: Thay vì h-auto, set chiều cao cụ thể cho LG để container không bị 0px do con absolute */}
-          <div className="right-content relative w-full max-w-[300px] h-[280px] lg:w-[400px] lg:h-[350px] flex-shrink-0 mx-auto mt-4 lg:mt-0">
-            <Image
-              src="/images/field3.jpg"
-              width={240}
-              height={240}
-              className="rounded-md rotate-[-3deg] cursor-pointer object-cover shadow-lg"
-              style={{
-                position: "absolute",
-                top: "0px",
-                left: "10px",
-                zIndex: 2,
-                width: "85%",
-                height: "auto",
-                aspectRatio: "1/1",
-              }}
-              alt="Field 3"
-              onClick={() => handleImageClick("/images/field3.jpg")}
-            />
-            <Image
-              src="/images/field1.jpg"
-              width={248}
-              height={248}
-              className="rounded-md cursor-pointer object-cover shadow-md"
-              style={{
-                zIndex: 1,
-                position: "absolute",
-                top: "20px",
-                left: "30px",
-                width: "85%",
-                height: "auto",
-                aspectRatio: "1/1",
-              }}
-              alt="Field 5"
-              onClick={() => handleImageClick("/images/field1.jpg")}
-            />
-          </div>
-        </div>
-
-        {/* Reviews Section */}
-        <div
-          ref={reviewsRef}
-          className={`reviews mt-[2rem] ${reviewsInView ? "animate-fadeSlideUp" : "opacity-0"}`}
-        >
-          <div className="flex items-center justify-center mb-[2rem] relative mt-[2rem]">
-            <Typography
-              variant="h3"
-              sx={{
-                fontWeight: "bold",
-                textAlign: "center",
-                fontSize: { xs: "2rem", md: "3rem" },
-              }}
-            >
-              Nhận xét
-            </Typography>
-            <div className="flex items-end icons absolute right-0 sm:right-4 gap-[1rem]">
-              <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 ${
-                  currentPage === 0 ? "opacity-50" : "cursor-pointer"
-                }`}
-                onClick={handlePrevRe}
-              >
-                <MdKeyboardArrowLeft className="text-[2rem]" />
-              </div>
-              <div
-                className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 ${
-                  endIndex >= reviews.length ? "opacity-50" : "cursor-pointer"
-                }`}
-                onClick={handleNextRe}
-              >
-                <MdKeyboardArrowRight className="text-[2rem]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="reviews-cards space-y-[2rem]">
-            <div className="mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {currentReviews.length > 0 ? (
-                currentReviews.map((review, index) => (
-                  <Card
-                    key={index}
-                    className="w-full h-auto min-h-[200px] relative pb-[50px] mx-auto"
-                  >
-                    <CardContent
-                      sx={{
-                        width: "100%",
-                        padding: "1rem",
-                        height: "100%",
-                        display: "flex",
-                        gap: "1rem",
-                        flexDirection: "column",
-                      }}
-                    >
-                      <div className="header flex items-center gap-[1rem]">
-                        <img
-                          src={f.src}
-                          className="rounded-full h-12 w-12 object-cover"
-                        />
-                        <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem]">
-                          <p className="font-bold text-[1.1rem]">
-                            {truncateName(
-                              users[review.userId]?.name || "Người dùng ẩn danh"
-                            )}
-                          </p>
-                          <div className="stars flex items-start gap-x-[0.2rem]">
-                            {renderStars(review.rating)}
-                          </div>
-                        </div>
-                      </div>
-                      <p
-                        className="font-medium text-[0.9rem] text-justify"
-                        style={{
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: "vertical",
-                          marginTop: "0.5rem",
-                        }}
-                      >
-                        {review.comment !== ""
-                          ? review.comment
-                          : "Không có đánh giá"}
-                      </p>
-                    </CardContent>
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        padding: "0 1rem 1rem 1rem",
-                      }}
-                    >
-                      <Divider
-                        sx={{
-                          borderColor: "#ccc",
-                          borderWidth: "1px",
-                          marginBottom: "0.5rem",
-                        }}
-                      />
-                      <p className="text-[0.9rem] text-gray-500">
-                        Đã đánh giá vào{" "}
-                        <span className="font-bold">
-                          {dayjs(review.createat).format("DD/MM/YYYY")}
-                        </span>
-                      </p>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <Typography
-                  variant="body1"
-                  sx={{
-                    gridColumn: { xs: "span 1", sm: "span 2", lg: "span 4" },
-                    textAlign: "center",
-                  }}
-                >
-                  Sân này chưa có đánh giá nào
-                </Typography>
-              )}
+          <div className="right-content relative w-full max-w-[320px] h-[300px] lg:w-[400px] lg:h-[350px] flex-shrink-0 mx-auto mt-4 lg:mt-0">
+            <div className="relative w-full h-full group">
+              <Image
+                src="/images/field3.jpg"
+                width={240}
+                height={240}
+                className="rounded-2xl rotate-[-6deg] cursor-pointer object-cover shadow-xl border-4 border-white absolute top-0 left-2 z-20 transition-transform group-hover:rotate-0 group-hover:scale-105 duration-300"
+                style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
+                alt="Field Main"
+                onClick={() => handleImageClick("/images/field3.jpg")}
+              />
+              <Image
+                src="/images/field1.jpg"
+                width={248}
+                height={248}
+                className="rounded-2xl cursor-pointer object-cover shadow-lg border-4 border-gray-100 absolute top-8 left-8 z-10 opacity-90"
+                style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
+                alt="Field Sub"
+                onClick={() => handleImageClick("/images/field1.jpg")}
+              />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center mt-4">
           <Button
             sx={{
               bgcolor: "#188862",
               color: "white",
-              borderRadius: "0.5rem",
-              padding: "0.5rem 1rem",
-              fontSize: { xs: "1.2rem", sm: "1.5rem" },
-              width: "100%",
-              maxWidth: "400px",
-              height: "50px",
-              marginTop: "3rem",
-              "&:hover": { bgcolor: "#146c4e" },
+              borderRadius: "50px",
+              padding: "0.8rem 4rem",
+              fontSize: { xs: "1.1rem", sm: "1.3rem" },
+              fontWeight: "bold",
+              boxShadow: "0 10px 25px -5px rgba(24, 136, 98, 0.4)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                bgcolor: "#146c4e",
+                transform: "translateY(-2px)",
+                boxShadow: "0 15px 30px -5px rgba(24, 136, 98, 0.5)",
+              },
             }}
-            onClick={handleOpen}
+            onClick={handleOpenBooking}
           >
-            Đặt ngay
+            ĐẶT LỊCH NGAY
           </Button>
+
           <BookingModal
             open={isModalBookingOpen}
-            onClose={handleClose}
+            onClose={handleCloseBooking}
             fieldData={fieldData}
-            onBookingSuccess={fetchBookedSlots}
-            resetSelectedSlots={() => setSelectedTimeSlots([])}
+            onBookingSuccess={handleBookingSuccess}
+            selectedTimeSlots={selectedTimeSlots}
+            onToggleTimeSlot={toggleTimeSlot}
+            bookedSlots={bookedSlots}
+            isLoadingSlots={isLoadingSlots}
           />
+        </div>
+
+        <div
+          ref={reviewsRef}
+          className={`reviews mt-[4rem] transition-opacity duration-700 ${reviewsInView ? "opacity-100" : "opacity-0"}`}
+        >
+          <div className="flex items-center justify-between mb-[2rem] px-4">
+            <Typography variant="h4" sx={{ fontWeight: "800", color: "#333" }}>
+              Đánh giá từ khách hàng
+            </Typography>
+            <div className="flex gap-2">
+              <IconButton
+                onClick={handlePrevRe}
+                disabled={currentPage === 0}
+                sx={{ bgcolor: "white", boxShadow: 1 }}
+              >
+                <MdKeyboardArrowLeft />
+              </IconButton>
+              <IconButton
+                onClick={handleNextRe}
+                disabled={endIndex >= reviews.length}
+                sx={{ bgcolor: "white", boxShadow: 1 }}
+              >
+                <MdKeyboardArrowRight />
+              </IconButton>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2">
+            {currentReviews.length > 0 ? (
+              currentReviews.map((review, index) => (
+                <Card
+                  key={index}
+                  className="w-full h-full min-h-[220px] rounded-xl hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+                >
+                  <CardContent className="h-full flex flex-col justify-between p-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src={f.src}
+                          className="rounded-full h-10 w-10 object-cover border border-gray-200"
+                          alt="avatar"
+                        />
+                        <div>
+                          <p className="font-bold text-sm text-gray-800">
+                            {truncateName(
+                              users[review.userId]?.name || "Người dùng ẩn danh"
+                            )}
+                          </p>
+                          <div className="flex gap-0.5">
+                            {renderStars(review.rating)}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 text-sm line-clamp-4 italic">
+                        {review.comment || "Không có nội dung"}"
+                      </p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400 text-right">
+                      {dayjs(review.createat).format("DD/MM/YYYY")}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+                <p className="text-gray-500">
+                  Chưa có đánh giá nào cho sân này.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="relative w-full max-w-4xl h-[80vh] flex items-center justify-center">
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeModal}
+        >
+          <div className="relative w-full max-w-5xl h-auto max-h-[90vh]">
             <Image
               src={selectedImage || "/images/field1.jpg"}
-              layout="fill"
+              width={1000}
+              height={800}
               objectFit="contain"
-              className="rounded-md"
-              alt="Zoomed Image"
+              className="rounded-lg shadow-2xl mx-auto"
+              alt="Zoomed"
             />
-            <button
-              className="absolute top-[-2rem] right-[-1rem] sm:top-4 sm:right-4 text-white hover:text-gray-300 bg-black/50 rounded-full p-1"
-              onClick={closeModal}
-            >
+            <button className="absolute -top-12 right-0 text-white hover:text-red-500 transition-colors">
               <CloseIcon fontSize="large" />
             </button>
-          </div>
-        </div>
-      )}
-
-      {isTimeModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-6 rounded-md w-full max-w-[900px] max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white z-10">
-              <Typography variant="h6" fontWeight="bold">
-                Chọn khung giờ
-              </Typography>
-              <IconButton onClick={closeTimeModal}>
-                <CloseIcon />
-              </IconButton>
-            </div>
-
-            {isLoadingSlots ? (
-              <div className="flex justify-center items-center h-32">
-                <CircularProgress />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {timeSlots.map((slot, index) => {
-                  const isBooked = isSlotBooked(slot);
-                  const isPast = date?.isBefore(dayjs(), "day");
-
-                  const isToday = date?.isSame(dayjs(), "day");
-                  let isDisabledByTime = false;
-
-                  if (isToday) {
-                    const now = dayjs();
-                    const currentHour = now.hour();
-                    const currentMinute = now.minute();
-
-                    const [start] = slot.split(" - ");
-                    const [slotHour] = start.split(":").map(Number);
-
-                    if (slotHour < currentHour + 1) {
-                      isDisabledByTime = true;
-                    } else if (
-                      slotHour === currentHour + 1 &&
-                      currentMinute > 30
-                    ) {
-                      isDisabledByTime = true;
-                    }
-                  }
-
-                  const isDisabled = isBooked || isPast || isDisabledByTime;
-
-                  return (
-                    <Button
-                      key={index}
-                      variant={
-                        selectedTimeSlots.includes(slot)
-                          ? "contained"
-                          : "outlined"
-                      }
-                      color="primary"
-                      onClick={() => !isDisabled && toggleTimeSlot(slot)}
-                      sx={{
-                        textTransform: "none",
-                        py: 1.5,
-                        ...(isBooked && {
-                          backgroundColor: "silver",
-                          color: "white",
-                        }),
-                        ...(selectedTimeSlots.includes(slot) && {
-                          backgroundColor: "#188862",
-                          color: "white",
-                          "&:hover": { backgroundColor: "#126d4e" },
-                        }),
-                        ...(isDisabled && {
-                          pointerEvents: "none",
-                          opacity: 0.6,
-                        }),
-                      }}
-                      disabled={isDisabled}
-                    >
-                      {slot}
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
       )}
