@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -19,7 +20,6 @@ import {
   BookingQuery,
   ProductDTO,
 } from "@/services/ai";
-import { useCart } from "@/context/CartContext";
 import { useSelector } from "react-redux";
 import { PitchResponseDTO } from "@/services/pitch";
 import dayjs from "dayjs";
@@ -31,6 +31,8 @@ interface ChatMessage {
   products?: ProductDTO[];
 
   matchedPitches?: PitchResponseDTO[];
+
+  selectedPitch?: SelectedPitchDTO;
 
   pitchId?: string;
   bookingDate?: string | null;
@@ -47,6 +49,7 @@ interface ChatMessage {
     quantity: number;
   };
 }
+
 interface FieldData {
   id: string;
   name: string;
@@ -56,8 +59,19 @@ interface FieldData {
   date: string;
   time: string;
 }
+
 interface AIChatProps {
   onClose: () => void;
+}
+
+interface SelectedPitchDTO {
+  pitchId: string;
+  providerAddressId: string;
+  name: string;
+  type: string;
+  environment: string;
+  price: number;
+  description: string;
 }
 
 const SpeechRecognition =
@@ -203,14 +217,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     ]);
   }, []);
 
-  // --- QUAN TRỌNG: ĐĂNG KÝ SESSION KHI USER LOGIN ---
   useEffect(() => {
     const registerChatSession = async () => {
-      // Chỉ đăng ký nếu có user và sessionId
       if (user?.userId && sessionId) {
         try {
           const token = localStorage.getItem("token");
-          // Gọi API register-session mà bạn đã tạo ở Backend
           await axios.post(
             `http://localhost:8080/api/users/${user.userId}/register-session?sessionId=${sessionId}`,
             {},
@@ -226,7 +237,6 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     };
     registerChatSession();
   }, [user, sessionId]);
-  // ------------------------------------------------
 
   useEffect(() => {
     if (chatWindowRef.current) {
@@ -238,13 +248,11 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Legacy/Unused ref logic kept for structure, main logic is handleFormSubmit
   handleSubmitMessageRef.current = async (messageText: string) => {
     if (!messageText.trim()) return;
     const newUserMessage: ChatMessage = { sender: "user", text: messageText };
     setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
-    // ... existing logic inside this ref if used ...
   };
 
   useEffect(() => {
@@ -400,6 +408,8 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       data: data.data,
 
       matchedPitches: data.data?.matchedPitches,
+
+      selectedPitch: data.data?.selectedPitch,
     };
 
     if (data.data?.action === "ready_to_order" && data.data.selectedSize) {
@@ -585,6 +595,50 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {msg.sender === "ai" && msg.selectedPitch && (
+                <div className="mt-3 w-full">
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200 shadow-md relative overflow-hidden">
+                    <h4 className="font-bold text-blue-800 text-base mb-1">
+                      {msg.selectedPitch.name}
+                    </h4>
+
+                    <div className="flex gap-2 mb-2">
+                      <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        {formatPitchType(msg.selectedPitch.type)}
+                      </span>
+                      <span className="bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded-full">
+                        {msg.selectedPitch.environment === "INDOOR"
+                          ? "Trong nhà"
+                          : "Ngoài trời"}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {msg.selectedPitch.description ||
+                        "Chất lượng sân tốt, giá cả hợp lý."}
+                    </p>
+
+                    <div className="flex justify-between items-end border-t border-green-200 pt-3">
+                      <div>
+                        <p className="text-xs text-gray-500">Giá thuê:</p>
+                        <span className="text-red-600 font-bold text-lg">
+                          {Number(msg.selectedPitch.price).toLocaleString()} đ/h
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          handleBookSpecificPitch(msg.selectedPitch, msg)
+                        }
+                        className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold shadow-sm flex items-center gap-1"
+                      >
+                        Đặt ngay
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
