@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 "use client";
 
 import React, {
@@ -56,6 +57,9 @@ const Product = () => {
   const { selectedCategory, subCategories } = currentState;
 
   const [isFilterVisible, setIsFilterVisible] = useState(true);
+
+  // 1. Thêm State cho Sort
+  const [sortOption, setSortOption] = useState<string>("default");
 
   const [allProducts, setAllProducts] = useState<productRes[]>([]);
 
@@ -388,13 +392,32 @@ const Product = () => {
     searchTerm,
   ]);
 
+  // 2. Thêm Logic Sort
+  const sortedProducts = useMemo(() => {
+    let products = [...filteredProducts];
+    if (sortOption === "price-asc") {
+      products.sort(
+        (a, b) => (a.salePrice ?? a.price) - (b.salePrice ?? b.price)
+      );
+    } else if (sortOption === "price-desc") {
+      products.sort(
+        (a, b) => (b.salePrice ?? b.price) - (a.salePrice ?? a.price)
+      );
+    } else if (sortOption === "name-asc") {
+      products.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortOption === "name-desc") {
+      products.sort((a, b) => b.name.localeCompare(a.name));
+    }
+    return products;
+  }, [filteredProducts, sortOption]);
+
   const visibleProducts = useMemo(() => {
-    return filteredProducts.slice(0, visibleCount);
-  }, [filteredProducts, visibleCount]);
+    return sortedProducts.slice(0, visibleCount); // Sử dụng sortedProducts thay vì filteredProducts
+  }, [sortedProducts, visibleCount]);
 
   useEffect(() => {
     setVisibleCount(9);
-  }, [filteredProducts]);
+  }, [sortedProducts]); // Reset khi list sorted thay đổi
 
   const observerRef = useRef(null);
 
@@ -470,14 +493,35 @@ const Product = () => {
 
       <div className="flex items-center pt-[1rem] px-[3.5rem] justify-between mb-4 ">
         <h2 className="text-3xl font-semibold ">{selectedCategory}</h2>
-        <div
-          className="hide-filters md:gap-x-[1rem] gap-x-[0.5rem] flex items-center cursor-pointer"
-          onClick={() => setIsFilterVisible(!isFilterVisible)}
-        >
-          <h2 className="text-xl font-medium">
-            {isFilterVisible ? "Hide Filters" : "Show Filters"}
-          </h2>
-          <IoOptionsOutline size={24} />
+
+        {/* 3. Thêm UI Sort và gộp với nút Filter */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-600 font-medium hidden md:block text-sm">
+              Sort By:
+            </span>
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="border border-gray-300 rounded-md p-1.5 text-sm focus:outline-none focus:border-black cursor-pointer bg-white"
+            >
+              <option value="default">Default</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="name-asc">Name: A-Z</option>
+              <option value="name-desc">Name: Z-A</option>
+            </select>
+          </div>
+
+          <div
+            className="hide-filters md:gap-x-[1rem] gap-x-[0.5rem] flex items-center cursor-pointer"
+            onClick={() => setIsFilterVisible(!isFilterVisible)}
+          >
+            <h2 className="text-xl font-medium hidden md:block">
+              {isFilterVisible ? "Hide Filters" : "Show Filters"}
+            </h2>
+            <IoOptionsOutline size={24} />
+          </div>
         </div>
       </div>
 
@@ -485,10 +529,10 @@ const Product = () => {
         {isFilterVisible && (
           <div
             className="w-[22%] pb-[2rem] pl-[3.5rem] pr-[2rem]
-                       transition-all duration-300 
-                        self-start 
-                       h-[calc(100vh_-_8rem)] // 100vh - (top-28 (7rem) + 1rem padding)
-                       overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+                        transition-all duration-300 
+                         self-start 
+                        h-[calc(100vh_-_8rem)] // 100vh - (top-28 (7rem) + 1rem padding)
+                        overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
           >
             {subCategories.length > 0 && (
               <div className="flex flex-col gap-6 mb-4">
@@ -535,7 +579,7 @@ const Product = () => {
               ))
             ) : (
               <p className="col-span-3 text-center text-gray-500">
-                 Không tìm thấy sản phẩm phù hợp.      
+                Không tìm thấy sản phẩm phù hợp.
               </p>
             )}
           </motion.div>

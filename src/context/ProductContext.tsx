@@ -174,16 +174,16 @@ export const ProductProvider = ({
           "Over 3.000.000₫",
         ],
       },
-      {
-        key: "Sale & Offers",
-        titleBase: "Sale & Offers",
-        options: ["On Sale", "Best Seller", "New Arrival"],
-      },
-      {
-        key: "Size",
-        titleBase: "Size",
-        options: ["38", "39", "40", "41", "42", "43"],
-      },
+      // {
+      //   key: "Sale & Offers",
+      //   titleBase: "Sale & Offers",
+      //   options: ["On Sale", "Best Seller", "New Arrival"],
+      // },
+      // {
+      //   key: "Size",
+      //   titleBase: "Size",
+      //   options: ["38", "39", "40", "41", "42", "43"],
+      // },
       {
         key: "Brand",
         titleBase: "Brand",
