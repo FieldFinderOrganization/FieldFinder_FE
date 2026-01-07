@@ -12,7 +12,7 @@ import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { Button, Typography } from "@mui/material";
+import { Button, Typography, Skeleton, CircularProgress } from "@mui/material"; // Thêm Skeleton & CircularProgress
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Divider from "@mui/material/Divider";
@@ -56,9 +56,241 @@ interface DisplayDiscount extends discountRes {
   displayText: string;
 }
 
+// ===== STATIC DATA (Moved outside component for optimization) =====
+const FALLBACK_IMAGES = [
+  "/images/sale1.jpg",
+  "/images/sale2.jpg",
+  "/images/sale3.jpg",
+  "/images/sale4.jpg",
+  "/images/sale5.jpg",
+  "/images/sale6.jpg",
+];
+
+const FIELDS: Field[] = [
+  {
+    image: "/images/field3.jpg",
+    rating: 4.5,
+    name: "Sân Gò Trạch",
+    address: "45 Tân Lập",
+    score: "9.5/10",
+    info: "Sân rộng rãi, thoáng mát",
+  },
+  {
+    image: "/images/field4.jpg",
+    rating: 4,
+    name: "Sân Kiên Định",
+    address: "45 Tân Lập",
+    score: "8/10",
+    info: "Mặt cỏ đẹp, vệ sinh sạch sẽ",
+  },
+  {
+    image: "/images/field5.jpg",
+    rating: 5,
+    name: "Sân Gò Trạch",
+    address: "45 Tân Lập",
+    score: "10/10",
+    info: "Sân rộng rãi, thoáng mát",
+  },
+];
+
+const REVIEWS_DATA = [
+  {
+    id: 1,
+    name: "Nguyễn Văn A",
+    avatar: "./images/lc1.jpg",
+    rating: 4.5,
+    comment:
+      "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
+    time: "9h trước",
+  },
+  {
+    id: 2,
+    name: "Trần Thị B",
+    avatar: "./images/lc2.jpg",
+    rating: 3,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 3,
+    name: "Trần Thị C",
+    avatar: "./images/lc3.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 4,
+    name: "Trần Thị B",
+    avatar: "./images/lc4.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 5,
+    name: "Trần Thị B",
+    avatar: "./images/lc5.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 6,
+    name: "Trần Thị B",
+    avatar: "./images/lc6.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 7,
+    name: "Trần Thị B",
+    avatar: "./images/lc7.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 8,
+    name: "Trần Thị B",
+    avatar: "./images/lc8.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 9,
+    name: "Nguyễn Văn S",
+    avatar: "./images/lc1.jpg",
+    rating: 5,
+    comment:
+      "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
+    time: "9h trước",
+  },
+  {
+    id: 10,
+    name: "Trần Thị R",
+    avatar: "./images/lc2.jpg",
+    rating: 4.5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 11,
+    name: "Trần Thị M",
+    avatar: "./images/lc3.jpg",
+    rating: 4,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 12,
+    name: "Trần T B",
+    avatar: "./images/lc4.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 13,
+    name: "T Thị B",
+    avatar: "./images/lc5.jpg",
+    rating: 4,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 14,
+    name: "Trần Thị B",
+    avatar: "./images/lc6.jpg",
+    rating: 5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 15,
+    name: "B",
+    avatar: "./images/lc7.jpg",
+    rating: 3,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+  {
+    id: 16,
+    name: "Trần Thị",
+    avatar: "./images/lc8.jpg",
+    rating: 4.5,
+    comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
+    time: "10h trước",
+  },
+];
+
+const INITIAL_IMAGES = [
+  { src: "/images/lc1.jpg", text: "Quận 1" },
+  { src: "/images/lc2.jpg", text: "Quận 2" },
+  { src: "/images/lc3.jpg", text: "Quận 3" },
+  { src: "/images/lc4.jpg", text: "Gò Vấp" },
+  { src: "/images/lc5.jpg", text: "Quận 5" },
+  { src: "/images/lc6.jpg", text: "Tân Phú" },
+  { src: "/images/lc7.jpg", text: "Bình Dương" },
+  { src: "/images/lc8.jpg", text: "Quận 8" },
+];
+
+const CARD_DATA: CardData[] = [
+  {
+    frontTitle: "Hệ thống sân bãi đa dạng",
+    backContent:
+      "Chúng tôi cung cấp các sân bãi chất lượng cao, đa dạng loại hình từ sân 5 người, 7 người đến 11 người, phù hợp với mọi nhu cầu thi đấu và giải trí.",
+  },
+  {
+    frontTitle: "Kinh nghiệm tổ chức giải đấu",
+    backContent:
+      "Đội ngũ của chúng tôi có nhiều năm kinh nghiệm tổ chức các giải đấu lớn nhỏ, đảm bảo sự chuyên nghiệp và thành công cho mọi sự kiện.",
+  },
+  {
+    frontTitle: "Thành tích nổi bật",
+    backContent:
+      "MTKICKs đã đạt được nhiều giải thưởng uy tín và được khách hàng đánh giá cao nhờ dịch vụ chất lượng và đáng tin cậy.",
+  },
+  {
+    frontTitle: "Công nghệ hiện đại",
+    backContent:
+      "Ứng dụng công nghệ tiên tiến trong quản lý sân bãi và đặt lịch, mang đến trải nghiệm tiện lợi và nhanh chóng cho khách hàng.",
+  },
+  {
+    frontTitle: "Chất lượng đảm bảo",
+    backContent:
+      "Cam kết mang đến sân bãi đạt tiêu chuẩn cao, được bảo trì thường xuyên để đảm bảo trải nghiệm tốt nhất cho người chơi.",
+  },
+  {
+    frontTitle: "Đội ngũ R&D mạnh mẽ",
+    backContent:
+      "Đội ngũ nghiên cứu và phát triển của chúng tôi không ngừng đổi mới để cải thiện dịch vụ và đáp ứng nhu cầu của khách hàng.",
+  },
+];
+
+const DISCOUNTS_STATIC = [
+  {
+    image: "/images/sale1.jpg",
+    text: "Chào mừng bạn mới, nhận ngay 15% ưu đãi",
+  },
+  { image: "/images/sale2.jpg", text: "Giảm 20% cho lần đặt sân thứ hai" },
+  { image: "/images/sale3.jpg", text: "Ưu đãi 10% khi đặt sân vào thứ 4" },
+  { image: "/images/sale4.jpg", text: "Giảm 25% cho nhóm 5 người" },
+  { image: "/images/sale5.jpg", text: "Ưu đãi 30% cuối tuần" },
+  { image: "/images/sale6.jpg", text: "Miễn phí nước khi đặt trước" },
+  { image: "/images/sale7.jpg", text: "Giảm 15% cho sinh viên" },
+  { image: "/images/sale8.jpg", text: "Ưu đãi 20% giờ vàng" },
+  { image: "/images/sale9.jpg", text: "Mua 5 tặng 1" },
+];
+
+// ========================================================
+
 const Home: React.FC = () => {
   const userId = useSelector((state: any) => state.auth.user?.userId);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showSplash, setShowSplash] = useState<boolean>(true); // Chỉ quản lý hiển thị Splash
+  const [isFetchingDiscounts, setIsFetchingDiscounts] = useState<boolean>(true); // Quản lý loading riêng cho discount
   const [currentImage, setCurrentImage] = useState<number>(0);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -87,149 +319,7 @@ const Home: React.FC = () => {
   const [realDiscounts, setRealDiscounts] = useState<DisplayDiscount[]>([]);
   const [discountSwiper, setDiscountSwiper] = useState<SwiperType | null>(null);
 
-  const fallbackImages = [
-    "/images/sale1.jpg",
-    "/images/sale2.jpg",
-    "/images/sale3.jpg",
-    "/images/sale4.jpg",
-    "/images/sale5.jpg",
-    "/images/sale6.jpg",
-  ];
-
-  const reviewsData = [
-    {
-      id: 1,
-      name: "Nguyễn Văn A",
-      avatar: "./images/lc1.jpg",
-      rating: 4.5,
-      comment:
-        "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
-      time: "9h trước",
-    },
-    {
-      id: 2,
-      name: "Trần Thị B",
-      avatar: "./images/lc2.jpg",
-      rating: 3,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 3,
-      name: "Trần Thị C",
-      avatar: "./images/lc3.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 4,
-      name: "Trần Thị B",
-      avatar: "./images/lc4.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 5,
-      name: "Trần Thị B",
-      avatar: "./images/lc5.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 6,
-      name: "Trần Thị B",
-      avatar: "./images/lc6.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 7,
-      name: "Trần Thị B",
-      avatar: "./images/lc7.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 8,
-      name: "Trần Thị B",
-      avatar: "./images/lc8.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 9,
-      name: "Nguyễn Văn S",
-      avatar: "./images/lc1.jpg",
-      rating: 5,
-      comment:
-        "Tôi đã đặt 1 chiếc du thuyền ở đây vào ngay hôm qua, tôi sẽ ghé lại khi có cơ hội",
-      time: "9h trước",
-    },
-    {
-      id: 10,
-      name: "Trần Thị R",
-      avatar: "./images/lc2.jpg",
-      rating: 4.5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 11,
-      name: "Trần Thị M",
-      avatar: "./images/lc3.jpg",
-      rating: 4,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 12,
-      name: "Trần T B",
-      avatar: "./images/lc4.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 13,
-      name: "T Thị B",
-      avatar: "./images/lc5.jpg",
-      rating: 4,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 14,
-      name: "Trần Thị B",
-      avatar: "./images/lc6.jpg",
-      rating: 5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 15,
-      name: "B",
-      avatar: "./images/lc7.jpg",
-      rating: 3,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-    {
-      id: 16,
-      name: "Trần Thị",
-      avatar: "./images/lc8.jpg",
-      rating: 4.5,
-      comment: "Dịch vụ tuyệt vời, tôi rất hài lòng!",
-      time: "10h trước",
-    },
-  ];
-
-  const currentReviews = reviewsData.slice(
+  const currentReviews = REVIEWS_DATA.slice(
     currentPage * reviewsPerPage,
     (currentPage + 1) * reviewsPerPage
   );
@@ -241,27 +331,17 @@ const Home: React.FC = () => {
   };
 
   const handleNextRe = () => {
-    if ((currentPage + 1) * reviewsPerPage < reviewsData.length) {
+    if ((currentPage + 1) * reviewsPerPage < REVIEWS_DATA.length) {
       setCurrentPage(currentPage + 1);
     }
   };
 
-  const initialImages = [
-    { src: "/images/lc1.jpg", text: "Quận 1" },
-    { src: "/images/lc2.jpg", text: "Quận 2" },
-    { src: "/images/lc3.jpg", text: "Quận 3" },
-    { src: "/images/lc4.jpg", text: "Gò Vấp" },
-    { src: "/images/lc5.jpg", text: "Quận 5" },
-    { src: "/images/lc6.jpg", text: "Tân Phú" },
-    { src: "/images/lc7.jpg", text: "Bình Dương" },
-    { src: "/images/lc8.jpg", text: "Quận 8" },
-  ];
   const [imagesLoaded, setImagesLoaded] = useState<number>(0);
 
   const initialState = {
-    left: [initialImages[0]],
-    middle: [initialImages[1], initialImages[2]],
-    right: [initialImages[3]],
+    left: [INITIAL_IMAGES[0]],
+    middle: [INITIAL_IMAGES[1], INITIAL_IMAGES[2]],
+    right: [INITIAL_IMAGES[3]],
   };
 
   const [sections, setSections] = useState(initialState);
@@ -269,8 +349,15 @@ const Home: React.FC = () => {
   const [historyIndex, setHistoryIndex] = useState(0);
 
   useEffect(() => {
+    // 1. Tự động tắt Splash sau 1.5 giây KHÔNG PHỤ THUỘC API
+    const splashTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    // 2. Fetch data ngầm
     const fetchData = async () => {
       try {
+        setIsFetchingDiscounts(true);
         const data = await getAllDiscounts();
         const now = new Date();
         const activeDiscounts = data.filter((d) => {
@@ -285,7 +372,7 @@ const Home: React.FC = () => {
         const mappedData: DisplayDiscount[] = activeDiscounts.map(
           (d, index) => ({
             ...d,
-            displayImage: fallbackImages[index % fallbackImages.length],
+            displayImage: FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
             displayText: d.description || `Mã giảm giá ${d.code}`,
           })
         );
@@ -293,9 +380,23 @@ const Home: React.FC = () => {
         setRealDiscounts(mappedData);
       } catch (error) {
         console.error("Failed to fetch discounts:", error);
+      } finally {
+        setIsFetchingDiscounts(false);
       }
     };
     fetchData();
+
+    let imageInterval: NodeJS.Timeout;
+    if (showSplash) {
+      imageInterval = setInterval(() => {
+        setCurrentImage((prev) => (prev + 1) % FIELDS.length);
+      }, 2000);
+    }
+
+    return () => {
+      clearTimeout(splashTimer);
+      if (imageInterval) clearInterval(imageInterval);
+    };
   }, []);
 
   const discountSlides = [];
@@ -317,84 +418,9 @@ const Home: React.FC = () => {
     }
   };
 
-  const fields: Field[] = [
-    {
-      image: "/images/field3.jpg",
-      rating: 4.5,
-      name: "Sân Gò Trạch",
-      address: "45 Tân Lập",
-      score: "9.5/10",
-      info: "Sân rộng rãi, thoáng mát",
-    },
-    {
-      image: "/images/field4.jpg",
-      rating: 4,
-      name: "Sân Kiên Định",
-      address: "45 Tân Lập",
-      score: "8/10",
-      info: "Mặt cỏ đẹp, vệ sinh sạch sẽ",
-    },
-    {
-      image: "/images/field5.jpg",
-      rating: 5,
-      name: "Sân Gò Trạch",
-      address: "45 Tân Lập",
-      score: "10/10",
-      info: "Sân rộng rãi, thoáng mát",
-    },
-  ];
-
-  const cardData: CardData[] = [
-    {
-      frontTitle: "Hệ thống sân bãi đa dạng",
-      backContent:
-        "Chúng tôi cung cấp các sân bãi chất lượng cao, đa dạng loại hình từ sân 5 người, 7 người đến 11 người, phù hợp với mọi nhu cầu thi đấu và giải trí.",
-    },
-    {
-      frontTitle: "Kinh nghiệm tổ chức giải đấu",
-      backContent:
-        "Đội ngũ của chúng tôi có nhiều năm kinh nghiệm tổ chức các giải đấu lớn nhỏ, đảm bảo sự chuyên nghiệp và thành công cho mọi sự kiện.",
-    },
-    {
-      frontTitle: "Thành tích nổi bật",
-      backContent:
-        "MTKICKs đã đạt được nhiều giải thưởng uy tín và được khách hàng đánh giá cao nhờ dịch vụ chất lượng và đáng tin cậy.",
-    },
-    {
-      frontTitle: "Công nghệ hiện đại",
-      backContent:
-        "Ứng dụng công nghệ tiên tiến trong quản lý sân bãi và đặt lịch, mang đến trải nghiệm tiện lợi và nhanh chóng cho khách hàng.",
-    },
-    {
-      frontTitle: "Chất lượng đảm bảo",
-      backContent:
-        "Cam kết mang đến sân bãi đạt tiêu chuẩn cao, được bảo trì thường xuyên để đảm bảo trải nghiệm tốt nhất cho người chơi.",
-    },
-    {
-      frontTitle: "Đội ngũ R&D mạnh mẽ",
-      backContent:
-        "Đội ngũ nghiên cứu và phát triển của chúng tôi không ngừng đổi mới để cải thiện dịch vụ và đáp ứng nhu cầu của khách hàng.",
-    },
-  ];
-
-  const discounts = [
-    {
-      image: "/images/sale1.jpg",
-      text: "Chào mừng bạn mới, nhận ngay 15% ưu đãi",
-    },
-    { image: "/images/sale2.jpg", text: "Giảm 20% cho lần đặt sân thứ hai" },
-    { image: "/images/sale3.jpg", text: "Ưu đãi 10% khi đặt sân vào thứ 4" },
-    { image: "/images/sale4.jpg", text: "Giảm 25% cho nhóm 5 người" },
-    { image: "/images/sale5.jpg", text: "Ưu đãi 30% cuối tuần" },
-    { image: "/images/sale6.jpg", text: "Miễn phí nước khi đặt trước" },
-    { image: "/images/sale7.jpg", text: "Giảm 15% cho sinh viên" },
-    { image: "/images/sale8.jpg", text: "Ưu đãi 20% giờ vàng" },
-    { image: "/images/sale9.jpg", text: "Mua 5 tặng 1" },
-  ];
-
   const slides = [];
-  for (let i = 0; i < discounts.length; i += 3) {
-    slides.push(discounts.slice(i, i + 3));
+  for (let i = 0; i < DISCOUNTS_STATIC.length; i += 3) {
+    slides.push(DISCOUNTS_STATIC.slice(i, i + 3));
   }
 
   const renderStars = (rating: number): React.ReactNode[] => {
@@ -432,23 +458,7 @@ const Home: React.FC = () => {
     setHoveredCard(null);
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % fields.length);
-    }, 2000);
-
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      clearInterval(interval);
-    }, 5000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timer);
-    };
-  }, [fields.length]);
-
-  if (isLoading) {
+  if (showSplash) {
     return (
       <div className="fixed inset-0 z-50 bg-black/10">
         <AnimatePresence mode="popLayout">
@@ -464,7 +474,7 @@ const Home: React.FC = () => {
             className="relative w-full h-screen"
           >
             <Image
-              src={fields[currentImage].image}
+              src={FIELDS[currentImage].image}
               alt="Splash Image"
               fill
               quality={90}
@@ -483,11 +493,11 @@ const Home: React.FC = () => {
   }
 
   const getIndex = (image: { src: unknown; text?: string }) =>
-    initialImages.findIndex((img) => img.src === image.src);
+    INITIAL_IMAGES.findIndex((img) => img.src === image.src);
 
   const handlePrev = () => {
     const currentLeftIndex = getIndex(sections.left[0]);
-    const totalImages = initialImages.length;
+    const totalImages = INITIAL_IMAGES.length;
 
     const newLeftIndex = (currentLeftIndex - 1 + totalImages) % totalImages;
     const newMiddleIndex = currentLeftIndex;
@@ -499,15 +509,15 @@ const Home: React.FC = () => {
     if (sections.left.length === 1) {
       newState = {
         left: [
-          initialImages[(newLeftIndex - 1 + totalImages) % totalImages],
-          initialImages[newLeftIndex],
+          INITIAL_IMAGES[(newLeftIndex - 1 + totalImages) % totalImages],
+          INITIAL_IMAGES[newLeftIndex],
         ],
         middle: sections.left,
         right: sections.middle,
       };
     } else {
       newState = {
-        left: [initialImages[newLeftIndex]],
+        left: [INITIAL_IMAGES[newLeftIndex]],
         middle: sections.left,
         right: sections.middle,
       };
@@ -522,7 +532,7 @@ const Home: React.FC = () => {
     const currentRightIndex = getIndex(
       sections.right[sections.right.length - 1]
     );
-    const totalImages = initialImages.length;
+    const totalImages = INITIAL_IMAGES.length;
 
     const newRightIndex = (currentRightIndex + 1) % totalImages;
     const newMiddleIndex = sections.right[0]
@@ -535,15 +545,15 @@ const Home: React.FC = () => {
         left: sections.middle,
         middle: sections.right,
         right: [
-          initialImages[newRightIndex],
-          initialImages[(newRightIndex + 1) % totalImages],
+          INITIAL_IMAGES[newRightIndex],
+          INITIAL_IMAGES[(newRightIndex + 1) % totalImages],
         ],
       };
     } else {
       newState = {
         left: sections.middle,
         middle: sections.right,
-        right: [initialImages[newRightIndex]],
+        right: [INITIAL_IMAGES[newRightIndex]],
       };
     }
 
@@ -649,6 +659,7 @@ const Home: React.FC = () => {
             width={600}
             height={600}
             className="object-cover w-auto h-auto max-w-[80%] sm:max-w-[50%]"
+            priority // Load hero image with priority
           />
         </div>
         <Divider
@@ -675,7 +686,7 @@ const Home: React.FC = () => {
             Các sân phổ biến
           </Typography>
           <div className="field-list space-y-[1.5rem] w-full">
-            {fields.map((field, index) => (
+            {FIELDS.map((field, index) => (
               <div
                 className="field flex space-x-[1rem] items-stretch h-[100px]"
                 key={index}
@@ -771,7 +782,7 @@ const Home: React.FC = () => {
           Tại sao là MTKICKs
         </Typography>
         <div className="card1 flex items-center justify-center flex-wrap mx-auto gap-6 sm:gap-10 lg:gap-20">
-          {cardData.slice(0, 3).map((card, index) => (
+          {CARD_DATA.slice(0, 3).map((card, index) => (
             <Card
               key={index}
               sx={{
@@ -843,7 +854,7 @@ const Home: React.FC = () => {
           ))}
         </div>
         <div className="card2 flex items-center justify-center flex-wrap mx-auto gap-6 sm:gap-10 lg:gap-20">
-          {cardData.slice(3, 6).map((card, index) => (
+          {CARD_DATA.slice(3, 6).map((card, index) => (
             <Card
               key={index + 3}
               sx={{
@@ -950,6 +961,7 @@ const Home: React.FC = () => {
                     <div key={index} className="relative w-full sm:w-auto">
                       <img
                         src={image.src}
+                        loading="lazy" // Lazy load
                         style={{
                           width: "100%",
                           maxWidth: 350,
@@ -971,6 +983,7 @@ const Home: React.FC = () => {
                     <div key={index} className="relative w-full sm:w-auto">
                       <img
                         src={image.src}
+                        loading="lazy" // Lazy load
                         style={{
                           width: "100%",
                           maxWidth: 350,
@@ -992,6 +1005,7 @@ const Home: React.FC = () => {
                     <div key={index} className="relative w-full sm:w-auto">
                       <img
                         src={image.src}
+                        loading="lazy" // Lazy load
                         style={{
                           width: "100%",
                           maxWidth: 350,
@@ -1041,8 +1055,28 @@ const Home: React.FC = () => {
           Ưu đãi hấp dẫn
         </Typography>
 
-        <div className="relative group max-w-7xl mx-auto w-full">
-          {realDiscounts.length > 0 ? (
+        <div className="relative group max-w-7xl mx-auto w-full min-h-[300px]">
+          {isFetchingDiscounts ? (
+            // LOADING SKELETON
+            <div className="flex justify-center items-center gap-6 flex-wrap">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="w-full max-w-[350px] h-[320px]">
+                  <Skeleton
+                    variant="rectangular"
+                    height={180}
+                    className="rounded-t-lg"
+                  />
+                  <Skeleton height={40} className="mt-2" />
+                  <Skeleton height={20} width="60%" />
+                  <Skeleton
+                    variant="rectangular"
+                    height={40}
+                    className="mt-4 rounded"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : realDiscounts.length > 0 ? (
             <Swiper
               modules={[Navigation]}
               spaceBetween={20}
@@ -1069,6 +1103,7 @@ const Home: React.FC = () => {
                         <div className="w-full h-[55%] overflow-hidden relative">
                           <img
                             src={discount.displayImage}
+                            loading="lazy" // Lazy load
                             className="w-full h-full object-cover object-center"
                             alt={discount.code}
                           />
@@ -1187,7 +1222,7 @@ const Home: React.FC = () => {
               </div>
               <div
                 className={`rounded-full bg-gray-200 flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto ${
-                  endIndex >= reviewsData.length
+                  endIndex >= REVIEWS_DATA.length
                     ? "opacity-50 "
                     : "cursor-pointer"
                 }`}
