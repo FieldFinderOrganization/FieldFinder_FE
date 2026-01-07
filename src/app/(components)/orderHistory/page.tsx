@@ -100,6 +100,8 @@ const OrderHistoryPage = () => {
     );
   }
 
+  console.log(orders);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

@@ -30,6 +30,7 @@ const RetryPaymentModal: React.FC<RetryPaymentModalProps> = ({
   userId,
   userName,
 }) => {
+  console.log(order);
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!order) return null;
@@ -47,6 +48,7 @@ const RetryPaymentModal: React.FC<RetryPaymentModalProps> = ({
         items: order.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          size: item.size,
         })),
       };
 

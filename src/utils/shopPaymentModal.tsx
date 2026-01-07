@@ -92,20 +92,19 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     return currentPrice < 0 ? 0 : currentPrice;
   };
 
-const normalizeDiscount = (raw: any): discountRes => ({
-  id: raw.id ?? raw.discountId ?? raw.userDiscountId ?? raw.code,
-  code: raw.code ?? raw.discountCode,
-  description: raw.description,
-  discountType: raw.discountType ?? raw.type,
-  value: raw.value,
-  minOrderValue: raw.minOrderValue,
-  maxDiscountAmount: raw.maxDiscountAmount,
-  quantity: raw.quantity ?? 0,
-  startDate: raw.startDate,
-  endDate: raw.endDate,
-  status: raw.status ?? "ACTIVE",
-});
-
+  const normalizeDiscount = (raw: any): discountRes => ({
+    id: raw.id ?? raw.discountId ?? raw.userDiscountId ?? raw.code,
+    code: raw.code ?? raw.discountCode,
+    description: raw.description,
+    discountType: raw.discountType ?? raw.type,
+    value: raw.value,
+    minOrderValue: raw.minOrderValue,
+    maxDiscountAmount: raw.maxDiscountAmount,
+    quantity: raw.quantity ?? 0,
+    startDate: raw.startDate,
+    endDate: raw.endDate,
+    status: raw.status ?? "ACTIVE",
+  });
 
   useEffect(() => {
     if (open && customCartId) {
@@ -222,6 +221,28 @@ const normalizeDiscount = (raw: any): discountRes => ({
 
       const orderResponse = await createOrder(orderPayload);
 
+      // ✅ If CASH payment, just show success message and close modal
+      if (paymentMethod === "CASH") {
+        toast.success("Đặt hàng thành công! Bạn sẽ thanh toán khi nhận hàng.", {
+          autoClose: 5000,
+          position: "top-center",
+        });
+
+        // Clear cart if not using custom cart (AI cart)
+        if (!customCartId) {
+          await clearCart();
+        }
+
+        // Reset selected discounts
+        setSelectedDiscounts([]);
+
+        // Close modal
+        onClose();
+
+        return; // ⚠️ IMPORTANT: Exit here, don't continue to payment gateway
+      }
+
+      // ✅ For BANK payment, proceed with PayOS
       const payload: ShopPaymentRequestDTO = {
         orderCode: orderResponse.orderId,
         userId: isGuest ? "GUEST" : currentUser.userId,
@@ -238,15 +259,16 @@ const normalizeDiscount = (raw: any): discountRes => ({
       const paymentRes = await createShopPayment(payload);
 
       if (paymentRes.checkoutUrl) {
-        window.location.href = paymentRes.checkoutUrl;
-      } else if (paymentMethod === "CASH") {
-        toast.success("Đặt hàng thành công!");
-
+        // Clear cart before redirecting to payment gateway
         if (!customCartId) {
           await clearCart();
         }
         setSelectedDiscounts([]);
-        onClose();
+
+        // Redirect to PayOS payment page
+        window.location.href = paymentRes.checkoutUrl;
+      } else {
+        toast.error("Không nhận được link thanh toán từ PayOS");
       }
     } catch (error: any) {
       console.error("Payment failed", error);

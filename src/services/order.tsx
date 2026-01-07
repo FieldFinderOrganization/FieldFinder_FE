@@ -13,6 +13,7 @@ export interface orderItemResponseDTO {
   quantity: number;
   price: number;
   imageUrl: string;
+  size: string;
 }
 
 export interface orderResponseDTO {
