@@ -22,6 +22,10 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
+import FileDownloadIcon from "@mui/icons-material/FileDownload"; // Import icon download
+
+// Import thư viện Excel
+import * as XLSX from "xlsx";
 
 import {
   Button,
@@ -68,9 +72,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  ProductRes,
-  ProductReq,
-  applyDiscountToProduct,
+  productRes,
 } from "@/services/product";
 
 import {
@@ -78,10 +80,8 @@ import {
   createDiscount,
   updateDiscount,
   deleteDiscount,
-  DiscountRes,
-  DiscountReq,
+  discountRes,
 } from "@/services/discount";
-
 
 export interface PitchData {
   pitchId: string;
@@ -168,19 +168,21 @@ const Dashboard: React.FC = () => {
     })[]
   >([]);
   // ===== PRODUCT =====
-  const [products, setProducts] = React.useState<ProductRes[]>([]);
+  const [products, setProducts] = React.useState<productRes[]>([]);
   const [openProductDialog, setOpenProductDialog] = React.useState(false);
-  const [editingProduct, setEditingProduct] =
-  React.useState<ProductRes | null>(null);
+  const [editingProduct, setEditingProduct] = React.useState<
+    (productRes & { categoryId?: number }) | null
+  >(null);
   const [categories, setCategories] = React.useState<
     { id: number; name: string }[]
   >([]);
 
-// ===== DISCOUNT =====
-  const [discounts, setDiscounts] = React.useState<DiscountRes[]>([]);
+  // ===== DISCOUNT =====
+  const [discounts, setDiscounts] = React.useState<discountRes[]>([]);
   const [openDiscountDialog, setOpenDiscountDialog] = React.useState(false);
-  const [editingDiscount, setEditingDiscount] =
-  React.useState<DiscountRes | null>(null);
+  const [editingDiscount, setEditingDiscount] = React.useState<
+    (discountRes & { scope?: string }) | null
+  >(null);
 
   const [loading, setLoading] = React.useState(true);
   const [activeTab, setActiveTab] = React.useState(0);
@@ -203,7 +205,7 @@ const Dashboard: React.FC = () => {
   const pitchTableRef = React.useRef<HTMLDivElement>(null);
   const bookingTableRef = React.useRef<HTMLDivElement>(null);
   const productTableRef = React.useRef<HTMLDivElement>(null);
-  const discountTableRef = React.useRef<HTMLDivElement>(null);  
+  const discountTableRef = React.useRef<HTMLDivElement>(null);
 
   const [addresses, setAddresses] = React.useState<providerAddress[] | null>(
     null
@@ -233,6 +235,102 @@ const Dashboard: React.FC = () => {
   const [newStatus, setNewStatus] = React.useState<"ACTIVE" | "BLOCKED">(
     "ACTIVE"
   );
+
+  // ===== EXPORT FUNCTION =====
+  const handleExportExcel = () => {
+    try {
+      // 1. Sheet Tổng quan (Overview)
+      const confirmedPaidBookings = bookings.filter(
+        (b) => b.status === "CONFIRMED" && b.paymentStatus === "PAID"
+      );
+      const totalRevenue = confirmedPaidBookings.reduce(
+        (sum, b) => sum + (b.totalPrice || 0),
+        0
+      );
+
+      const overviewData = [
+        { "Danh mục": "Tổng người dùng", "Số lượng": users.length },
+        { "Danh mục": "Tổng chủ sân", "Số lượng": providers.length },
+        { "Danh mục": "Tổng sân bóng", "Số lượng": pitches.length },
+        {
+          "Danh mục": "Tổng đơn đặt (Đã TT)",
+          "Số lượng": confirmedPaidBookings.length,
+        },
+        {
+          "Danh mục": "Tổng doanh thu",
+          "Số lượng": totalRevenue.toLocaleString() + " VND",
+        },
+        { "Danh mục": "Tổng sản phẩm", "Số lượng": products.length },
+        { "Danh mục": "Tổng mã giảm giá", "Số lượng": discounts.length },
+      ];
+
+      // 2. Sheet Hóa đơn (Bookings)
+      const bookingData = bookings.map((b) => ({
+        "ID Đơn": b.bookingId,
+        "Ngày đặt": dayjs(b.bookingDate).format("DD/MM/YYYY"),
+        "Chủ sân": b.providerName,
+        "Sân bóng": b.pitchName,
+        "Khung giờ": mergeContinuousSlots(b.slots),
+        "Tổng tiền": b.totalPrice,
+        "Trạng thái":
+          b.status === "CONFIRMED"
+            ? "Đã xác nhận"
+            : b.status === "PENDING"
+              ? "Đang chờ"
+              : "Đã hủy",
+        "Thanh toán":
+          b.paymentStatus === "PAID"
+            ? "Đã thanh toán"
+            : b.paymentStatus === "REFUNDED"
+              ? "Hoàn tiền"
+              : "Chờ thanh toán",
+      }));
+
+      // 3. Sheet Người dùng (Users)
+      const userData = users.map((u) => ({
+        "ID User": u.userId,
+        "Họ tên": u.name,
+        Email: u.email,
+        "Số điện thoại": u.phone,
+        "Vai trò": u.role === "PROVIDER" ? "Chủ sân" : "Người dùng",
+        "Trạng thái": u.status === "ACTIVE" ? "Hoạt động" : "Bị khóa",
+      }));
+
+      // 4. Sheet Sản phẩm (Products)
+      const productData = products.map((p) => ({
+        "Tên sản phẩm": p.name,
+        Brand: p.brand,
+        "Danh mục": p.categoryName,
+        "Giá gốc": p.price,
+        "% Giảm": p.onSalePercent,
+        "Giá bán": p.salePrice,
+        "Tồn kho": p.stockQuantity,
+      }));
+
+      // Tạo Workbook
+      const wb = XLSX.utils.book_new();
+
+      const wsOverview = XLSX.utils.json_to_sheet(overviewData);
+      const wsBookings = XLSX.utils.json_to_sheet(bookingData);
+      const wsUsers = XLSX.utils.json_to_sheet(userData);
+      const wsProducts = XLSX.utils.json_to_sheet(productData);
+
+      // Thêm các sheet vào workbook
+      XLSX.utils.book_append_sheet(wb, wsOverview, "Tổng quan");
+      XLSX.utils.book_append_sheet(wb, wsBookings, "Đơn đặt sân");
+      XLSX.utils.book_append_sheet(wb, wsUsers, "Người dùng");
+      XLSX.utils.book_append_sheet(wb, wsProducts, "Sản phẩm");
+
+      // Xuất file
+      const fileName = `Bao_cao_san_bong_${dayjs().format("DD-MM-YYYY")}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast.success("Xuất báo cáo thành công!");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Lỗi khi xuất báo cáo");
+    }
+  };
 
   const userColumns: GridColDef<UserData>[] = [
     // { field: "userId", headerName: "ID Người dùng", width: 250 },
@@ -481,77 +579,76 @@ const Dashboard: React.FC = () => {
   ];
 
   // ===== PRODUCT COLUMNS =====
-const productColumns: GridColDef<ProductRes>[] = [
-  { field: "name", headerName: "Tên", width: 200 },
-  { field: "brand", headerName: "Brand", width: 120 },
-  { field: "categoryName", headerName: "Danh mục", width: 150 },
-  { field: "price", headerName: "Giá gốc", width: 120 },
-  { field: "salePercent", headerName: "% Giảm", width: 100 },
-  { field: "salePrice", headerName: "Giá sau giảm", width: 140 },
-  { field: "stockQuantity", headerName: "Tồn kho", width: 100 },
-  {
-    field: "actions",
-    type: "actions",
-    width: 120,
-    getActions: (params) => [
-      <GridActionsCellItem
-        icon={<EditOutlinedIcon />}
-        label="Edit"
-        onClick={() => {
-          setEditingProduct(params.row);
-          setOpenProductDialog(true);
-        }}
-      />,
-      <GridActionsCellItem
-        icon={<BlockOutlinedIcon />}
-        label="Delete"
-        onClick={async () => {
-          if (!confirm("Xóa sản phẩm?")) return;
-          await deleteProduct(params.row.id);
-          toast.success("Đã xóa sản phẩm");
-          setProducts(await getAllProducts());
-        }}
-      />,
-    ],
-  },
-];
+  const productColumns: GridColDef<productRes>[] = [
+    { field: "name", headerName: "Tên", width: 200 },
+    { field: "brand", headerName: "Brand", width: 120 },
+    { field: "categoryName", headerName: "Danh mục", width: 150 },
+    { field: "price", headerName: "Giá gốc", width: 120 },
+    { field: "salePercent", headerName: "% Giảm", width: 100 },
+    { field: "salePrice", headerName: "Giá sau giảm", width: 140 },
+    { field: "stockQuantity", headerName: "Tồn kho", width: 100 },
+    {
+      field: "actions",
+      type: "actions",
+      width: 120,
+      getActions: (params) => [
+        <GridActionsCellItem
+          icon={<EditOutlinedIcon />}
+          label="Edit"
+          onClick={() => {
+            setEditingProduct(params.row);
+            setOpenProductDialog(true);
+          }}
+        />,
+        <GridActionsCellItem
+          icon={<BlockOutlinedIcon />}
+          label="Delete"
+          onClick={async () => {
+            if (!confirm("Xóa sản phẩm?")) return;
+            await deleteProduct(params.row.id);
+            toast.success("Đã xóa sản phẩm");
+            setProducts(await getAllProducts());
+          }}
+        />,
+      ],
+    },
+  ];
 
-// ===== DISCOUNT COLUMNS =====
-const discountColumns: GridColDef<DiscountRes>[] = [
-  { field: "code", headerName: "Code", width: 150 },
-  { field: "discountType", headerName: "Loại", width: 120 },
-  { field: "value", headerName: "Giá trị", width: 120 },
-  { field: "status", headerName: "Trạng thái", width: 120 },
-  { field: "startDate", headerName: "Bắt đầu", width: 120 },
-  { field: "endDate", headerName: "Kết thúc", width: 120 },
-  { field: "quantity", headerName: "Giới hạn sử dụng", width: 150 },
-  {
-    field: "actions",
-    type: "actions",
-    width: 120,
-    getActions: (params) => [
-      <GridActionsCellItem
-        icon={<EditOutlinedIcon />}
-        label="Edit"
-        onClick={() => {
-          setEditingDiscount(params.row);
-          setOpenDiscountDialog(true);
-        }}
-      />,
-      <GridActionsCellItem
-        icon={<BlockOutlinedIcon />}
-        label="Delete"
-        onClick={async () => {
-          if (!confirm("Xóa discount?")) return;
-          await deleteDiscount(params.row.id);
-          toast.success("Đã xóa discount");
-          setDiscounts(await getAllDiscounts());
-        }}
-      />,
-    ],
-  },
-];
-
+  // ===== DISCOUNT COLUMNS =====
+  const discountColumns: GridColDef<discountRes>[] = [
+    { field: "code", headerName: "Code", width: 150 },
+    { field: "discountType", headerName: "Loại", width: 120 },
+    { field: "value", headerName: "Giá trị", width: 120 },
+    { field: "status", headerName: "Trạng thái", width: 120 },
+    { field: "startDate", headerName: "Bắt đầu", width: 120 },
+    { field: "endDate", headerName: "Kết thúc", width: 120 },
+    { field: "quantity", headerName: "Giới hạn sử dụng", width: 150 },
+    {
+      field: "actions",
+      type: "actions",
+      width: 120,
+      getActions: (params) => [
+        <GridActionsCellItem
+          icon={<EditOutlinedIcon />}
+          label="Edit"
+          onClick={() => {
+            setEditingDiscount(params.row);
+            setOpenDiscountDialog(true);
+          }}
+        />,
+        <GridActionsCellItem
+          icon={<BlockOutlinedIcon />}
+          label="Delete"
+          onClick={async () => {
+            if (!confirm("Xóa discount?")) return;
+            await deleteDiscount(params.row.id);
+            toast.success("Đã xóa discount");
+            setDiscounts(await getAllDiscounts());
+          }}
+        />,
+      ],
+    },
+  ];
 
   const resetUsers = async () => {
     try {
@@ -691,8 +788,6 @@ const discountColumns: GridColDef<DiscountRes>[] = [
         setProducts(productRes || []);
         setDiscounts(discountRes || []);
         setCategories(categoryRes || []); // 👈 THÊM
-
-
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         toast.error("Lỗi khi tải dữ liệu thống kê");
@@ -876,9 +971,14 @@ const discountColumns: GridColDef<DiscountRes>[] = [
       discounts: "#f57c00",
     };
 
-    const activeDataKey = ["users", "providers", "pitches", "invoices", "products", "discounts"][
-      activeTab
-    ];
+    const activeDataKey = [
+      "users",
+      "providers",
+      "pitches",
+      "invoices",
+      "products",
+      "discounts",
+    ][activeTab];
     const activeData = dataMap[activeDataKey];
     const label = labels[activeDataKey];
     const color = colors[activeDataKey];
@@ -947,7 +1047,22 @@ const discountColumns: GridColDef<DiscountRes>[] = [
       <Header />
       <div className="main flex flex-col items-center max-w-7xl w-full px-4 mt-[1rem] mx-auto">
         <div className="w-full mb-8">
-          <h1 className="text-2xl font-bold mb-6">Tổng Quan Dashboard</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Tổng Quan Dashboard</h1>
+
+            {/* ====== NÚT XUẤT BÁO CÁO ====== */}
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportExcel}
+              sx={{ fontWeight: "bold" }}
+            >
+              Xuất Báo Cáo Excel
+            </Button>
+            {/* ============================= */}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card
               className="bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
@@ -1055,9 +1170,8 @@ const discountColumns: GridColDef<DiscountRes>[] = [
             <Tab label="Chủ sân" icon={<StoreIcon />} />
             <Tab label="Sân bóng" icon={<SportsSoccerIcon />} />
             <Tab label="Hóa đơn" icon={<ReceiptIcon />} />
-            <Tab label="Sản phẩm" icon={<Inventory2Icon  />}/>
-            <Tab label="Discount" icon={<LocalOfferIcon  />}/>
-
+            <Tab label="Sản phẩm" icon={<Inventory2Icon />} />
+            <Tab label="Discount" icon={<LocalOfferIcon />} />
           </Tabs>
           {renderChart()}
         </div>
@@ -1178,456 +1292,457 @@ const discountColumns: GridColDef<DiscountRes>[] = [
             />
           </Box>
         </div>
-            {/* ===== PRODUCT MANAGEMENT ===== */}
-      {(
-  <div ref={productTableRef} className="w-full mt-8">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-xl font-semibold">Quản lý sản phẩm</h2>
+        {/* ===== PRODUCT MANAGEMENT ===== */}
+        {
+          <div ref={productTableRef} className="w-full mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Quản lý sản phẩm</h2>
 
-      <div className="flex gap-2">
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={async () => {
-            const data = await getAllProducts();
-            setProducts(data || []);
-            toast.success("Đã đặt lại danh sách sản phẩm");
-          }}
-          startIcon={<RestartAltOutlinedIcon />}
-        >
-          Đặt lại
-        </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={async () => {
+                    const data = await getAllProducts();
+                    setProducts(data || []);
+                    toast.success("Đã đặt lại danh sách sản phẩm");
+                  }}
+                  startIcon={<RestartAltOutlinedIcon />}
+                >
+                  Đặt lại
+                </Button>
 
-        <Button
-  variant="contained"
-  onClick={() => {
-    setEditingProduct({
-      name: "",
-      brand: "",
-      price: 0,
-      stockQuantity: 0,
-      imageUrl: "",
-      categoryId: undefined, // 👈 BẮT BUỘC
-    } as any);
-    setOpenProductDialog(true);
-  }}
->
-  + Thêm sản phẩm
-</Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setEditingProduct({
+                      name: "",
+                      brand: "",
+                      price: 0,
+                      stockQuantity: 0,
+                      imageUrl: "",
+                      categoryId: undefined, // 👈 BẮT BUỘC
+                    } as any);
+                    setOpenProductDialog(true);
+                  }}
+                >
+                  + Thêm sản phẩm
+                </Button>
+              </div>
+            </div>
 
-      </div>
-    </div>
+            <Box sx={{ height: 400, width: "100%", mb: 4 }}>
+              <DataGrid
+                rows={products || []}
+                columns={productColumns}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: {
+                    paginationModel: {
+                      pageSize: 5,
+                    },
+                  },
+                }}
+                pageSizeOptions={[5]}
+                checkboxSelection
+                disableRowSelectionOnClick
+              />
+            </Box>
+          </div>
+        }
 
-    <Box sx={{ height: 400, width: "100%", mb: 4 }}>
-      <DataGrid
-        rows={products || []}
-        columns={productColumns}
-        getRowId={(row) => row.id}
-        initialState={{
-          pagination: {
-            paginationModel: {
-              pageSize: 5,
-            },
-          },
-        }}
-        pageSizeOptions={[5]}
-        checkboxSelection
-        disableRowSelectionOnClick
-      />
-    </Box>
-  </div>
-)}
+        {/* ===== DISCOUNT MANAGEMENT ===== */}
+        {
+          <div ref={discountTableRef} className="w-full mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Quản lý Discount</h2>
 
+              <div className="flex gap-2">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={async () => {
+                    const data = await getAllDiscounts();
+                    setDiscounts(data || []);
+                    toast.success("Đã đặt lại danh sách discount");
+                  }}
+                  startIcon={<RestartAltOutlinedIcon />}
+                >
+                  Đặt lại
+                </Button>
 
-      {/* ===== DISCOUNT MANAGEMENT ===== */}
-      {(
-  <div ref={discountTableRef} className="w-full mt-8">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-xl font-semibold">Quản lý Discount</h2>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    setEditingDiscount(null);
+                    setOpenDiscountDialog(true);
+                  }}
+                >
+                  + Thêm Discount
+                </Button>
+              </div>
+            </div>
 
-      <div className="flex gap-2">
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={async () => {
-            const data = await getAllDiscounts();
-            setDiscounts(data || []);
-            toast.success("Đã đặt lại danh sách discount");
-          }}
-          startIcon={<RestartAltOutlinedIcon />}
-        >
-          Đặt lại
-        </Button>
-
-        <Button
-          variant="contained"
-          onClick={() => {
-            setEditingDiscount(null);
-            setOpenDiscountDialog(true);
-          }}
-        >
-          + Thêm Discount
-        </Button>
-      </div>
-    </div>
-
-    <Box sx={{ height: 400, width: "100%", mb: 4 }}>
-      <DataGrid
-        rows={discounts || []}
-        columns={discountColumns}
-        getRowId={(row) => row.id}
-        initialState={{
-          pagination: {
-            paginationModel: {
-              pageSize: 5,
-            },
-          },
-        }}
-        pageSizeOptions={[5]}
-        checkboxSelection
-        disableRowSelectionOnClick
-      />
-    </Box>
-  </div>
-)}
+            <Box sx={{ height: 400, width: "100%", mb: 4 }}>
+              <DataGrid
+                rows={discounts || []}
+                columns={discountColumns}
+                getRowId={(row) => row.id}
+                initialState={{
+                  pagination: {
+                    paginationModel: {
+                      pageSize: 5,
+                    },
+                  },
+                }}
+                pageSizeOptions={[5]}
+                checkboxSelection
+                disableRowSelectionOnClick
+              />
+            </Box>
+          </div>
+        }
       </div>
 
-
-<Dialog
-  open={openProductDialog}
-  onClose={() => setOpenProductDialog(false)}
-  fullWidth
-  maxWidth="md"
->
-  <DialogTitle>
-    {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
-  </DialogTitle>
-
-  <DialogContent>
-    <div className="grid grid-cols-1 gap-4 mt-2">
-      {/* TÊN SẢN PHẨM */}
-      <TextField
-        label="Tên sản phẩm"
+      <Dialog
+        open={openProductDialog}
+        onClose={() => setOpenProductDialog(false)}
         fullWidth
-        value={editingProduct?.name || ""}
-        onChange={(e) =>
-          setEditingProduct((prev) => ({
-            ...(prev ?? ({} as any)),
-            name: e.target.value,
-          }))
-        }
-      />
+        maxWidth="md"
+      >
+        <DialogTitle>
+          {editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
+        </DialogTitle>
 
-      {/* BRAND */}
-      <TextField
-        label="Brand"
-        fullWidth
-        value={editingProduct?.brand || ""}
-        onChange={(e) =>
-          setEditingProduct((prev) => ({
-            ...(prev ?? ({} as any)),
-            brand: e.target.value,
-          }))
-        }
-      />
+        <DialogContent>
+          <div className="grid grid-cols-1 gap-4 mt-2">
+            {/* TÊN SẢN PHẨM */}
+            <TextField
+              label="Tên sản phẩm"
+              fullWidth
+              value={editingProduct?.name || ""}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  name: e.target.value,
+                }))
+              }
+            />
 
-      {/* IMAGE URL */}
-      <TextField
-        label="Link ảnh (Cloudinary)"
-        fullWidth
-        placeholder="https://res.cloudinary.com/..."
-        value={editingProduct?.imageUrl || ""}
-        onChange={(e) =>
-          setEditingProduct((prev) => ({
-            ...(prev ?? ({} as any)),
-            imageUrl: e.target.value,
-          }))
-        }
-      />
+            {/* BRAND */}
+            <TextField
+              label="Brand"
+              fullWidth
+              value={editingProduct?.brand || ""}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  brand: e.target.value,
+                }))
+              }
+            />
 
-      {/* IMAGE PREVIEW */}
-      {editingProduct?.imageUrl && (
-        <div className="flex justify-center mt-2">
-          <img
-            src={editingProduct.imageUrl}
-            alt="Preview"
-            className="max-h-[200px] rounded border object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                "https://via.placeholder.com/300x200?text=Invalid+Image";
-            }}
-          />
-        </div>
-      )}
+            {/* IMAGE URL */}
+            <TextField
+              label="Link ảnh (Cloudinary)"
+              fullWidth
+              placeholder="https://res.cloudinary.com/..."
+              value={editingProduct?.imageUrl || ""}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  imageUrl: e.target.value,
+                }))
+              }
+            />
 
-      {/* GIÁ */}
-      <TextField
-        label="Giá (VND)"
-        type="number"
-        fullWidth
-        value={editingProduct?.price || 0}
-        onChange={(e) =>
-          setEditingProduct((prev) => ({
-            ...(prev ?? ({} as any)),
-            price: Number(e.target.value),
-          }))
-        }
-      />
-<TextField
-  select
-  label="Danh mục"
-  fullWidth
-  value={editingProduct?.categoryId || ""}
-  onChange={(e) =>
-    setEditingProduct((prev) => ({
-      ...(prev ?? {}),
-      categoryId: Number(e.target.value),
-    }))
-  }
->
-  {categories.map((cat) => (
-    <MenuItem key={cat.id} value={cat.id}>
-      {cat.name}
-    </MenuItem>
-  ))}
-</TextField>
+            {/* IMAGE PREVIEW */}
+            {editingProduct?.imageUrl && (
+              <div className="flex justify-center mt-2">
+                <img
+                  src={editingProduct.imageUrl}
+                  alt="Preview"
+                  className="max-h-[200px] rounded border object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://via.placeholder.com/300x200?text=Invalid+Image";
+                  }}
+                />
+              </div>
+            )}
 
-      {/* TỒN KHO */}
-      <TextField
-        label="Tồn kho"
-        type="number"
-        fullWidth
-        value={editingProduct?.stockQuantity || 0}
-        onChange={(e) =>
-          setEditingProduct((prev) => ({
-            ...(prev ?? ({} as any)),
-            stockQuantity: Number(e.target.value),
-          }))
-        }
-      />
-    </div>
-  </DialogContent>
+            {/* GIÁ */}
+            <TextField
+              label="Giá (VND)"
+              type="number"
+              fullWidth
+              value={editingProduct?.price || 0}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  price: Number(e.target.value),
+                }))
+              }
+            />
+            <TextField
+              select
+              label="Danh mục"
+              fullWidth
+              value={editingProduct?.categoryId || ""}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? {}),
+                  categoryId: Number(e.target.value),
+                }))
+              }
+            >
+              {categories.map((cat) => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </TextField>
 
-  <DialogActions>
-    <Button onClick={() => setOpenProductDialog(false)}>Hủy</Button>
+            {/* TỒN KHO */}
+            <TextField
+              label="Tồn kho"
+              type="number"
+              fullWidth
+              value={editingProduct?.stockQuantity || 0}
+              onChange={(e) =>
+                setEditingProduct((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  stockQuantity: Number(e.target.value),
+                }))
+              }
+            />
+          </div>
+        </DialogContent>
 
-    <Button
-      variant="contained"
-      onClick={async () => {
-        try {
-          if (editingProduct?.id) {
-            // UPDATE
-            await updateProduct(editingProduct as any, editingProduct.id);
-            toast.success("Cập nhật sản phẩm thành công");
-          } else {
-                if (!editingProduct?.categoryId) {
+        <DialogActions>
+          <Button onClick={() => setOpenProductDialog(false)}>Hủy</Button>
+
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                if (editingProduct?.id) {
+                  // UPDATE
+                  await updateProduct(editingProduct as any, editingProduct.id);
+                  toast.success("Cập nhật sản phẩm thành công");
+                } else {
+                  if (!editingProduct?.categoryId) {
                     toast.error("Vui lòng chọn danh mục");
                     return;
                   }
 
-            // CREATE
-            await createProduct(editingProduct as any);
-            toast.success("Thêm sản phẩm thành công");
-          }
+                  // CREATE
+                  await createProduct(editingProduct as any);
+                  toast.success("Thêm sản phẩm thành công");
+                }
 
-          // Reload list
-          const data = await getAllProducts();
-          setProducts(data || []);
+                // Reload list
+                const data = await getAllProducts();
+                setProducts(data || []);
 
-          setOpenProductDialog(false);
-          setEditingProduct(null);
-        } catch (error) {
-          console.error(error);
-          toast.error("Lỗi khi lưu sản phẩm");
-        }
-      }}
-    >
-      Lưu
-    </Button>
-  </DialogActions>
-</Dialog>
+                setOpenProductDialog(false);
+                setEditingProduct(null);
+              } catch (error) {
+                console.error(error);
+                toast.error("Lỗi khi lưu sản phẩm");
+              }
+            }}
+          >
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-
-
-<Dialog
-  open={openDiscountDialog}
-  onClose={() => setOpenDiscountDialog(false)}
-  fullWidth
-  maxWidth="md"
->
-  <DialogTitle>
-    {editingDiscount ? "Chỉnh sửa Discount" : "Thêm Discount"}
-  </DialogTitle>
-
-  <DialogContent>
-    <div className="grid grid-cols-1 gap-4 mt-2">
-      <TextField
-        label="Mã Discount"
+      <Dialog
+        open={openDiscountDialog}
+        onClose={() => setOpenDiscountDialog(false)}
         fullWidth
-        value={editingDiscount?.code || ""}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            code: e.target.value,
-          }))
-        }
-      />
-
-      <TextField
-        label="Mô tả"
-        fullWidth
-        value={editingDiscount?.description || ""}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            description: e.target.value,
-          }))
-        }
-      />
-
-      <TextField
-        select
-        label="Loại Discount"
-        fullWidth
-        value={editingDiscount?.discountType || "FIXED_AMOUNT"}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            discountType: e.target.value,
-          }))
-        }
+        maxWidth="md"
       >
-        <MenuItem value="FIXED_AMOUNT">Giảm tiền cố định</MenuItem>
-        <MenuItem value="PERCENTAGE">Giảm theo %</MenuItem>
-      </TextField>
+        <DialogTitle>
+          {editingDiscount ? "Chỉnh sửa Discount" : "Thêm Discount"}
+        </DialogTitle>
 
-      <TextField
-  label={
-    editingDiscount?.discountType === "PERCENTAGE"
-      ? "Phần trăm giảm (%)"
-      : "Số tiền giảm"
-  }
-  type="number"
-  fullWidth
-  value={editingDiscount?.value || 0}
-  onChange={(e) =>
-    setEditingDiscount((prev) => ({
-      ...(prev ?? {}),
-      value: Number(e.target.value),
-    }))
-  }
-/>
-<TextField
-  select
-  label="Phạm vi áp dụng"
-  fullWidth
-  value={editingDiscount?.scope || "GLOBAL"}
-  onChange={(e) =>
-    setEditingDiscount((prev) => ({
-      ...(prev ?? {}),
-      scope: e.target.value,
-    }))
-  }
->
-  <MenuItem value="GLOBAL">Toàn hệ thống</MenuItem>
-  <MenuItem value="SPECIFIC_PRODUCT">Sản phẩm cụ thể</MenuItem>
-  <MenuItem value="CATEGORY">Danh mục</MenuItem>
-</TextField>
+        <DialogContent>
+          <div className="grid grid-cols-1 gap-4 mt-2">
+            <TextField
+              label="Mã Discount"
+              fullWidth
+              value={editingDiscount?.code || ""}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  code: e.target.value,
+                }))
+              }
+            />
 
-<TextField
-  label="Số lượt sử dụng"
-  type="number"
-  fullWidth
-  value={editingDiscount?.quantity ?? 0}
-  onChange={(e) =>
-    setEditingDiscount((prev) => ({
-      ...(prev ?? {}),
-      quantity: Number(e.target.value),
-    }))
-  }
-  helperText="Nhập 0 nếu không giới hạn"
-/>
+            <TextField
+              label="Mô tả"
+              fullWidth
+              value={editingDiscount?.description || ""}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  description: e.target.value,
+                }))
+              }
+            />
 
+            <TextField
+              select
+              label="Loại Discount"
+              fullWidth
+              value={editingDiscount?.discountType || "FIXED_AMOUNT"}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  discountType: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="FIXED_AMOUNT">Giảm tiền cố định</MenuItem>
+              <MenuItem value="PERCENTAGE">Giảm theo %</MenuItem>
+            </TextField>
 
-<TextField
-  select
-  label="Trạng thái"
-  fullWidth
-  value={editingDiscount?.status || "ACTIVE"}
-  onChange={(e) =>
-    setEditingDiscount((prev) => ({
-      ...(prev ?? {}),
-      status: e.target.value,
-    }))
-  }
->
-  <MenuItem value="ACTIVE">Hoạt động</MenuItem>
-  <MenuItem value="INACTIVE">Tạm ngưng</MenuItem>
-</TextField>
+            <TextField
+              label={
+                editingDiscount?.discountType === "PERCENTAGE"
+                  ? "Phần trăm giảm (%)"
+                  : "Số tiền giảm"
+              }
+              type="number"
+              fullWidth
+              value={editingDiscount?.value || 0}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? {}),
+                  value: Number(e.target.value),
+                }))
+              }
+            />
+            <TextField
+              select
+              label="Phạm vi áp dụng"
+              fullWidth
+              value={editingDiscount?.scope || "GLOBAL"}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? {}),
+                  scope: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="GLOBAL">Toàn hệ thống</MenuItem>
+              <MenuItem value="SPECIFIC_PRODUCT">Sản phẩm cụ thể</MenuItem>
+              <MenuItem value="CATEGORY">Danh mục</MenuItem>
+            </TextField>
 
+            <TextField
+              label="Số lượt sử dụng"
+              type="number"
+              fullWidth
+              inputProps={{ min: 1 }}
+              value={editingDiscount?.quantity ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? {}),
+                  quantity: val === "" ? "" : Number(val),
+                }));
+              }}
+              error={
+                editingDiscount?.quantity !== undefined &&
+                Number(editingDiscount?.quantity) <= 0
+              }
+              helperText={
+                editingDiscount?.quantity !== undefined &&
+                Number(editingDiscount?.quantity) <= 0
+                  ? "Số lượng phải lớn hơn 0"
+                  : ""
+              }
+            />
 
-      <TextField
-        type="date"
-        label="Ngày bắt đầu"
-        InputLabelProps={{ shrink: true }}
-        fullWidth
-        value={editingDiscount?.startDate || ""}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            startDate: e.target.value,
-          }))
-        }
-      />
+            <TextField
+              select
+              label="Trạng thái"
+              fullWidth
+              value={editingDiscount?.status || "ACTIVE"}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? {}),
+                  status: e.target.value,
+                }))
+              }
+            >
+              <MenuItem value="ACTIVE">Hoạt động</MenuItem>
+              <MenuItem value="INACTIVE">Tạm ngưng</MenuItem>
+            </TextField>
 
-      <TextField
-        type="date"
-        label="Ngày kết thúc"
-        InputLabelProps={{ shrink: true }}
-        fullWidth
-        value={editingDiscount?.endDate || ""}
-        onChange={(e) =>
-          setEditingDiscount((prev) => ({
-            ...(prev ?? ({} as any)),
-            endDate: e.target.value,
-          }))
-        }
-      />
-    </div>
-  </DialogContent>
+            <TextField
+              type="date"
+              label="Ngày bắt đầu"
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              value={editingDiscount?.startDate || ""}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  startDate: e.target.value,
+                }))
+              }
+            />
 
-  <DialogActions>
-    <Button onClick={() => setOpenDiscountDialog(false)}>Hủy</Button>
-    <Button
-      variant="contained"
-      onClick={async () => {
-        try {
-          if (editingDiscount?.id) {
-            await updateDiscount(
-              editingDiscount as any,
-              editingDiscount.id
-            );
-            toast.success("Cập nhật discount thành công");
-          } else {
-            await createDiscount(editingDiscount as any);
-            toast.success("Thêm discount thành công");
-          }
+            <TextField
+              type="date"
+              label="Ngày kết thúc"
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              value={editingDiscount?.endDate || ""}
+              onChange={(e) =>
+                setEditingDiscount((prev: any) => ({
+                  ...(prev ?? ({} as any)),
+                  endDate: e.target.value,
+                }))
+              }
+            />
+          </div>
+        </DialogContent>
 
-          setDiscounts(await getAllDiscounts());
-          setOpenDiscountDialog(false);
-        } catch (err) {
-          console.error(err);
-          toast.error("Lỗi khi lưu discount");
-        }
-      }}
-    >
-      Lưu
-    </Button>
-  </DialogActions>
-</Dialog>
+        <DialogActions>
+          <Button onClick={() => setOpenDiscountDialog(false)}>Hủy</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                if (editingDiscount?.id) {
+                  await updateDiscount(
+                    editingDiscount as any,
+                    editingDiscount.id
+                  );
+                  toast.success("Cập nhật discount thành công");
+                } else {
+                  await createDiscount(editingDiscount as any);
+                  toast.success("Thêm discount thành công");
+                }
 
-
-
+                setDiscounts(await getAllDiscounts());
+                setOpenDiscountDialog(false);
+              } catch (err) {
+                console.error(err);
+                toast.error("Lỗi khi lưu discount");
+              }
+            }}
+          >
+            Lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={editUserDialogOpen}

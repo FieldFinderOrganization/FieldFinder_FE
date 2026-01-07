@@ -541,6 +541,33 @@ const Profile: React.FC = () => {
     status: "ACTIVE",
   });
 
+  // useEffect(() => {
+  //   const loadState = async () => {
+  //     try {
+  //       const serializedState = localStorage.getItem("authState");
+  //       if (serializedState) {
+  //         const state = JSON.parse(serializedState);
+  //         if (state.user) {
+  //           dispatch(loginSuccess(state.user));
+  //           setEditedUser({
+  //             name: state.user.name,
+  //             email: state.user.email,
+  //             phone: state.user.phone,
+  //             status: "ACTIVE",
+  //           });
+  //           setProviderUser({
+  //             cardNumber: state.user.cardNumber || "Chưa có thông tin",
+  //             bank: state.user.bank || "Chưa có thông tin",
+  //           });
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Lỗi khi khôi phục trạng thái từ localStorage:", err);
+  //     }
+  //   };
+  //   loadState();
+  // }, [dispatch]);
+
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
     dispatch(setShowSidebar(true));
