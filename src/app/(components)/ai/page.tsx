@@ -222,6 +222,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
       if (user?.userId && sessionId) {
         try {
           const token = localStorage.getItem("token");
+          console.log(token);
           await axios.post(
             `http://localhost:8080/api/users/${user.userId}/register-session?sessionId=${sessionId}`,
             {},

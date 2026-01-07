@@ -59,7 +59,7 @@ const OtpModal: React.FC<OtpModalProps> = ({
           role: u.role || "",
         };
 
-        dispatch(loginSuccess(userData));
+        dispatch(loginSuccess({ user: userData, token: idToken }));
         localStorage.setItem("authState", JSON.stringify({ user: userData }));
 
         onSuccess(idToken);

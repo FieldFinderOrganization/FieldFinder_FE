@@ -37,14 +37,35 @@ export interface productRes {
 const getConfig = () => {
   if (typeof window === "undefined") return {}; // Check SSR
 
-  const token = localStorage.getItem("token");
-  if (token) {
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
+  try {
+    // 1. Lấy chuỗi JSON root từ localStorage (key cấu hình trong store.ts là "persist:root" hoặc "root")
+    // Trong store.ts bạn để key: "root" -> localStorage key sẽ là "persist:root"
+    const persistedState = localStorage.getItem("persist:root");
+
+    if (persistedState) {
+      // 2. Parse JSON
+      const parsedRoot = JSON.parse(persistedState);
+
+      // 3. Lấy slice "auth" (nó cũng là một chuỗi JSON stringified)
+      if (parsedRoot.auth) {
+        const authState = JSON.parse(parsedRoot.auth);
+
+        // 4. Lấy token
+        const token = authState.token;
+
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error retrieving token from storage:", error);
   }
+
   return {};
 };
 
