@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react/jsx-key */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -177,7 +178,6 @@ const Dashboard: React.FC = () => {
     { id: number; name: string }[]
   >([]);
 
-  // ===== DISCOUNT =====
   const [discounts, setDiscounts] = React.useState<discountRes[]>([]);
   const [openDiscountDialog, setOpenDiscountDialog] = React.useState(false);
   const [editingDiscount, setEditingDiscount] = React.useState<
@@ -1050,7 +1050,6 @@ const Dashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Tổng Quan Dashboard</h1>
 
-            {/* ====== NÚT XUẤT BÁO CÁO ====== */}
             <Button
               variant="contained"
               color="success"
@@ -1060,7 +1059,6 @@ const Dashboard: React.FC = () => {
             >
               Xuất Báo Cáo Excel
             </Button>
-            {/* ============================= */}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1292,7 +1290,6 @@ const Dashboard: React.FC = () => {
             />
           </Box>
         </div>
-        {/* ===== PRODUCT MANAGEMENT ===== */}
         {
           <div ref={productTableRef} className="w-full mt-8">
             <div className="flex justify-between items-center mb-4">
@@ -1321,7 +1318,7 @@ const Dashboard: React.FC = () => {
                       price: 0,
                       stockQuantity: 0,
                       imageUrl: "",
-                      categoryId: undefined, // 👈 BẮT BUỘC
+                      categoryId: undefined,
                     } as any);
                     setOpenProductDialog(true);
                   }}
@@ -1351,7 +1348,6 @@ const Dashboard: React.FC = () => {
           </div>
         }
 
-        {/* ===== DISCOUNT MANAGEMENT ===== */}
         {
           <div ref={discountTableRef} className="w-full mt-8">
             <div className="flex justify-between items-center mb-4">
@@ -1374,7 +1370,18 @@ const Dashboard: React.FC = () => {
                 <Button
                   variant="contained"
                   onClick={() => {
-                    setEditingDiscount(null);
+                    setEditingDiscount({
+                      code: "",
+                      description: "",
+                      discountType: "FIXED_AMOUNT", // Mặc định loại
+                      value: 0,
+                      scope: "GLOBAL", // Mặc định phạm vi
+                      quantity: 1,
+                      status: "ACTIVE", // Mặc định status có giá trị để gửi đi
+                      startDate: "",
+                      endDate: "",
+                      active: true,
+                    } as any);
                     setOpenDiscountDialog(true);
                   }}
                 >
@@ -1416,7 +1423,6 @@ const Dashboard: React.FC = () => {
 
         <DialogContent>
           <div className="grid grid-cols-1 gap-4 mt-2">
-            {/* TÊN SẢN PHẨM */}
             <TextField
               label="Tên sản phẩm"
               fullWidth
@@ -1429,7 +1435,6 @@ const Dashboard: React.FC = () => {
               }
             />
 
-            {/* BRAND */}
             <TextField
               label="Brand"
               fullWidth
@@ -1442,7 +1447,6 @@ const Dashboard: React.FC = () => {
               }
             />
 
-            {/* IMAGE URL */}
             <TextField
               label="Link ảnh (Cloudinary)"
               fullWidth
@@ -1456,7 +1460,6 @@ const Dashboard: React.FC = () => {
               }
             />
 
-            {/* IMAGE PREVIEW */}
             {editingProduct?.imageUrl && (
               <div className="flex justify-center mt-2">
                 <img
@@ -1484,6 +1487,7 @@ const Dashboard: React.FC = () => {
                 }))
               }
             />
+
             <TextField
               select
               label="Danh mục"
@@ -1503,7 +1507,6 @@ const Dashboard: React.FC = () => {
               ))}
             </TextField>
 
-            {/* TỒN KHO */}
             <TextField
               label="Tồn kho"
               type="number"
@@ -1527,7 +1530,6 @@ const Dashboard: React.FC = () => {
             onClick={async () => {
               try {
                 if (editingProduct?.id) {
-                  // UPDATE
                   await updateProduct(editingProduct as any, editingProduct.id);
                   toast.success("Cập nhật sản phẩm thành công");
                 } else {
@@ -1536,12 +1538,10 @@ const Dashboard: React.FC = () => {
                     return;
                   }
 
-                  // CREATE
                   await createProduct(editingProduct as any);
                   toast.success("Thêm sản phẩm thành công");
                 }
 
-                // Reload list
                 const data = await getAllProducts();
                 setProducts(data || []);
 

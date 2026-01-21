@@ -9,6 +9,7 @@ export interface discountReq {
   value: number;
   startDate: string;
   endDate: string;
+  status: string; // "ACTIVE" | "INACTIVE" | "EXPIRED"
   active: boolean;
   minOrderValue?: number;
   maxDiscountAmount?: number;

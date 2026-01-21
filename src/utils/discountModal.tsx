@@ -68,8 +68,10 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
                   };
                 }
 
+                // CẬP NHẬT QUAN TRỌNG: Map thêm userDiscountId vào id
+                // Dữ liệu JSON bạn gửi có userDiscountId, nhưng code cũ chỉ tìm discountId hoặc id
                 return {
-                  id: item.discountId || item.id,
+                  id: item.discountId || item.id || item.userDiscountId,
                   code: item.discountCode || item.code,
                   description: item.description,
                   discountType: item.type || item.discountType,
@@ -189,22 +191,41 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
       return false;
     });
 
-    const selectedIds = new Set(selectedDiscounts.map((d) => d.id));
-    const mergedList = [...filtered];
-    selectedDiscounts.forEach((sel) => {
-      if (!mergedList.find((item) => item.id === sel.id)) {
-        mergedList.push(sel);
-      }
-    });
+    // SỬ DỤNG MAP ĐỂ LOẠI BỎ TRÙNG LẶP (DEDUPLICATE)
+    // Map key là ID của discount -> Đảm bảo mỗi ID chỉ xuất hiện 1 lần
+    const uniqueMap = new Map();
 
-    return mergedList;
+    // Hàm helper để thêm vào Map an toàn
+    const addToMap = (item: any) => {
+      // Ưu tiên dùng ID, nếu không có ID thì dùng Code làm key tạm (tránh undefined)
+      const key = item.id
+        ? String(item.id)
+        : item.code
+          ? `code-${item.code}`
+          : null;
+      if (key) {
+        uniqueMap.set(key, item);
+      }
+    };
+
+    // 1. Thêm các item đang được chọn vào trước
+    selectedDiscounts.forEach(addToMap);
+
+    // 2. Thêm các item từ danh sách đã lọc (ghi đè nếu trùng ID để cập nhật trạng thái mới nhất từ API)
+    filtered.forEach(addToMap);
+
+    return Array.from(uniqueMap.values()) as discountRes[];
   }, [allDiscounts, allCategories, orderValue, products, selectedDiscounts]);
 
   const toggleDiscountSelection = (discount: discountRes) => {
-    const isSelected = selectedDiscounts.some((d) => d.id === discount.id);
+    // Cần đảm bảo so sánh ID chính xác, ép kiểu String để an toàn
+    const isSelected = selectedDiscounts.some(
+      (d) => String(d.id) === String(discount.id)
+    );
+
     if (isSelected) {
       setSelectedDiscounts(
-        selectedDiscounts.filter((d) => d.id !== discount.id)
+        selectedDiscounts.filter((d) => String(d.id) !== String(discount.id))
       );
     } else {
       setSelectedDiscounts([...selectedDiscounts, discount]);
@@ -275,8 +296,11 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {validDiscounts.map((discount) => {
+                // Kiểm tra null/undefined ID để tránh lỗi key
+                const discountId = discount.id || `temp-${Math.random()}`;
+
                 const isSelected = selectedDiscounts.some(
-                  (d) => d.id === discount.id
+                  (d) => String(d.id) === String(discount.id)
                 );
                 const val = getDiscountValue(discount);
 
@@ -287,7 +311,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
 
                 return (
                   <Card
-                    key={discount.id}
+                    key={discountId}
                     variant="outlined"
                     sx={{
                       cursor: "pointer",

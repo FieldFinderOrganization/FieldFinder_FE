@@ -212,7 +212,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
     setMessages([
       {
         sender: "ai",
-        text: "Xin chào! Tôi là trợ lý đặt sân. Bạn muốn đặt sân vào ngày nào và khung giờ nào? (Hãy thử nói vào micro!)",
+        text: "Xin chào! Tôi là trợ lý. Bạn muốn đặt sân hay sản phẩm thể thao hôm nay?",
       },
     ]);
   }, []);
@@ -776,7 +776,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               disabled={isLoading}
             />
 
-            <button
+            {/* <button
               type="button"
               onClick={handleMicClick}
               className={`p-2 rounded-full transition-colors ${
@@ -786,7 +786,7 @@ const AIChat: React.FC<AIChatProps> = ({ onClose }) => {
               }`}
             >
               <FiMic size={20} />
-            </button>
+            </button> */}
 
             <button
               type="submit"
