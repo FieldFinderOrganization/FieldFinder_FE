@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_FIREBASE_KEY= ${NEXT_PUBLIC_FIREBASE_KEY}
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_FIREBASE_KEY=${NEXT_PUBLIC_FIREBASE_KEY}

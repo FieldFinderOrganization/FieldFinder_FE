@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { IoMdClose } from "react-icons/io";
-import { FiMic, FiSend, FiImage, FiX, FiShoppingBag } from "react-icons/fi";
+import { FiSend, FiImage, FiX, FiShoppingBag } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "../../../styles/AIAssistantChat.css";
 import BookingModalAI from "@/utils/bookingModalAI";
@@ -60,7 +60,7 @@ interface FieldData {
   time: string;
 }
 
-interface AIChatProps {
+export interface AIChatProps {
   onClose: () => void;
 }
 

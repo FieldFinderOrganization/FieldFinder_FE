@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import ChatIcon from "@mui/icons-material/Chat";
-import AIChat from "../(components)/ai/page";
+import AIChat from "./ai/AIChat";
 
 export default function GlobalAIChat() {
   const [showChat, setShowChat] = useState(false);

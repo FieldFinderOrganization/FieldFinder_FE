@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 import { useState, useEffect } from "react";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
@@ -26,7 +27,7 @@ import {
 } from "../../../services/pitch";
 import { TextField } from "@mui/material";
 
-interface PitchInfoProps {
+export interface PitchInfoProps {
   providerAddressId: string;
 }
 

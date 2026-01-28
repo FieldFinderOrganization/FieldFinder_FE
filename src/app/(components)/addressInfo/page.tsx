@@ -1,3 +1,8 @@
+/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import Typography from "@mui/material/Typography";
@@ -45,12 +50,7 @@ export default function AddressInfo() {
     "Quận 8",
   ];
 
-  interface Area {
-    id: string;
-    name: string;
-    count: number;
-  }
-
+ 
   interface Address {
     providerAddressId: string;
     address: string;
@@ -59,7 +59,7 @@ export default function AddressInfo() {
   const [areas, setAreas] = useState<
     { id: string; name: string; count: number }[]
   >([]);
-  const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
+  // const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
   const [pitchesByArea, setPitchesByArea] = useState<{
     [key: string]: PitchResponseDTO[];
   }>({});
