@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
@@ -181,6 +182,8 @@ const Login: React.FC = () => {
         })
       );
 
+      localStorage.setItem("token", tempLoginData.token);
+      
       setLoading(true);
       toast.success("Đăng nhập thành công!");
 

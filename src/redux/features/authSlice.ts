@@ -58,6 +58,7 @@ const authSlice = createSlice({
       state.token = null;
       state.loading = false;
       state.isAuthenticated = false;
+      localStorage.removeItem("token");
     },
     setShowSidebar(state, action: PayloadAction<boolean>) {
       state.showSidebar = action.payload;

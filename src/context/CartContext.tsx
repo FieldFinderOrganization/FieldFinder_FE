@@ -2,40 +2,30 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { productRes } from "@/services/product";
 import { toast } from "react-toastify";
 
-import { getCartByUserId, createCart, deleteCart } from "@/services/cart";
 import {
-  getItemsByCartId,
+  getMyCart,
   addItemToCart,
   updateCartItem,
-  deleteCartItem,
-  cartItemRes,
-  cartItemReq,
-} from "@/services/cartItem";
+  removeCartItem,
+  clearCart as clearCartApi,
+  cartRes,
+  CartItemDetail,
+} from "@/services/cart";
 
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
 interface CartContextType {
-  cartItems: cartItemRes[];
-  cartId: number | null;
+  cartData: cartRes | null;
+  cartItems: CartItemDetail[];
   loadingCart: boolean;
-  addToCart: (
-    product: productRes,
-    size: string,
-    quantity?: number
-  ) => Promise<void>;
-  removeFromCart: (cartItemId: number) => Promise<void>;
-  updateQuantity: (cartItemId: number, newQuantity: number) => Promise<void>;
+  addToCart: (product: productRes, size: string, quantity?: number) => Promise<void>;
+  removeFromCart: (productId: number, size: string) => Promise<void>;
+  updateQuantity: (productId: number, size: string, newQuantity: number) => Promise<void>;
   getCartCount: () => number;
   getSubtotal: () => number;
   clearCart: () => Promise<void>;
@@ -44,129 +34,77 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const [cartItems, setCartItems] = useState<cartItemRes[]>([]);
-  const [cartId, setCartId] = useState<number | null>(null);
+  const [cartData, setCartData] = useState<cartRes | null>(null);
   const [loadingCart, setLoadingCart] = useState(true);
 
-  const { user } = useSelector((state: RootState) => state.auth);
-  const userId = user?.userId;
+  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
 
-  const findOrCreateCart = useCallback(async (currentUserId: string) => {
-    if (!currentUserId) return;
+  const fetchCart = useCallback(async () => {
+    if (!isAuthenticated || !token) {
+      setCartData(null);
+      setLoadingCart(false);
+      return;
+    }
+
     setLoadingCart(true);
     try {
-      const existingCarts = await getCartByUserId(currentUserId);
-
-      if (existingCarts && existingCarts.length > 0) {
-        setCartId(existingCarts[0].cartId);
-      } else {
-        const newCart = await createCart({ userId: currentUserId });
-        setCartId(newCart.cartId);
+      const data = await getMyCart(token);
+      setCartData(data);
+    } catch (error: any) {
+      console.error("Failed to fetch cart:", error);
+      if (error.response?.status === 401) {
+        toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.");
       }
-    } catch (error) {
+      setCartData(null);
     } finally {
       setLoadingCart(false);
     }
-  }, []);
-
-  const loadCartItems = useCallback(async (currentCartId: number) => {
-    try {
-      const items = await getItemsByCartId(currentCartId);
-      setCartItems(items);
-    } catch (error) {
-      console.error("Failed to load cart items:", error);
-    } finally {
-      setLoadingCart(false);
-    }
-  }, []);
+  }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (userId) {
-      findOrCreateCart(userId);
-    } else {
-      setCartId(null);
-      setCartItems([]);
-      setLoadingCart(false);
-    }
-  }, [userId, findOrCreateCart]);
+    fetchCart();
+  }, [fetchCart]);
 
-  useEffect(() => {
-    if (cartId) {
-      loadCartItems(cartId);
-    }
-  }, [cartId, loadCartItems]);
-
-  const addToCart = async (
-    product: productRes,
-    size: string,
-    quantity: number = 1
-  ) => {
-    if (!userId) {
+  const addToCart = async (product: productRes, size: string, quantity: number = 1) => {
+    if (!isAuthenticated || !token) {
       toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
       return;
     }
 
-    let currentCartId = cartId;
-
-    if (!currentCartId) {
-      setLoadingCart(true);
-      try {
-        const newCart = await createCart({ userId });
-        setCartId(newCart.cartId);
-        currentCartId = newCart.cartId;
-      } catch (err) {
-        console.error("Failed to create cart:", err);
-        toast.error("Lỗi kết nối giỏ hàng.");
-        setLoadingCart(false);
-        return;
-      } finally {
-        setLoadingCart(false);
-      }
-    }
-
-    const payload: cartItemReq = {
-      cartId: currentCartId!,
-      userId: userId,
-      productId: product.id,
-      quantity: quantity,
-      size: size,
-    };
-
     try {
-      await addItemToCart(payload);
+      await addItemToCart({ productId: product.id, size, quantity }, token);
       toast.success(`Đã thêm vào giỏ hàng!`);
-      await loadCartItems(currentCartId!);
+      await fetchCart();
     } catch (error: any) {
       console.error("Failed to add item:", error);
-      const msg =
-        error?.response?.data?.message || "Thêm vào giỏ hàng thất bại.";
+      const msg = error?.response?.data?.message || "Thêm vào giỏ hàng thất bại.";
       toast.error(msg);
     }
   };
 
-  const removeFromCart = async (cartItemId: number) => {
-    if (!cartId) return;
+  const removeFromCart = async (productId: number, size: string) => {
+    if (!isAuthenticated || !token) return;
     try {
-      await deleteCartItem(cartItemId);
-      await loadCartItems(cartId);
-      toast.info("Đã xóa sản phẩm.");
+      await removeCartItem(productId, size, token);
+      toast.info("Đã xóa sản phẩm khỏi giỏ hàng.");
+      await fetchCart();
     } catch (error) {
       console.error("Failed to remove item:", error);
       toast.error("Lỗi khi xóa sản phẩm.");
     }
   };
 
-  const updateQuantity = async (cartItemId: number, newQuantity: number) => {
-    if (!cartId) return;
+  const updateQuantity = async (productId: number, size: string, newQuantity: number) => {
+    if (!isAuthenticated || !token) return;
 
     if (newQuantity < 1) {
-      await removeFromCart(cartItemId);
+      await removeFromCart(productId, size);
       return;
     }
 
     try {
-      await updateCartItem(cartItemId, newQuantity);
-      await loadCartItems(cartId);
+      await updateCartItem({ productId, size, quantity: newQuantity }, token);
+      await fetchCart();
     } catch (error: any) {
       console.error("Update quantity failed:", error);
       toast.error(error?.response?.data?.message || "Lỗi cập nhật số lượng");
@@ -174,33 +112,28 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const getCartCount = () => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
+    if (!cartData || !cartData.items) return 0;
+    return cartData.items.reduce((total, item) => total + item.quantity, 0);
   };
 
   const getSubtotal = () => {
-    return cartItems.reduce(
-      (total, item) => total + item.priceAtTime * item.quantity,
-      0
-    );
+    if (!cartData) return 0;
+    return cartData.totalCartPrice;
   };
 
   const clearCart = useCallback(async () => {
-    if (!cartId) return;
+    if (!isAuthenticated || !token) return;
     try {
-      setCartItems([]);
-
-      setCartId(null);
-      if (userId) {
-        await findOrCreateCart(userId);
-      }
+      await clearCartApi(token);
+      setCartData({ items: [], totalCartPrice: 0 });
     } catch (error) {
-      console.error("Failed to clear cart context:", error);
+      console.error("Failed to clear cart:", error);
     }
-  }, [cartId, userId, findOrCreateCart]);
+  }, [isAuthenticated, token]);
 
   const value = {
-    cartItems,
-    cartId,
+    cartData,
+    cartItems: cartData?.items || [],
     loadingCart,
     addToCart,
     removeFromCart,

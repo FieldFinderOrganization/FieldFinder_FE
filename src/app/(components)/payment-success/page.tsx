@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { updateOrderStatus } from "@/services/order";
@@ -14,12 +14,16 @@ const PaymentStatusContent = () => {
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  const isProcessedRef = useRef(false);
 
   useEffect(() => {
     const confirmPayment = async () => {
-      if (!orderCode || isUpdating) return;
+      if (!orderCode || isProcessedRef.current) return;
 
       if (code === "00") {
+        isProcessedRef.current = true;
+        
         setIsUpdating(true);
         try {
           await updateOrderStatus(orderCode, "PAID");
@@ -35,7 +39,6 @@ const PaymentStatusContent = () => {
     };
 
     confirmPayment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, orderCode]);
 
   return (
