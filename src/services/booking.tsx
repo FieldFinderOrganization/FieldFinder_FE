@@ -29,24 +29,54 @@ export interface BookingResponseDTO {
   }[];
 }
 
+const getConfig = () => {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
+
+    if (persistedState) {
+      const parsedRoot = JSON.parse(persistedState);
+
+      if (parsedRoot.auth) {
+        const authState = JSON.parse(parsedRoot.auth);
+
+        const token = authState.token;
+
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error retrieving token from storage:", error);
+  }
+
+  return {};
+};
+
 export const createBooking = async (payload: BookingRequestDTO) => {
   const response = await axios.post<{
     BookingRequestDTO: BookingRequestDTO;
     bookingId: string;
-  }>(baseURL, payload);
+  }>(baseURL, payload, getConfig());
   return response.data;
 };
 
 export const getBookingSlot = async (pitchId: string, date: string) => {
   const response = await axios.get(`${baseURL}/slots/${pitchId}`, {
-    params: { pitchId, date },
+    params: { pitchId, date }, ...getConfig() 
   });
   return response.data;
 };
 
 export const getBookingSlotByDate = async (date: string) => {
   const response = await axios.get(`${baseURL}/slots/all`, {
-    params: { date },
+    params: { date }, ...getConfig() 
   });
   return response.data;
 };
@@ -108,3 +138,10 @@ export const getBookingByUserId = async (userId: string) => {
   );
   return response.data;
 };
+
+export const getBookingByProviderId = async (providerId: string) => {
+  const response = await axios.get<BookingResponseDTO[]>(
+    `${baseURL}/provider/${providerId}`, getConfig()
+  );
+  return response.data;
+}

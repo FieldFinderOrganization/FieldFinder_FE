@@ -71,11 +71,13 @@ import {
   getAllBookings,
   updatePaymentStatus,
   updateStatus,
+  getBookingByProviderId,
 } from "@/services/booking";
 import { getAllPayments } from "@/services/payment";
 import dayjs from "dayjs";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import { persistor } from "@/redux/store";
+import axios from "axios";
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch();
@@ -300,45 +302,8 @@ const Profile: React.FC = () => {
 
   const fetchBooking = async (providerId: string) => {
     try {
-      const [bookings, payments, users, providers, pitches] = await Promise.all(
-        [
-          getAllBookings(),
-          getAllPayments(),
-          getAllUsers(),
-          getAllProviders(),
-          getAllPitches(),
-        ]
-      );
-
-      const filteredBookings = bookings.filter(
-        (booking) => booking.providerId === providerId
-      );
-
-      const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
-      const providerMap = new Map(
-        providers.map((provider) => [provider.providerId, provider])
-      );
-      const userMap = new Map(users.map((user) => [user.userId, user]));
-
-      const paymentMethod =
-        payments.length > 0 ? payments[0].paymentMethod : null;
-
-      const enhancedBookings = filteredBookings.map((booking) => {
-        const pitchId = booking.bookingDetails[0]?.pitchId;
-        const pitch = pitchMap.get(pitchId);
-        const provider = providerMap.get(booking.providerId);
-        const providerUser = provider ? userMap.get(provider.userId) : null;
-
-        return {
-          ...booking,
-          paymentMethod,
-          providerName: providerUser?.name || "Không xác định",
-          pitchName: pitch?.name || "Không xác định",
-          slots: booking.bookingDetails.map((detail) => detail.slot),
-        };
-      });
-
-      return enhancedBookings;
+      const response = await getBookingByProviderId(providerId);
+      return response;
     } catch (error) {
       console.error("Error fetching data:", error);
       return [];

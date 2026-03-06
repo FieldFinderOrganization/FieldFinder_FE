@@ -25,6 +25,36 @@ export interface providerAddress {
   address: string;
 }
 
+const getConfig = () => {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
+
+    if (persistedState) {
+      const parsedRoot = JSON.parse(persistedState);
+
+      if (parsedRoot.auth) {
+        const authState = JSON.parse(parsedRoot.auth);
+
+        const token = authState.token;
+
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error retrieving token from storage:", error);
+  }
+
+  return {};
+};
+
 export const getProvider = async (
   userId: string
 ): Promise<{
@@ -33,7 +63,7 @@ export const getProvider = async (
   bank: string;
   status: number;
 }> => {
-  const response = await axios.get(`${baseURL}/providers/user/${userId}`);
+  const response = await axios.get(`${baseURL}/providers/user/${userId}`, getConfig());
   return response.data;
 };
 
@@ -45,7 +75,7 @@ export const addProvider = async (
     userId,
     ...providerObj,
   };
-  const response = await axios.post(`${baseURL}/providers`, payload);
+  const response = await axios.post(`${baseURL}/providers`, payload, getConfig());
   return response.data;
 };
 
@@ -58,7 +88,7 @@ export const updateProvider = async (
   };
   const response = await axios.put(
     `${baseURL}/providers/${providerId}`,
-    payload
+    payload, getConfig()
   );
   return response.data;
 };
@@ -71,7 +101,7 @@ export const addAddress = async (
   };
   const response = await axios.post(
     `${baseURL}/api/provider-addresses`,
-    payload
+    payload, getConfig()
   );
   return response.data;
 };
@@ -85,7 +115,7 @@ export const updateAddress = async (
   };
   const response = await axios.put(
     `${baseURL}/api/provider-addresses/${providerAddressId}`,
-    payload
+    payload, getConfig()
   );
   return response.data;
 };
@@ -94,7 +124,7 @@ export const getAddress = async (
   providerId: string
 ): Promise<providerAddress[]> => {
   const response = await axios.get(
-    `${baseURL}/api/provider-addresses/provider/${providerId}`
+    `${baseURL}/api/provider-addresses/provider/${providerId}`, getConfig()
   );
   return response.data;
 };
@@ -102,17 +132,17 @@ export const getAddress = async (
 export const deleteAddress = async (
   providerAddressId: string
 ): Promise<void> => {
-  await axios.delete(`${baseURL}/api/provider-addresses/${providerAddressId}`);
+  await axios.delete(`${baseURL}/api/provider-addresses/${providerAddressId}`, getConfig());
 };
 
 export const getAllAddresses = async (): Promise<providerAddress[]> => {
   const response = await axios.get<providerAddress[]>(
-    `${baseURL}/api/provider-addresses`
+    `${baseURL}/api/provider-addresses`, getConfig()
   );
   return response.data;
 };
 
 export const getAllProviders = async (): Promise<ProviderResponse[]> => {
-  const response = await axios.get<ProviderResponse[]>(`${baseURL}/providers`);
+  const response = await axios.get<ProviderResponse[]>(`${baseURL}/providers`, getConfig());
   return response.data;
 };

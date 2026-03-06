@@ -26,38 +26,60 @@ export interface cartItemReq {
   size: string;
 }
 
-const getConfig = (token: string) => {
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+const getConfig = () => {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
+
+    if (persistedState) {
+      const parsedRoot = JSON.parse(persistedState);
+
+      if (parsedRoot.auth) {
+        const authState = JSON.parse(parsedRoot.auth);
+
+        const token = authState.token;
+
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error retrieving token from storage:", error);
+  }
+
+  return {};
 };
 
-export const getMyCart = async (token: string) => {
-  const response = await axios.get<cartRes>(base_url, getConfig(token));
+export const getMyCart = async () => {
+  const response = await axios.get<cartRes>(base_url, getConfig());
   return response.data;
 };
 
-export const addItemToCart = async (payload: cartItemReq, token: string) => {
-  const response = await axios.post<string>(`${base_url}/add`, payload, getConfig(token));
+export const addItemToCart = async (payload: cartItemReq) => {
+  const response = await axios.post<string>(`${base_url}/add`, payload, getConfig());
   return response.data;
 };
 
-export const updateCartItem = async (payload: cartItemReq, token: string) => {
-  const response = await axios.put<string>(`${base_url}/update`, payload, getConfig(token));
+export const updateCartItem = async (payload: cartItemReq) => {
+  const response = await axios.put<string>(`${base_url}/update`, payload, getConfig());
   return response.data;
 };
 
-export const removeCartItem = async (productId: number, size: string, token: string) => {
+export const removeCartItem = async (productId: number, size: string) => {
   const response = await axios.delete<string>(`${base_url}/remove`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${getConfig().headers?.Authorization}` },
     params: { productId, size },
   });
   return response.data;
 };
 
-export const clearCart = async (token: string) => {
-  const response = await axios.delete<string>(`${base_url}/clear`, getConfig(token));
+export const clearCart = async () => {
+  const response = await axios.delete<string>(`${base_url}/clear`, getConfig());
   return response.data;
 };

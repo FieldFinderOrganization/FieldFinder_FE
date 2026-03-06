@@ -67,7 +67,6 @@ import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import { providerAddress } from "../../../services/provider";
 import { getAllCategory } from "@/services/category";
 
-// ===== PRODUCT & DISCOUNT SERVICE =====
 import {
   getAllProducts,
   createProduct,
@@ -783,11 +782,11 @@ const Dashboard: React.FC = () => {
         setBookings(enhancedBookings || []);
         const productRes = await getAllProducts();
         const discountRes = await getAllDiscounts();
-        const categoryRes = await getAllCategory(); // 👈 THÊM
+        const categoryRes = await getAllCategory();
 
         setProducts(productRes || []);
         setDiscounts(discountRes || []);
-        setCategories(categoryRes || []); // 👈 THÊM
+        setCategories(categoryRes || []);
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu:", error);
         toast.error("Lỗi khi tải dữ liệu thống kê");

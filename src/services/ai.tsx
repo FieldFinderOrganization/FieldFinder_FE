@@ -26,7 +26,6 @@ export interface ProductDTO {
   description: string;
 }
 
-// --- HELPER: Lấy Header có Token ---
 const getConfig = () => {
   if (typeof window === "undefined")
     return { headers: { "Content-Type": "application/json" } };

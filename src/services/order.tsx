@@ -33,24 +33,55 @@ export interface orderRequestDTO {
   discountCodes?: string[];
 }
 
+const getConfig = () => {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
+
+    if (persistedState) {
+      const parsedRoot = JSON.parse(persistedState);
+
+      if (parsedRoot.auth) {
+        const authState = JSON.parse(parsedRoot.auth);
+
+        const token = authState.token;
+
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error retrieving token from storage:", error);
+  }
+
+  return {};
+};
+
 export const createOrder = async (payload: orderRequestDTO) => {
-  const response = await axios.post<orderResponseDTO>(base_url, payload);
+  const response = await axios.post<orderResponseDTO>(base_url, payload, getConfig());
   return response.data;
 };
 
 export const getAllOrders = async () => {
-  const response = await axios.get<orderResponseDTO[]>(base_url);
+  const response = await axios.get<orderResponseDTO[]>(base_url, getConfig());
   return response.data;
 };
 
 export const getOrderById = async (id: string) => {
-  const response = await axios.get<orderResponseDTO>(`${base_url}/${id}`);
+  const response = await axios.get<orderResponseDTO>(`${base_url}/${id}`, getConfig());
   return response.data;
 };
 
 export const getOrdersByUserId = async (userId: string) => {
   const response = await axios.get<orderResponseDTO[]>(
-    `${base_url}/user/${userId}`
+    `${base_url}/user/${userId}`,
+    getConfig()
   );
   return response.data;
 };
@@ -61,11 +92,12 @@ export const updateOrderStatus = async (id: string, status: string) => {
     null,
     {
       params: { status: status },
+      ...getConfig()
     }
   );
   return response.data;
 };
 
 export const deleteOrder = async (id: number) => {
-  await axios.delete(`${base_url}/${id}`);
+  await axios.delete(`${base_url}/${id}`, getConfig());
 };

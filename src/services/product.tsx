@@ -33,24 +33,18 @@ export interface productRes {
   variants: ProductVariant[];
 }
 
-// --- HELPER: Lấy token từ localStorage và tạo Header ---
 const getConfig = () => {
-  if (typeof window === "undefined") return {}; // Check SSR
+  if (typeof window === "undefined") return {};
 
   try {
-    // 1. Lấy chuỗi JSON root từ localStorage (key cấu hình trong store.ts là "persist:root" hoặc "root")
-    // Trong store.ts bạn để key: "root" -> localStorage key sẽ là "persist:root"
     const persistedState = localStorage.getItem("persist:root");
 
     if (persistedState) {
-      // 2. Parse JSON
       const parsedRoot = JSON.parse(persistedState);
 
-      // 3. Lấy slice "auth" (nó cũng là một chuỗi JSON stringified)
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
 
-        // 4. Lấy token
         const token = authState.token;
 
         if (token) {

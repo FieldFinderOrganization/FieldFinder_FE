@@ -285,8 +285,6 @@ const DISCOUNTS_STATIC = [
   { image: "/images/sale9.jpg", text: "Mua 5 tặng 1" },
 ];
 
-// ========================================================
-
 const Home: React.FC = () => {
   const userId = useSelector((state: any) => state.auth.user?.userId);
   const [showSplash, setShowSplash] = useState<boolean>(true); // Chỉ quản lý hiển thị Splash
