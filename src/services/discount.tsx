@@ -1,4 +1,5 @@
 import axios from "axios";
+import { auth } from "./firebaseAuth";
 
 const base_url: string = "http://localhost:8080/api/discounts";
 
@@ -51,72 +52,95 @@ export interface userDiscountReq {
   discountCode: string;
 }
 
-const getConfig = () => {
+const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const persistedState = localStorage.getItem("persist:root");
+    const currentUser = auth.currentUser;
 
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy token sống từ Firebase:", error);
+  }
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {
       const parsedRoot = JSON.parse(persistedState);
-
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
-
         const token = authState.token;
-
         if (token) {
-          return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          };
+          return { headers: { Authorization: `Bearer ${token}` } };
         }
       }
     }
   } catch (error) {
-    console.error("Error retrieving token from storage:", error);
+    console.error("Lỗi fallback LocalStorage:", error);
   }
 
   return {};
 };
 
-export const createDiscount = async ( payload: discountReq) => {
-  const response = await axios.post<discountRes>(base_url, payload, getConfig());
+export const createDiscount = async (payload: discountReq) => {
+  const config = await getConfig();
+  const response = await axios.post<discountRes>(base_url, payload, config);
   return response.data;
 };
 
 export const updateDiscount = async (payload: discountReq, id: string) => {
-  const response = await axios.put<discountRes>(`${base_url}/${id}`, payload, getConfig());
+  const config = await getConfig();
+  const response = await axios.put<discountRes>(
+    `${base_url}/${id}`,
+    payload,
+    config,
+  );
   return response.data;
 };
 
 export const deleteDiscount = async (id: string) => {
-  await axios.delete(`${base_url}/${id}`, getConfig());
+  const config = await getConfig();
+  await axios.delete(`${base_url}/${id}`, config);
 };
 
 export const getAllDiscounts = async () => {
-  const response = await axios.get<discountRes[]>(base_url, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<discountRes[]>(base_url, config);
   return response.data;
 };
 
 export const getDiscountById = async (id: string) => {
-  const response = await axios.get<discountRes>(`${base_url}/${id}`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<discountRes>(`${base_url}/${id}`, config);
   return response.data;
 };
 
 export const saveDiscountToWallet = async (
   userId: string,
-  payload: userDiscountReq
+  payload: userDiscountReq,
 ) => {
-  const response = await axios.post(`${base_url}/${userId}/save`, payload, getConfig());
+  const config = await getConfig();
+  const response = await axios.post(
+    `${base_url}/${userId}/save`,
+    payload,
+    config,
+  );
   return response.data;
 };
 
 export const getMyWallet = async (userId: string) => {
+  const config = await getConfig();
   const response = await axios.get<userDiscountRes[]>(
     `${base_url}/${userId}/wallet`,
-    getConfig()
+    config,
   );
   return response.data;
 };

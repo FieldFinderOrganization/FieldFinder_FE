@@ -24,18 +24,8 @@ export const login = (idToken: string): Promise<{ data: LoginResponse }> => {
   });
 };
 
-// export const login = (
-//   idToken: string,
-//   email?: string
-// ): Promise<{ data: LoginResponse }> => {
-//   return axios.post(`${baseURL}/login`, {
-//     idToken,
-//     email, // Gửi email xuống Backend. Nếu undefined, Backend nhận null (vẫn OK cho flow login thường)
-//   });
-// };
-
 export const loginSocial = (
-  idToken: string
+  idToken: string,
 ): Promise<{ data: LoginResponse }> => {
   return axios.post(`${baseURL}/login-social`, {
     idToken,
@@ -57,7 +47,7 @@ interface RegisterResponse {
 }
 
 export const register = (
-  registerObj: RegisterRequest
+  registerObj: RegisterRequest,
 ): Promise<RegisterResponse> => {
   return axios.post(`${baseURL}/register`, registerObj);
 };

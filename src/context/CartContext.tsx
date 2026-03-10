@@ -2,7 +2,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { productRes } from "@/services/product";
 import { toast } from "react-toastify";
 
@@ -23,9 +29,17 @@ interface CartContextType {
   cartData: cartRes | null;
   cartItems: CartItemDetail[];
   loadingCart: boolean;
-  addToCart: (product: productRes, size: string, quantity?: number) => Promise<void>;
+  addToCart: (
+    product: productRes,
+    size: string,
+    quantity?: number,
+  ) => Promise<void>;
   removeFromCart: (productId: number, size: string) => Promise<void>;
-  updateQuantity: (productId: number, size: string, newQuantity: number) => Promise<void>;
+  updateQuantity: (
+    productId: number,
+    size: string,
+    newQuantity: number,
+  ) => Promise<void>;
   getCartCount: () => number;
   getSubtotal: () => number;
   clearCart: () => Promise<void>;
@@ -37,7 +51,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartData, setCartData] = useState<cartRes | null>(null);
   const [loadingCart, setLoadingCart] = useState(true);
 
-  const { isAuthenticated, token } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, token } = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated || !token) {
@@ -48,7 +64,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
     setLoadingCart(true);
     try {
-      const data = await getMyCart(token);
+      const data = await getMyCart();
       setCartData(data);
     } catch (error: any) {
       console.error("Failed to fetch cart:", error);
@@ -62,22 +78,29 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+    if (isAuthenticated) {
+      fetchCart();
+    }
+  }, [isAuthenticated, fetchCart]);
 
-  const addToCart = async (product: productRes, size: string, quantity: number = 1) => {
+  const addToCart = async (
+    product: productRes,
+    size: string,
+    quantity: number = 1,
+  ) => {
     if (!isAuthenticated || !token) {
       toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
       return;
     }
 
     try {
-      await addItemToCart({ productId: product.id, size, quantity }, token);
+      await addItemToCart({ productId: product.id, size, quantity });
       toast.success(`Đã thêm vào giỏ hàng!`);
       await fetchCart();
     } catch (error: any) {
       console.error("Failed to add item:", error);
-      const msg = error?.response?.data?.message || "Thêm vào giỏ hàng thất bại.";
+      const msg =
+        error?.response?.data?.message || "Thêm vào giỏ hàng thất bại.";
       toast.error(msg);
     }
   };
@@ -85,7 +108,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const removeFromCart = async (productId: number, size: string) => {
     if (!isAuthenticated || !token) return;
     try {
-      await removeCartItem(productId, size, token);
+      await removeCartItem(productId, size);
       toast.info("Đã xóa sản phẩm khỏi giỏ hàng.");
       await fetchCart();
     } catch (error) {
@@ -94,7 +117,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateQuantity = async (productId: number, size: string, newQuantity: number) => {
+  const updateQuantity = async (
+    productId: number,
+    size: string,
+    newQuantity: number,
+  ) => {
     if (!isAuthenticated || !token) return;
 
     if (newQuantity < 1) {
@@ -103,7 +130,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      await updateCartItem({ productId, size, quantity: newQuantity }, token);
+      await updateCartItem({ productId, size, quantity: newQuantity });
       await fetchCart();
     } catch (error: any) {
       console.error("Update quantity failed:", error);
@@ -124,7 +151,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const clearCart = useCallback(async () => {
     if (!isAuthenticated || !token) return;
     try {
-      await clearCartApi(token);
+      await clearCartApi();
       setCartData({ items: [], totalCartPrice: 0 });
     } catch (error) {
       console.error("Failed to clear cart:", error);

@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable react/jsx-key */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -77,17 +79,17 @@ import { getAllPayments } from "@/services/payment";
 import dayjs from "dayjs";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import { persistor } from "@/redux/store";
-import axios from "axios";
+import ChatBox from "@/utils/chatBox";
 
 const Profile: React.FC = () => {
+  const [showChat, setShowChat] = useState(false);
+  const [receiverIdInput, setReceiverIdInput] = useState("");
+
   const dispatch = useDispatch();
   const router = useRouter();
   const user = useSelector((state: any) => state.auth.user);
   const searchParams = useSearchParams();
-  const baseTabs = [
-    { label: "Thông tin cá nhân", value: 0 },
-    // { label: "Thông báo", value: 2 },
-  ];
+  const baseTabs = [{ label: "Thông tin cá nhân", value: 0 }];
 
   const providerTabs = [
     { label: "Thông tin cá nhân", value: 0 },
@@ -99,7 +101,7 @@ const Profile: React.FC = () => {
 
   const initialTab = parseInt(searchParams.get("tab") || "0", 10);
   const [initTab, setInitTab] = useState(
-    tabs.find((tab) => tab.value === initialTab)?.value || tabs[0].value
+    tabs.find((tab) => tab.value === initialTab)?.value || tabs[0].value,
   );
   const [show, setShow] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -196,7 +198,7 @@ const Profile: React.FC = () => {
           result.push(slotToTime(start));
         } else {
           result.push(
-            `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+            `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`,
           );
         }
         start = sortedSlots[i];
@@ -208,7 +210,7 @@ const Profile: React.FC = () => {
       result.push(slotToTime(start));
     } else {
       result.push(
-        `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+        `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`,
       );
     }
 
@@ -319,16 +321,16 @@ const Profile: React.FC = () => {
           getAllUsers(),
           getAllProviders(),
           getAllPitches(),
-        ]
+        ],
       );
 
       const filteredBookings = bookings.filter(
-        (booking) => booking.providerId === providerId
+        (booking) => booking.providerId === providerId,
       );
 
       const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
       const providerMap = new Map(
-        providers.map((provider) => [provider.providerId, provider])
+        providers.map((provider) => [provider.providerId, provider]),
       );
       const userMap = new Map(users.map((user) => [user.userId, user]));
 
@@ -384,7 +386,7 @@ const Profile: React.FC = () => {
           name: freshUser.name,
           email: freshUser.email,
           phone: freshUser.phone,
-        })
+        }),
       );
     };
 
@@ -411,16 +413,16 @@ const Profile: React.FC = () => {
         for (const address of user.addresses) {
           try {
             const pitchList = await getPitchesByProviderAddressId(
-              address.providerAddressId
+              address.providerAddressId,
             );
             pitchesData[address.providerAddressId] = pitchList;
           } catch (error) {
             console.error(
               `Lỗi khi lấy sân cho khu vực ${address.providerAddressId}:`,
-              error
+              error,
             );
             toast.error(
-              `Lỗi khi tải danh sách sân cho khu vực ${address.address}`
+              `Lỗi khi tải danh sách sân cho khu vực ${address.address}`,
             );
           }
         }
@@ -484,7 +486,7 @@ const Profile: React.FC = () => {
                 cardNumber: res.cardNumber || "",
                 bank: res.bank || "",
                 providerId: res.providerId || "",
-              })
+              }),
             );
             setProviderUser({
               cardNumber: res.cardNumber || "Chưa có thông tin",
@@ -533,7 +535,7 @@ const Profile: React.FC = () => {
         name: editedUser.name,
         email: editedUser.email,
         phone: editedUser.phone,
-      })
+      }),
     );
     toast.success("Change information successfully!");
   };
@@ -547,7 +549,7 @@ const Profile: React.FC = () => {
   };
 
   const handleProviderInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const { name, value } = e.target;
     setProviderUser((prev) => ({
@@ -595,7 +597,7 @@ const Profile: React.FC = () => {
             cardNumber: providerUser.cardNumber,
             bank: providerUser.bank,
             providerId: currentProviderId,
-          })
+          }),
         );
       } else {
         await updateProvider(providerData, currentProviderId);
@@ -603,7 +605,7 @@ const Profile: React.FC = () => {
           update({
             cardNumber: providerUser.cardNumber,
             bank: providerUser.bank,
-          })
+          }),
         );
       }
 
@@ -650,7 +652,7 @@ const Profile: React.FC = () => {
   };
 
   const handleSavePitch = async (
-    formData: Omit<PitchRequestDTO, "providerAddressId">
+    formData: Omit<PitchRequestDTO, "providerAddressId">,
   ) => {
     try {
       if (isEditMode && pitchToEdit) {
@@ -661,13 +663,13 @@ const Profile: React.FC = () => {
         // Update both pitches and pitchesByArea atomically
         setPitches((prevPitches) =>
           prevPitches.map((p) =>
-            p.pitchId === updatedPitch.pitchId ? updatedPitch : p
-          )
+            p.pitchId === updatedPitch.pitchId ? updatedPitch : p,
+          ),
         );
         setPitchesByArea((prev) => ({
           ...prev,
           [selectedAreaId]: prev[selectedAreaId].map((p) =>
-            p.pitchId === updatedPitch.pitchId ? updatedPitch : p
+            p.pitchId === updatedPitch.pitchId ? updatedPitch : p,
           ),
         }));
         toast.success("Cập nhật sân thành công");
@@ -691,8 +693,8 @@ const Profile: React.FC = () => {
           prevAreas.map((area) =>
             area.id === selectedAreaId
               ? { ...area, count: area.count + 1 }
-              : area
-          )
+              : area,
+          ),
         );
         toast.success("Thêm sân thành công");
       }
@@ -716,8 +718,8 @@ const Profile: React.FC = () => {
           prevAreas.map((area) =>
             area.id === selectedAreaId
               ? { ...area, count: area.count - 1 }
-              : area
-          )
+              : area,
+          ),
         );
         setOpenDeleteModal(false);
         setSelectedPitchIds([]);
@@ -1099,7 +1101,7 @@ const Profile: React.FC = () => {
                           getOptionLabel={(option) => option.name}
                           value={
                             banks.find(
-                              (bank) => bank.code === providerUser.bank
+                              (bank) => bank.code === providerUser.bank,
                             ) || null
                           }
                           onChange={(_, value) => {
@@ -1295,7 +1297,7 @@ const Profile: React.FC = () => {
                             <div className="flex flex-col items-center right-2 top-0 absolute">
                               <Checkbox
                                 checked={selectedPitchIds.includes(
-                                  pitch.pitchId
+                                  pitch.pitchId,
                                 )}
                                 onChange={() =>
                                   handlePitchCheckboxChange(pitch.pitchId)
@@ -1343,7 +1345,7 @@ const Profile: React.FC = () => {
                           >
                             {page}
                           </button>
-                        )
+                        ),
                       )}
 
                       <button
@@ -1398,6 +1400,39 @@ const Profile: React.FC = () => {
                 />
               </Box>
             </div>
+          )}
+        </div>
+
+        <div className="p-4 border rounded-md m-4 bg-white shadow-md w-fit">
+          <h3 className="font-bold mb-2">Góc Test Chat 🚀</h3>
+          <p className="text-sm text-gray-500 mb-2">
+            ID của tôi: {user?.userId}
+          </p>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Nhập UUID người muốn chat..."
+              value={receiverIdInput}
+              onChange={(e) => setReceiverIdInput(e.target.value)}
+              className="border p-2 rounded-md w-[300px]"
+            />
+            <button
+              onClick={() => setShowChat(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md font-bold"
+            >
+              Mở khung Chat
+            </button>
+          </div>
+
+          {/* Khung chat sẽ hiện lên khi bấm nút */}
+          {showChat && receiverIdInput && (
+            <ChatBox
+              currentUserId={user?.userId}
+              receiverId={receiverIdInput} // Lấy ID từ ô input truyền vào
+              receiverName="Khách hàng / Chủ sân"
+              onClose={() => setShowChat(false)}
+            />
           )}
         </div>
       </div>

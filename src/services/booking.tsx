@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import { auth } from "../services/firebaseAuth";
 const baseURL: string = "http://localhost:8080/api/bookings";
 
 export interface BookingRequestDTO {
@@ -29,54 +29,67 @@ export interface BookingResponseDTO {
   }[];
 }
 
-const getConfig = () => {
+const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const persistedState = localStorage.getItem("persist:root");
+    const currentUser = auth.currentUser;
 
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy token sống từ Firebase:", error);
+  }
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {
       const parsedRoot = JSON.parse(persistedState);
-
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
-
         const token = authState.token;
-
         if (token) {
-          return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          };
+          return { headers: { Authorization: `Bearer ${token}` } };
         }
       }
     }
   } catch (error) {
-    console.error("Error retrieving token from storage:", error);
+    console.error("Lỗi fallback LocalStorage:", error);
   }
 
   return {};
 };
 
 export const createBooking = async (payload: BookingRequestDTO) => {
+  const config = await getConfig();
   const response = await axios.post<{
     BookingRequestDTO: BookingRequestDTO;
     bookingId: string;
-  }>(baseURL, payload, getConfig());
+  }>(baseURL, payload, config);
   return response.data;
 };
 
 export const getBookingSlot = async (pitchId: string, date: string) => {
+  const config = await getConfig();
   const response = await axios.get(`${baseURL}/slots/${pitchId}`, {
-    params: { pitchId, date }, ...getConfig() 
+    params: { pitchId, date },
+    ...config,
   });
   return response.data;
 };
 
 export const getBookingSlotByDate = async (date: string) => {
+  const config = await getConfig();
   const response = await axios.get(`${baseURL}/slots/all`, {
-    params: { date }, ...getConfig() 
+    params: { date },
+    ...config,
   });
   return response.data;
 };
@@ -84,7 +97,7 @@ export const getBookingSlotByDate = async (date: string) => {
 export const getAvailablePitches = async (
   date: string,
   slots: number[],
-  type: string
+  type: string,
 ) => {
   const params = new URLSearchParams();
   params.append("date", date);
@@ -113,35 +126,37 @@ export const updateStatus = async (bookingId: string, status: string) => {
     null,
     {
       params: { status },
-    }
+    },
   );
   return response.data;
 };
 
 export const updatePaymentStatus = async (
   bookingId: string,
-  status: string
+  status: string,
 ) => {
   const response = await axios.put<string>(
     `${baseURL}/${bookingId}/payment-status`,
     null,
     {
       params: { status },
-    }
+    },
   );
   return response.data;
 };
 
 export const getBookingByUserId = async (userId: string) => {
   const response = await axios.get<BookingResponseDTO[]>(
-    `${baseURL}/user/${userId}`
+    `${baseURL}/user/${userId}`,
   );
   return response.data;
 };
 
 export const getBookingByProviderId = async (providerId: string) => {
+  const config = await getConfig();
   const response = await axios.get<BookingResponseDTO[]>(
-    `${baseURL}/provider/${providerId}`, getConfig()
+    `${baseURL}/provider/${providerId}`,
+    config,
   );
   return response.data;
-}
+};

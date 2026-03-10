@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -56,7 +55,6 @@ interface DisplayDiscount extends discountRes {
   displayText: string;
 }
 
-// ===== STATIC DATA (Moved outside component for optimization) =====
 const FALLBACK_IMAGES = [
   "/images/sale1.jpg",
   "/images/sale2.jpg",

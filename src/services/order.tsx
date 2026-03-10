@@ -1,4 +1,5 @@
 import axios from "axios";
+import { auth } from "./firebaseAuth";
 
 const base_url = "http://localhost:8080/api/orders";
 
@@ -33,71 +34,92 @@ export interface orderRequestDTO {
   discountCodes?: string[];
 }
 
-const getConfig = () => {
+const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const persistedState = localStorage.getItem("persist:root");
+    const currentUser = auth.currentUser;
 
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy token sống từ Firebase:", error);
+  }
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {
       const parsedRoot = JSON.parse(persistedState);
-
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
-
         const token = authState.token;
-
         if (token) {
-          return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          };
+          return { headers: { Authorization: `Bearer ${token}` } };
         }
       }
     }
   } catch (error) {
-    console.error("Error retrieving token from storage:", error);
+    console.error("Lỗi fallback LocalStorage:", error);
   }
 
   return {};
 };
 
 export const createOrder = async (payload: orderRequestDTO) => {
-  const response = await axios.post<orderResponseDTO>(base_url, payload, getConfig());
+  const config = await getConfig();
+  const response = await axios.post<orderResponseDTO>(
+    base_url,
+    payload,
+    config,
+  );
   return response.data;
 };
 
 export const getAllOrders = async () => {
-  const response = await axios.get<orderResponseDTO[]>(base_url, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<orderResponseDTO[]>(base_url, config);
   return response.data;
 };
 
 export const getOrderById = async (id: string) => {
-  const response = await axios.get<orderResponseDTO>(`${base_url}/${id}`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<orderResponseDTO>(
+    `${base_url}/${id}`,
+    config,
+  );
   return response.data;
 };
 
 export const getOrdersByUserId = async (userId: string) => {
+  const config = await getConfig();
   const response = await axios.get<orderResponseDTO[]>(
     `${base_url}/user/${userId}`,
-    getConfig()
+    config,
   );
   return response.data;
 };
 
 export const updateOrderStatus = async (id: string, status: string) => {
+  const config = await getConfig();
   const response = await axios.put<orderResponseDTO>(
     `${base_url}/${id}/status`,
     null,
     {
       params: { status: status },
-      ...getConfig()
-    }
+      ...config,
+    },
   );
   return response.data;
 };
 
 export const deleteOrder = async (id: number) => {
-  await axios.delete(`${base_url}/${id}`, getConfig());
+  const config = await getConfig();
+  await axios.delete(`${base_url}/${id}`, config);
 };

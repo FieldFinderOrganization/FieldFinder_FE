@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Provider } from "react-redux";
+import { auth } from "./firebaseAuth";
 
 const baseURL: string = "http://localhost:8080";
 
@@ -25,124 +26,155 @@ export interface providerAddress {
   address: string;
 }
 
-const getConfig = () => {
+const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const persistedState = localStorage.getItem("persist:root");
+    const currentUser = auth.currentUser;
 
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy token sống từ Firebase:", error);
+  }
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {
       const parsedRoot = JSON.parse(persistedState);
-
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
-
         const token = authState.token;
-
         if (token) {
-          return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          };
+          return { headers: { Authorization: `Bearer ${token}` } };
         }
       }
     }
   } catch (error) {
-    console.error("Error retrieving token from storage:", error);
+    console.error("Lỗi fallback LocalStorage:", error);
   }
 
   return {};
 };
 
 export const getProvider = async (
-  userId: string
+  userId: string,
 ): Promise<{
   providerId: string;
   cardNumber: string;
   bank: string;
   status: number;
 }> => {
-  const response = await axios.get(`${baseURL}/providers/user/${userId}`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get(
+    `${baseURL}/providers/user/${userId}`,
+    config,
+  );
   return response.data;
 };
 
 export const addProvider = async (
   providerObj: Provider,
-  userId: string
+  userId: string,
 ): Promise<{ providerId: string; cardNumber: string; bank: string }> => {
   const payload = {
     userId,
     ...providerObj,
   };
-  const response = await axios.post(`${baseURL}/providers`, payload, getConfig());
+  const config = await getConfig();
+  const response = await axios.post(`${baseURL}/providers`, payload, config);
   return response.data;
 };
 
 export const updateProvider = async (
   providerObj: Provider,
-  providerId: string
+  providerId: string,
 ): Promise<{ providerId: string; cardNumber: string; bank: string }> => {
   const payload = {
     ...providerObj,
   };
+  const config = await getConfig();
   const response = await axios.put(
     `${baseURL}/providers/${providerId}`,
-    payload, getConfig()
+    payload,
+    config,
   );
   return response.data;
 };
 
 export const addAddress = async (
-  addressObj: Address
+  addressObj: Address,
 ): Promise<providerAddress> => {
   const payload = {
     ...addressObj,
   };
+  const config = await getConfig();
   const response = await axios.post(
     `${baseURL}/api/provider-addresses`,
-    payload, getConfig()
+    payload,
+    config,
   );
   return response.data;
 };
 
 export const updateAddress = async (
   addressObj: Address,
-  providerAddressId: string
+  providerAddressId: string,
 ): Promise<providerAddress> => {
   const payload = {
     ...addressObj,
   };
+  const config = await getConfig();
   const response = await axios.put(
     `${baseURL}/api/provider-addresses/${providerAddressId}`,
-    payload, getConfig()
+    payload,
+    config,
   );
   return response.data;
 };
 
 export const getAddress = async (
-  providerId: string
+  providerId: string,
 ): Promise<providerAddress[]> => {
+  const config = await getConfig();
   const response = await axios.get(
-    `${baseURL}/api/provider-addresses/provider/${providerId}`, getConfig()
+    `${baseURL}/api/provider-addresses/provider/${providerId}`,
+    config,
   );
   return response.data;
 };
 
 export const deleteAddress = async (
-  providerAddressId: string
+  providerAddressId: string,
 ): Promise<void> => {
-  await axios.delete(`${baseURL}/api/provider-addresses/${providerAddressId}`, getConfig());
+  const config = await getConfig();
+  await axios.delete(
+    `${baseURL}/api/provider-addresses/${providerAddressId}`,
+    config,
+  );
 };
 
 export const getAllAddresses = async (): Promise<providerAddress[]> => {
+  const config = await getConfig();
   const response = await axios.get<providerAddress[]>(
-    `${baseURL}/api/provider-addresses`, getConfig()
+    `${baseURL}/api/provider-addresses`,
+    config,
   );
   return response.data;
 };
 
 export const getAllProviders = async (): Promise<ProviderResponse[]> => {
-  const response = await axios.get<ProviderResponse[]>(`${baseURL}/providers`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<ProviderResponse[]>(
+    `${baseURL}/providers`,
+    config,
+  );
   return response.data;
 };

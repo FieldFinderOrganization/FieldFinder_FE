@@ -1,4 +1,5 @@
 import axios from "axios";
+import { auth } from "./firebaseAuth";
 
 const baseURL: string = "http://localhost:8080/api/pitches";
 
@@ -19,76 +20,94 @@ export interface PitchResponseDTO {
   description?: string;
 }
 
-const getConfig = () => {
+const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const persistedState = localStorage.getItem("persist:root");
+    const currentUser = auth.currentUser;
 
+    if (currentUser) {
+      const token = await currentUser.getIdToken(true);
+
+      return {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy token sống từ Firebase:", error);
+  }
+
+  try {
+    const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {
       const parsedRoot = JSON.parse(persistedState);
-
       if (parsedRoot.auth) {
         const authState = JSON.parse(parsedRoot.auth);
-
         const token = authState.token;
-
         if (token) {
-          return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          };
+          return { headers: { Authorization: `Bearer ${token}` } };
         }
       }
     }
   } catch (error) {
-    console.error("Error retrieving token from storage:", error);
+    console.error("Lỗi fallback LocalStorage:", error);
   }
 
   return {};
 };
 
 export const getPitchesByProviderAddressId = async (
-  providerAddressId: string
+  providerAddressId: string,
 ): Promise<PitchResponseDTO[]> => {
+  const config = await getConfig();
   const response = await axios.get<PitchResponseDTO[]>(
-    `${baseURL}/provider/${providerAddressId}`, getConfig()
+    `${baseURL}/provider/${providerAddressId}`,
+    config,
   );
   return response.data;
 };
 
 export const createPitch = async (
-  payload: PitchRequestDTO
+  payload: PitchRequestDTO,
 ): Promise<PitchResponseDTO> => {
-  const response = await axios.post<PitchResponseDTO>(baseURL, payload, getConfig());
+  const config = await getConfig();
+  const response = await axios.post<PitchResponseDTO>(baseURL, payload, config);
   return response.data;
 };
 
 export const updatePitch = async (
   pitchId: string,
-  payload: PitchRequestDTO
+  payload: PitchRequestDTO,
 ): Promise<PitchResponseDTO> => {
+  const config = await getConfig();
   const response = await axios.put<PitchResponseDTO>(
     `${baseURL}/${pitchId}`,
     payload,
-    getConfig()
+    config,
   );
   return response.data;
 };
 
 export const deletePitch = async (pitchId: string): Promise<void> => {
-  await axios.delete(`${baseURL}/${pitchId}`, getConfig());
+  const config = await getConfig();
+  await axios.delete(`${baseURL}/${pitchId}`, config);
 };
 
 export const getAllPitches = async (): Promise<PitchResponseDTO[]> => {
-  const response = await axios.get<PitchResponseDTO[]>(`${baseURL}`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<PitchResponseDTO[]>(`${baseURL}`, config);
   return response.data;
 };
 
 export const getPitchById = async (
-  pitchId: string
+  pitchId: string,
 ): Promise<PitchResponseDTO> => {
-  const response = await axios.get<PitchResponseDTO>(`${baseURL}/${pitchId}`, getConfig());
+  const config = await getConfig();
+  const response = await axios.get<PitchResponseDTO>(
+    `${baseURL}/${pitchId}`,
+    config,
+  );
   return response.data;
 };
