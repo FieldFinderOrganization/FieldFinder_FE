@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -7,9 +9,12 @@ import {
   Typography,
   Box,
   Tooltip,
+  Backdrop,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import CloseIcon from "@mui/icons-material/Close";
+import ImageIcon from "@mui/icons-material/Image";
+import CancelIcon from "@mui/icons-material/Cancel";
 
 declare global {
   interface Window {
@@ -49,10 +54,16 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   const [isTyping, setIsTyping] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -121,40 +132,40 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     fetchInitialHistory();
   }, [currentUserId, receiverId]);
 
-  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    if (target.scrollTop === 0 && hasMore && !isLoadingMore) {
-      setIsLoadingMore(true);
-      const oldScrollHeight = target.scrollHeight;
+  // const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+  //   const target = e.target as HTMLDivElement;
+  //   if (target.scrollTop === 0 && hasMore && !isLoadingMore) {
+  //     setIsLoadingMore(true);
+  //     const oldScrollHeight = target.scrollHeight;
 
-      try {
-        const nextPage = page + 1;
-        const response = await fetch(
-          `http://localhost:8080/api/chat/history?user1=${currentUserId}&user2=${receiverId}&page=${nextPage}&size=20`,
-        );
-        const data = await response.json();
+  //     try {
+  //       const nextPage = page + 1;
+  //       const response = await fetch(
+  //         `http://localhost:8080/api/chat/history?user1=${currentUserId}&user2=${receiverId}&page=${nextPage}&size=20`,
+  //       );
+  //       const data = await response.json();
 
-        if (data && data.content) {
-          const reversedOlderMessages = [...data.content].reverse();
+  //       if (data && data.content) {
+  //         const reversedOlderMessages = [...data.content].reverse();
 
-          setMessages((prev) => [...reversedOlderMessages, ...prev]);
-          setHasMore(!data.last);
-          setPage(nextPage);
+  //         setMessages((prev) => [...reversedOlderMessages, ...prev]);
+  //         setHasMore(!data.last);
+  //         setPage(nextPage);
 
-          setTimeout(() => {
-            if (scrollContainerRef.current) {
-              scrollContainerRef.current.scrollTop =
-                scrollContainerRef.current.scrollHeight - oldScrollHeight;
-            }
-          }, 0);
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải thêm tin nhắn cũ:", error);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    }
-  };
+  //         setTimeout(() => {
+  //           if (scrollContainerRef.current) {
+  //             scrollContainerRef.current.scrollTop =
+  //               scrollContainerRef.current.scrollHeight - oldScrollHeight;
+  //           }
+  //         }, 0);
+  //       }
+  //     } catch (error) {
+  //       console.error("Lỗi khi tải thêm tin nhắn cũ:", error);
+  //     } finally {
+  //       setIsLoadingMore(false);
+  //     }
+  //   }
+  // };
 
   useEffect(() => {
     if (!currentUserId || !receiverId) return;
@@ -196,7 +207,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
                 ) {
                   setMessages((prev) => [...prev, newMsg]);
 
-                  // Đang mở khung chat mà có tin nhắn tới -> Đánh dấu đọc luôn
+                  // Đang mở khung chat mà có tin nhắn tới đánh dấu đọc luôn
                   if (newMsg.senderId === receiverId) {
                     fetch(
                       `http://localhost:8080/api/chat/mark-read?senderId=${receiverId}&receiverId=${currentUserId}`,
@@ -204,7 +215,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
                     );
                   }
 
-                  setIsTyping(false); // Có tin nhắn tới thì tắt chữ Đang gõ đi
+                  setIsTyping(false); // Có tin nhắn tới thì tắt chữ Đang gõ
                   setTimeout(scrollToBottom, 50);
                 }
               }
@@ -251,27 +262,112 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     };
   }, [currentUserId, receiverId]);
 
-  const sendMessage = () => {
-    if (inputMessage.trim() && stompClient && isConnected) {
-      const chatMessage: ChatMessage = {
-        senderId: currentUserId,
-        receiverId: receiverId,
-        content: inputMessage.trim(),
-        type: "CHAT",
-      };
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file)); // Tạo link ảo để preview
+    }
+  };
 
-      stompClient.publish({
-        destination: "/app/chat",
-        body: JSON.stringify(chatMessage),
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setSelectedImage(file);
+          setPreviewUrl(URL.createObjectURL(file));
+          e.preventDefault(); // Chặn việc paste tên file dạng text vào ô input
+        }
+        break;
+      }
+    }
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input file
+  };
+
+  const uploadImageToCloud = async (file: File): Promise<string> => {
+    const cloudName =
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dxgy8ilqu";
+    const uploadPreset =
+      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "chat_preset";
+
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        body: formData,
       });
 
-      setMessages((prev) => [
-        ...prev,
-        { ...chatMessage, timestamp: new Date().toISOString() },
-      ]);
-      setInputMessage("");
-      setTimeout(scrollToBottom, 50);
+      if (!response.ok) {
+        throw new Error("Tải ảnh lên Cloudinary thất bại!");
+      }
+
+      const data = await response.json();
+
+      // data.secure_url chính là đường link https của tấm ảnh vừa up
+      return data.secure_url;
+    } catch (error) {
+      console.error("Lỗi khi upload ảnh:", error);
+      throw error;
     }
+  };
+
+  const sendMessage = async () => {
+    if (
+      (!inputMessage.trim() && !selectedImage) ||
+      !stompClient ||
+      !isConnected
+    )
+      return;
+
+    let messageContent = inputMessage.trim();
+    let messageType = "TEXT";
+
+    // NẾU CÓ ẢNH -> UPLOAD ẢNH TRƯỚC TIÊN
+    if (selectedImage) {
+      setIsUploading(true);
+      try {
+        const uploadedUrl = await uploadImageToCloud(selectedImage);
+        messageContent = uploadedUrl; // Gán URL ảnh vào làm nội dung tin nhắn
+        messageType = "IMAGE"; // Đổi type thành Ảnh
+      } catch (error) {
+        console.error("Lỗi up ảnh:", error);
+        setIsUploading(false);
+        return; // Up ảnh lỗi thì không gửi tin nhắn nữa
+      }
+      setIsUploading(false);
+      removeSelectedImage(); // Up xong thì xóa preview
+    }
+
+    const chatMessage: ChatMessage = {
+      senderId: currentUserId,
+      receiverId: receiverId,
+      content: messageContent,
+      type: messageType,
+    };
+
+    stompClient.publish({
+      destination: "/app/chat",
+      body: JSON.stringify(chatMessage),
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      { ...chatMessage, timestamp: new Date().toISOString() },
+    ]);
+    setInputMessage("");
+    setTimeout(scrollToBottom, 50);
   };
 
   const handleTyping = (
@@ -301,133 +397,218 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   };
 
   return (
-    <Paper
-      elevation={4}
-      className="flex flex-col w-[350px] h-[450px] rounded-t-lg overflow-hidden fixed bottom-4 right-4 z-50"
-    >
-      <Box className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center shadow-md">
-        <Box>
-          <Typography variant="subtitle1" fontWeight="bold">
-            {receiverName}
-          </Typography>
-          <Typography
-            variant="caption"
-            className="text-blue-100 flex items-center gap-1"
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-400" : "bg-red-400"}`}
-            ></span>
-            {isConnected ? "Đang hoạt động" : "Đang kết nối..."}
-          </Typography>
-        </Box>
-        {onClose && (
-          <IconButton size="small" sx={{ color: "white" }} onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        )}
-      </Box>
-
-      <Box
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 p-4 overflow-y-auto overscroll-contain bg-gray-50 flex flex-col gap-3"
+    <>
+      <Paper
+        elevation={4}
+        className="flex flex-col w-[350px] h-[450px] rounded-t-lg overflow-hidden fixed bottom-4 right-4 z-50"
       >
-        {isLoadingMore && (
-          <Typography
-            variant="caption"
-            className="text-center text-gray-500 my-2"
-          >
-            Đang tải tin nhắn cũ...
-          </Typography>
-        )}
+        <Box className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center shadow-md">
+          <Box>
+            <Typography variant="subtitle1" fontWeight="bold">
+              {receiverName}
+            </Typography>
+            <Typography
+              variant="caption"
+              className="text-blue-100 flex items-center gap-1"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-400" : "bg-red-400"}`}
+              ></span>
+              {isConnected ? "Đang hoạt động" : "Đang kết nối..."}
+            </Typography>
+          </Box>
+          {onClose && (
+            <IconButton size="small" sx={{ color: "white" }} onClick={onClose}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
 
-        {messages.map((msg, idx) => {
-          const isMe = msg.senderId === currentUserId;
+        <Box
+          ref={scrollContainerRef}
+          className="flex-1 p-4 overflow-y-auto overscroll-contain bg-gray-50 flex flex-col gap-3 relative"
+        >
+          {messages.map((msg, idx) => {
+            const isMe = msg.senderId === currentUserId;
+            const prevMsg = idx > 0 ? messages[idx - 1] : undefined;
+            const showTime = shouldShowTime(msg, prevMsg);
 
-          const prevMsg = idx > 0 ? messages[idx - 1] : undefined;
-          const showTime = shouldShowTime(msg, prevMsg);
-
-          return (
-            <React.Fragment key={idx}>
-              {showTime && (
-                <Box className="flex justify-center my-2">
-                  <Typography
-                    variant="caption"
-                    className="text-gray-400 font-medium"
-                  >
-                    {formatMessageTime(msg.timestamp)}
-                  </Typography>
-                </Box>
-              )}
-
-              <Box className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <Tooltip
-                  title={formatMessageTime(msg.timestamp)}
-                  placement={isMe ? "left" : "right"}
-                  arrow
-                  enterDelay={200}
-                  slotProps={{
-                    tooltip: {
-                      sx: {
-                        bgcolor: "rgba(0, 0, 0, 0.7)",
-                        fontSize: "11px",
-                        borderRadius: "8px",
-                        padding: "4px 8px",
-                      },
-                    },
-                    arrow: {
-                      sx: {
-                        color: "rgba(0, 0, 0, 0.7)",
-                      },
-                    },
-                  }}
-                >
-                  <Box
-                    className={`max-w-[75%] px-3 py-2 rounded-2xl ${
-                      isMe
-                        ? "bg-blue-500 text-white rounded-br-none"
-                        : "bg-gray-200 text-gray-800 rounded-bl-none"
-                    }`}
-                  >
-                    <Typography variant="body2">{msg.content}</Typography>
+            return (
+              <React.Fragment key={idx}>
+                {showTime && (
+                  <Box className="flex justify-center my-2">
+                    <Typography
+                      variant="caption"
+                      className="text-gray-400 font-medium"
+                    >
+                      {formatMessageTime(msg.timestamp)}
+                    </Typography>
                   </Box>
-                </Tooltip>
-              </Box>
-            </React.Fragment>
-          );
-        })}
+                )}
 
-        {isTyping && (
-          <Box className="flex justify-start my-1 animate-pulse">
-            <Box className="bg-gray-200 text-gray-500 px-3 py-2 rounded-2xl rounded-bl-none italic text-xs">
-              Đang gõ...
+                <Box
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
+                  <Tooltip
+                    title={formatMessageTime(msg.timestamp)}
+                    placement={isMe ? "left" : "right"}
+                    arrow
+                    slotProps={{
+                      tooltip: {
+                        sx: {
+                          bgcolor: "rgba(0,0,0,0.7)",
+                          fontSize: "11px",
+                          borderRadius: "8px",
+                        },
+                      },
+                    }}
+                  >
+                    <Box
+                      className={`max-w-[75%] px-3 py-2 rounded-2xl ${
+                        isMe
+                          ? msg.type === "IMAGE"
+                            ? "bg-transparent p-0"
+                            : "bg-blue-500 text-white rounded-br-none"
+                          : msg.type === "IMAGE"
+                            ? "bg-transparent p-0"
+                            : "bg-gray-200 text-gray-800 rounded-bl-none"
+                      }`}
+                    >
+                      {msg.type === "IMAGE" ? (
+                        <img
+                          src={msg.content}
+                          alt="chat-attachment"
+                          onClick={() => setZoomedImage(msg.content)}
+                          className={`max-w-full rounded-2xl cursor-pointer hover:opacity-90 transition-opacity ${isMe ? "rounded-br-none" : "rounded-bl-none"}`}
+                        />
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          sx={{ wordBreak: "break-word" }}
+                        >
+                          {msg.content}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Tooltip>
+                </Box>
+              </React.Fragment>
+            );
+          })}
+
+          {isTyping && (
+            <Box className="flex justify-start my-1 animate-pulse">
+              <Box className="bg-gray-200 text-gray-500 px-3 py-2 rounded-2xl rounded-bl-none italic text-xs">
+                Đang gõ...
+              </Box>
+            </Box>
+          )}
+          <div ref={messagesEndRef} />
+        </Box>
+
+        {previewUrl && (
+          <Box className="px-4 py-2 bg-gray-100 border-t flex relative">
+            <Box className="relative">
+              <img
+                src={previewUrl}
+                alt="preview"
+                onClick={() => setZoomedImage(previewUrl)}
+                className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 cursor-pointer"
+              />
+              <IconButton
+                size="small"
+                className="absolute -top-2 -right-2 bg-white text-gray-500 hover:text-red-500 shadow-sm"
+                sx={{ padding: "2px", backgroundColor: "white" }}
+                onClick={removeSelectedImage}
+              >
+                <CancelIcon fontSize="small" />
+              </IconButton>
             </Box>
           </Box>
         )}
 
-        <div ref={messagesEndRef} />
-      </Box>
+        <Box className="p-2 bg-white border-t flex gap-1 items-center relative">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+          />
+          <IconButton
+            color="primary"
+            onClick={() => fileInputRef.current?.click()}
+            size="small"
+          >
+            <ImageIcon />
+          </IconButton>
 
-      <Box className="p-3 bg-white border-t flex gap-2 items-center">
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Nhập tin nhắn..."
-          variant="outlined"
-          value={inputMessage}
-          onChange={handleTyping}
-          onKeyDown={handleKeyPress}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "20px" } }}
-        />
-        <IconButton
-          color="primary"
-          onClick={sendMessage}
-          disabled={!inputMessage.trim() || !isConnected}
-        >
-          <SendIcon />
-        </IconButton>
-      </Box>
-    </Paper>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Nhập tin nhắn..."
+            variant="outlined"
+            value={inputMessage}
+            onChange={handleTyping}
+            onKeyDown={handleKeyPress}
+            onPaste={handlePaste}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "20px" } }}
+            disabled={isUploading}
+          />
+
+          <IconButton
+            color="primary"
+            onClick={sendMessage}
+            disabled={
+              (!inputMessage.trim() && !selectedImage) ||
+              !isConnected ||
+              isUploading
+            }
+          >
+            {isUploading ? (
+              <span className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <SendIcon />
+            )}
+          </IconButton>
+        </Box>
+      </Paper>
+
+      <Backdrop
+        sx={{
+          color: "#fff",
+          zIndex: 9999,
+          backgroundColor: "rgba(0, 0, 0, 0.85)",
+        }}
+        open={!!zoomedImage}
+        onClick={() => setZoomedImage(null)} // Click ra ngoài cũng đóng
+      >
+        {zoomedImage && (
+          <Box className="relative outline-none">
+            {/* Tấm ảnh phóng to */}
+            <img
+              src={zoomedImage}
+              alt="zoomed"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-md shadow-2xl transition-transform transform scale-100 cursor-zoom-out"
+            />
+            {/* Nút X Đóng */}
+            <IconButton
+              sx={{
+                position: "absolute",
+                top: -40,
+                right: -40,
+                color: "white",
+                bgcolor: "rgba(255,255,255,0.1)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+              }}
+              onClick={() => setZoomedImage(null)}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        )}
+      </Backdrop>
+    </>
   );
 };
 

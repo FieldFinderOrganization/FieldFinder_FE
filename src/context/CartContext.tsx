@@ -56,7 +56,13 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const fetchCart = useCallback(async () => {
-    if (!isAuthenticated || !token) {
+    if (
+      !isAuthenticated ||
+      !token ||
+      token === "null" ||
+      token === "undefined" ||
+      token.trim() === ""
+    ) {
       setCartData(null);
       setLoadingCart(false);
       return;
@@ -78,17 +84,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-    }
-  }, [isAuthenticated, fetchCart]);
+    fetchCart();
+  }, [fetchCart]);
 
   const addToCart = async (
     product: productRes,
     size: string,
     quantity: number = 1,
   ) => {
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated || !token || token === "null") {
       toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.");
       return;
     }
@@ -106,7 +110,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const removeFromCart = async (productId: number, size: string) => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated || !token || token === "null") return;
     try {
       await removeCartItem(productId, size);
       toast.info("Đã xóa sản phẩm khỏi giỏ hàng.");
@@ -122,7 +126,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     size: string,
     newQuantity: number,
   ) => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated || !token || token === "null") return;
 
     if (newQuantity < 1) {
       await removeFromCart(productId, size);
@@ -149,7 +153,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const clearCart = useCallback(async () => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated || !token || token === "null") return;
     try {
       await clearCartApi();
       setCartData({ items: [], totalCartPrice: 0 });

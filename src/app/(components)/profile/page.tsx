@@ -361,18 +361,20 @@ const Profile: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchBooking(user?.providerId)
-      .then((data) => {
-        const rows = data.map((booking) => ({
-          id: booking.bookingId,
-          ...booking,
-        }));
-        setBookings(rows);
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-      });
-  }, [user?.userId]);
+    if (user?.role === "PROVIDER" && user?.providerId) {
+      fetchBooking(user.providerId)
+        .then((data) => {
+          const rows = data.map((booking) => ({
+            id: booking.bookingId,
+            ...booking,
+          }));
+          setBookings(rows);
+        })
+        .catch((error) => {
+          console.error("Error fetching data:", error);
+        });
+    }
+  }, [user?.userId, user?.role, user?.providerId]);
 
   useEffect(() => {
     const fetchUser = async () => {
