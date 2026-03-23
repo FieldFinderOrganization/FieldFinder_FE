@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { productRes } from "@/services/product";
 import { toast } from "react-toastify";
+import { usePathname } from "next/navigation"; // Thêm hook lấy URL hiện tại
 
 import {
   getMyCart,
@@ -22,8 +23,9 @@ import {
   CartItemDetail,
 } from "@/services/cart";
 
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux"; // Thêm useDispatch
 import { RootState } from "@/redux/store";
+import { logout } from "@/redux/features/authSlice"; // Import action logout của bạn
 
 interface CartContextType {
   cartData: cartRes | null;
@@ -55,7 +57,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     (state: RootState) => state.auth,
   );
 
+  const dispatch = useDispatch();
+  const pathname = usePathname(); // Lấy đường dẫn hiện tại (VD: "/login")
+
   const fetchCart = useCallback(async () => {
+    // FIX 1: CHẶN GỌI API NẾU ĐANG Ở TRANG LOGIN HOẶC REGISTER
+    if (pathname === "/login" || pathname === "/register") {
+      setCartData(null);
+      setLoadingCart(false);
+      return;
+    }
+
     if (
       !isAuthenticated ||
       !token ||
@@ -74,14 +86,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCartData(data);
     } catch (error: any) {
       console.error("Failed to fetch cart:", error);
-      if (error.response?.status === 401) {
+      // FIX 2: TỰ ĐỘNG XÓA TOKEN HẾT HẠN KHỎI REDUX KHI GẶP LỖI 401
+      if (error.response?.status === 401 || error.response?.status === 403) {
         toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.");
+        dispatch(logout()); // Đuổi cổ cái token cũ đi để tránh nó gọi API bậy bạ lần sau
       }
       setCartData(null);
     } finally {
       setLoadingCart(false);
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, pathname, dispatch]);
 
   useEffect(() => {
     fetchCart();

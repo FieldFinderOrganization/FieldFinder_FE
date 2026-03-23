@@ -3,9 +3,18 @@
 import { useState } from "react";
 import ChatIcon from "@mui/icons-material/Chat";
 import AIChat from "./ai/AIChat";
+import { usePathname } from "next/navigation";
 
 export default function GlobalAIChat() {
   const [showChat, setShowChat] = useState(false);
+
+  const pathname = usePathname();
+
+  const hiddenRoutes = ["/login", "/signup"];
+
+  if (hiddenRoutes.includes(pathname)) {
+    return null;
+  }
 
   return (
     <>

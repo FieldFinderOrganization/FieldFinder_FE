@@ -400,7 +400,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     <>
       <Paper
         elevation={4}
-        className="flex flex-col w-[350px] h-[450px] rounded-t-lg overflow-hidden fixed bottom-4 right-4 z-50"
+        className="flex flex-col w-[350px] h-[450px] rounded-t-lg overflow-hidden fixed bottom-4 right-[100px] z-50"
       >
         <Box className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center shadow-md">
           <Box>

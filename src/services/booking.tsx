@@ -16,6 +16,7 @@ export interface BookingRequestDTO {
 
 export interface BookingResponseDTO {
   bookingId: string;
+  userId: string;
   bookingDate: string;
   status: string;
   paymentStatus: string;
@@ -146,8 +147,10 @@ export const updatePaymentStatus = async (
 };
 
 export const getBookingByUserId = async (userId: string) => {
+  const config = await getConfig();
   const response = await axios.get<BookingResponseDTO[]>(
     `${baseURL}/user/${userId}`,
+    config,
   );
   return response.data;
 };

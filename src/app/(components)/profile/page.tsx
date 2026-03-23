@@ -46,6 +46,7 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"; // THÊM ICON CHAT
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import "../profile/profile.css";
 import { toast } from "react-toastify";
@@ -82,8 +83,11 @@ import { persistor } from "@/redux/store";
 import ChatBox from "@/utils/chatBox";
 
 const Profile: React.FC = () => {
-  const [showChat, setShowChat] = useState(false);
-  const [receiverIdInput, setReceiverIdInput] = useState("");
+  // THÊM: STATE ĐỂ LƯU NGƯỜI ĐANG CHAT (TỰ ĐỘNG BẬT KHUNG CHAT KHI CÓ DATA)
+  const [activeChatUser, setActiveChatUser] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const dispatch = useDispatch();
   const router = useRouter();
@@ -221,17 +225,18 @@ const Profile: React.FC = () => {
     {
       field: "bookingDate",
       headerName: "Ngày đặt",
-      width: 150,
+      width: 120,
       renderCell: (params) => {
         return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
       },
     },
-    { field: "providerName", headerName: "Tên chủ sân", width: 150 },
+    // THÊM CỘT TÊN KHÁCH HÀNG ĐỂ CHỦ SÂN DỄ NHÌN
+    { field: "userName", headerName: "Tên Khách hàng", width: 150 },
     { field: "pitchName", headerName: "Tên sân", width: 150 },
     {
       field: "timeRange",
       headerName: "Khung giờ",
-      width: 200,
+      width: 150,
       renderCell: (params) => {
         if (!params.row) return "Không có dữ liệu";
         return mergeContinuousSlots(params.row.slots);
@@ -239,8 +244,8 @@ const Profile: React.FC = () => {
     },
     {
       field: "status",
-      headerName: "Trạng thái đặt sân",
-      width: 150,
+      headerName: "Trạng thái",
+      width: 130,
       renderCell: (params) => {
         let typeText = "";
         switch (params.row.status) {
@@ -261,8 +266,8 @@ const Profile: React.FC = () => {
     },
     {
       field: "paymentStatus",
-      headerName: "Trạng thái thanh toán",
-      width: 150,
+      headerName: "Thanh toán",
+      width: 130,
       renderCell: (params) => {
         let typeText = "";
         switch (params.row.paymentStatus) {
@@ -283,19 +288,39 @@ const Profile: React.FC = () => {
       field: "actions",
       type: "actions",
       headerName: "Thao tác",
-      width: 100,
+      flex: 1,
+      width: 150,
       getActions: (params) => {
         if (!params || !params.row) {
           return [];
         }
         const booking = params.row as BookingResponseDTO & {
           paymentMethod?: string;
+          userName?: string;
+          userId?: string;
         };
         return [
           <GridActionsCellItem
             icon={<EditOutlinedIcon />}
-            label="Edit"
+            label="Sửa trạng thái"
             onClick={() => handleOpen(booking)}
+            showInMenu={false}
+          />,
+          // THÊM NÚT CHAT VỚI KHÁCH HÀNG Ở ĐÂY
+          <GridActionsCellItem
+            icon={<ChatBubbleOutlineIcon color="primary" />}
+            label="Nhắn tin với khách"
+            onClick={() => {
+              if (booking.userId) {
+                setActiveChatUser({
+                  id: booking.userId,
+                  name: booking.userName || "Khách hàng",
+                });
+              } else {
+                toast.warning("Không tìm thấy thông tin khách hàng!");
+              }
+            }}
+            showInMenu={false}
           />,
         ];
       },
@@ -342,11 +367,13 @@ const Profile: React.FC = () => {
         const pitch = pitchMap.get(pitchId);
         const provider = providerMap.get(booking.providerId);
         const providerUser = provider ? userMap.get(provider.userId) : null;
+        const customerUser = userMap.get(booking.userId); // Lấy user đặt sân
 
         return {
           ...booking,
           paymentMethod,
           providerName: providerUser?.name || "Không xác định",
+          userName: customerUser?.name || "Khách hàng", // MAP TÊN KHÁCH HÀNG VÀO ĐÂY
           pitchName: pitch?.name || "Không xác định",
           slots: booking.bookingDetails.map((detail) => detail.slot),
         };
@@ -362,17 +389,8 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (user?.role === "PROVIDER" && user?.providerId) {
-      fetchBooking(user.providerId)
-        .then((data) => {
-          const rows = data.map((booking) => ({
-            id: booking.bookingId,
-            ...booking,
-          }));
-          setBookings(rows);
-        })
-        .catch((error) => {
-          console.error("Error fetching data:", error);
-        });
+      // Để hiển thị tên Khách hàng ngay lần đầu load, ta gọi hàm resetBooking luôn thay vì fetchBooking cơ bản
+      resetBooking(user.providerId);
     }
   }, [user?.userId, user?.role, user?.providerId]);
 
@@ -662,7 +680,6 @@ const Profile: React.FC = () => {
           ...formData,
           providerAddressId: pitchToEdit.providerAddressId,
         });
-        // Update both pitches and pitchesByArea atomically
         setPitches((prevPitches) =>
           prevPitches.map((p) =>
             p.pitchId === updatedPitch.pitchId ? updatedPitch : p,
@@ -685,7 +702,6 @@ const Profile: React.FC = () => {
           ...formData,
           providerAddressId: selectedAreaId,
         });
-        // Update both pitches and pitchesByArea
         setPitches((prevPitches) => [...prevPitches, newPitch]);
         setPitchesByArea((prev) => ({
           ...prev,
@@ -831,6 +847,7 @@ const Profile: React.FC = () => {
           handleLogout={handleLogout}
         />
         <div className="w-[75%] mt-[1.5rem] space-y-[2rem]">
+          {/* TAB 0: Thông tin cá nhân */}
           {initTab === 0 && (
             <div className="flex flex-col items-start justify-start gap-y-[1rem]">
               <Typography variant="h5" sx={{ fontWeight: "bold" }}>
@@ -982,6 +999,8 @@ const Profile: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* TAB 0 (Tiếp tục): Thông tin nhà cung cấp */}
           {initTab === 0 && user?.role === "PROVIDER" && (
             <div className="flex flex-col items-start justify-start gap-y-[1rem]">
               <Typography variant="h5" sx={{ fontWeight: "bold" }}>
@@ -1139,6 +1158,8 @@ const Profile: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* TAB 1: Thông tin sân */}
           {initTab === 1 && (
             <div className="flex flex-col items-start justify-start gap-y-[1rem]">
               <Typography variant="h5" sx={{ fontWeight: "bold" }}>
@@ -1371,6 +1392,8 @@ const Profile: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* TAB 2: Thông tin đặt sân (DANH SÁCH KHÁCH HÀNG & CHAT) */}
           {initTab === 2 && user?.role === "PROVIDER" && (
             <div className="flex flex-col gap-y-[1rem]">
               <div className="flex justify-between items-center mb-4">
@@ -1383,10 +1406,19 @@ const Profile: React.FC = () => {
                   onClick={() => resetBooking(user?.providerId)}
                 >
                   <RestartAltOutlinedIcon />
-                  Đặt lại
+                  Làm mới danh sách
                 </button>
               </div>
-              <Box sx={{ height: 400, width: "100%" }}>
+              <Box
+                sx={{
+                  height: 500,
+                  width: "100%",
+                  backgroundColor: "white",
+                  padding: 2,
+                  borderRadius: 2,
+                  boxShadow: 1,
+                }}
+              >
                 <DataGrid
                   rows={bookings || []}
                   columns={bookingColumns}
@@ -1396,48 +1428,27 @@ const Profile: React.FC = () => {
                       paginationModel: { pageSize: 5 },
                     },
                   }}
-                  pageSizeOptions={[5]}
-                  checkboxSelection
+                  pageSizeOptions={[5, 10, 20]}
+                  checkboxSelection={false} // Tắt cái này đi cho bảng đỡ rối
                   disableRowSelectionOnClick
                 />
               </Box>
             </div>
           )}
         </div>
-
-        <div className="p-4 border rounded-md m-4 bg-white shadow-md w-fit">
-          <h3 className="font-bold mb-2">Góc Test Chat 🚀</h3>
-          <p className="text-sm text-gray-500 mb-2">
-            ID của tôi: {user?.userId}
-          </p>
-
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nhập UUID người muốn chat..."
-              value={receiverIdInput}
-              onChange={(e) => setReceiverIdInput(e.target.value)}
-              className="border p-2 rounded-md w-[300px]"
-            />
-            <button
-              onClick={() => setShowChat(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md font-bold"
-            >
-              Mở khung Chat
-            </button>
-          </div>
-
-          {/* Khung chat sẽ hiện lên khi bấm nút */}
-          {showChat && receiverIdInput && (
-            <ChatBox
-              currentUserId={user?.userId}
-              receiverId={receiverIdInput} // Lấy ID từ ô input truyền vào
-              receiverName="Khách hàng / Chủ sân"
-              onClose={() => setShowChat(false)}
-            />
-          )}
-        </div>
       </div>
+
+      {/* RENDER KHUNG CHAT (Nổi lên khi activeChatUser có dữ liệu) */}
+      {activeChatUser && (
+        <ChatBox
+          currentUserId={user?.userId}
+          receiverId={activeChatUser.id}
+          receiverName={activeChatUser.name}
+          onClose={() => setActiveChatUser(null)} // Bấm X thì đóng ChatBox
+        />
+      )}
+
+      {/* CÁC MODAL HIỆN CÓ CỦA BẠN */}
       <PitchModal
         open={openPitchModal}
         onClose={() => setOpenPitchModal(false)}
@@ -1516,7 +1527,6 @@ const Profile: React.FC = () => {
           </Box>
         </Box>
       </Modal>
-      ;
     </div>
   );
 };
