@@ -24,7 +24,7 @@ import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import FileDownloadIcon from "@mui/icons-material/FileDownload"; // Import icon download
-
+import { getBookingByProviderId } from "@/services/booking";
 // Import thư viện Excel
 import * as XLSX from "xlsx";
 
@@ -90,6 +90,7 @@ export interface PitchData {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
+  environment: string;
 }
 
 interface UserData {
@@ -137,7 +138,7 @@ const mergeContinuousSlots = (slots: number[]): string => {
         result.push(slotToTime(start));
       } else {
         result.push(
-          `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+          `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`,
         );
       }
       start = sortedSlots[i];
@@ -149,7 +150,7 @@ const mergeContinuousSlots = (slots: number[]): string => {
     result.push(slotToTime(start));
   } else {
     result.push(
-      `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`
+      `${slotToTime(start).split("-")[0]}-${slotToTime(current).split("-")[1]}`,
     );
   }
 
@@ -197,7 +198,7 @@ const Dashboard: React.FC = () => {
 
   const [editPitchDialogOpen, setEditPitchDialogOpen] = React.useState(false);
   const [editingPitch, setEditingPitch] = React.useState<PitchData | null>(
-    null
+    null,
   );
   const userTableRef = React.useRef<HTMLDivElement>(null);
   const providerTableRef = React.useRef<HTMLDivElement>(null);
@@ -207,7 +208,7 @@ const Dashboard: React.FC = () => {
   const discountTableRef = React.useRef<HTMLDivElement>(null);
 
   const [addresses, setAddresses] = React.useState<providerAddress[] | null>(
-    null
+    null,
   );
 
   React.useEffect(() => {
@@ -219,7 +220,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const addressMap = new Map(
-    (addresses ?? []).map((addr) => [addr.providerAddressId, addr.address])
+    (addresses ?? []).map((addr) => [addr.providerAddressId, addr.address]),
   );
 
   const weeklyUserData = [0, 1, 2, users.length];
@@ -232,7 +233,7 @@ const Dashboard: React.FC = () => {
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<UserData | null>(null);
   const [newStatus, setNewStatus] = React.useState<"ACTIVE" | "BLOCKED">(
-    "ACTIVE"
+    "ACTIVE",
   );
 
   // ===== EXPORT FUNCTION =====
@@ -240,11 +241,11 @@ const Dashboard: React.FC = () => {
     try {
       // 1. Sheet Tổng quan (Overview)
       const confirmedPaidBookings = bookings.filter(
-        (b) => b.status === "CONFIRMED" && b.paymentStatus === "PAID"
+        (b) => b.status === "CONFIRMED" && b.paymentStatus === "PAID",
       );
       const totalRevenue = confirmedPaidBookings.reduce(
         (sum, b) => sum + (b.totalPrice || 0),
-        0
+        0,
       );
 
       const overviewData = [
@@ -660,7 +661,7 @@ const Dashboard: React.FC = () => {
           phone: user.phone,
           role: user.role ?? "USER",
           status: user.status,
-        }))
+        })),
       );
       toast.success("Đã đặt lại danh sách người dùng");
     } catch (error) {
@@ -693,24 +694,17 @@ const Dashboard: React.FC = () => {
 
   const resetBookings = async () => {
     try {
-      const [userRes, providerRes, pitchRes, bookRes] = await Promise.all([
-        getAllUsers(),
-        getAllProviders(),
-        getAllPitches(),
-        getAllBookings(),
-      ]);
+      const bookRes = await getAllBookings();
 
-      const pitchMap = new Map(pitchRes.map((pitch) => [pitch.pitchId, pitch]));
-
+      const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
       const providerMap = new Map(
-        providerRes.map((provider) => [provider.providerId, provider])
+        providers.map((provider) => [provider.providerId, provider]),
       );
+      const userMap = new Map(users.map((user) => [user.userId, user]));
 
-      const userMap = new Map(userRes.map((user) => [user.userId, user]));
       const enhancedBookings = bookRes.map((booking: BookingResponseDTO) => {
         const pitchId = booking.bookingDetails[0]?.pitchId;
         const pitch = pitchMap.get(pitchId);
-
         const provider = providerMap.get(booking.providerId);
         const providerUser = provider ? userMap.get(provider.userId) : null;
 
@@ -721,11 +715,12 @@ const Dashboard: React.FC = () => {
           slots: booking.bookingDetails.map((detail) => detail.slot),
         };
       });
+
       setBookings(enhancedBookings || []);
-      toast.success("Đã đặt lại danh sách đơn đặt");
+      toast.success("Tải danh sách đơn đặt thành công!");
     } catch (error) {
-      console.error("Lỗi khi đặt lại đơn đặt:", error);
-      toast.error("Lỗi khi đặt lại danh sách đơn đặt");
+      console.error("Error fetching data:", error);
+      toast.error("Lỗi khi tải danh sách đơn đặt!");
     }
   };
 
@@ -751,11 +746,11 @@ const Dashboard: React.FC = () => {
         }));
 
         const pitchMap = new Map(
-          pitchRes.map((pitch) => [pitch.pitchId, pitch])
+          pitchRes.map((pitch) => [pitch.pitchId, pitch]),
         );
 
         const providerMap = new Map(
-          providerRes.map((provider) => [provider.providerId, provider])
+          providerRes.map((provider) => [provider.providerId, provider]),
         );
 
         const userMap = new Map(userRes.map((user) => [user.userId, user]));
@@ -839,13 +834,13 @@ const Dashboard: React.FC = () => {
           email: editingUser.email,
           phone: editingUser.phone,
         },
-        editingUser.userId
+        editingUser.userId,
       );
 
       setUsers(
         users.map((user) =>
-          user.userId === editingUser.userId ? editingUser : user
-        )
+          user.userId === editingUser.userId ? editingUser : user,
+        ),
       );
 
       toast.success("Cập nhật người dùng thành công");
@@ -865,15 +860,15 @@ const Dashboard: React.FC = () => {
           cardNumber: editingProvider.cardNumber,
           bank: editingProvider.bank,
         },
-        editingProvider.providerId
+        editingProvider.providerId,
       );
 
       setProviders(
         providers.map((provider) =>
           provider.providerId === editingProvider.providerId
             ? editingProvider
-            : provider
-        )
+            : provider,
+        ),
       );
 
       toast.success("Cập nhật Chủ sân thành công");
@@ -894,12 +889,13 @@ const Dashboard: React.FC = () => {
         type: editingPitch.type,
         price: editingPitch.price,
         description: editingPitch.description,
+        environment: editingPitch.environment,
       });
 
       setPitches(
         pitches.map((pitch) =>
-          pitch.pitchId === editingPitch.pitchId ? editingPitch : pitch
-        )
+          pitch.pitchId === editingPitch.pitchId ? editingPitch : pitch,
+        ),
       );
 
       toast.success("Cập nhật sân bóng thành công");
@@ -931,8 +927,8 @@ const Dashboard: React.FC = () => {
           users.map((user) =>
             user.userId === selectedUser.userId
               ? { ...user, status: newStatus }
-              : user
-          )
+              : user,
+          ),
         );
         handleCloseStatusModal();
       } catch (error) {
@@ -1030,7 +1026,7 @@ const Dashboard: React.FC = () => {
   };
 
   const confirmedPaidBookings = bookings.filter(
-    (book) => book.status === "CONFIRMED" && book.paymentStatus === "PAID"
+    (book) => book.status === "CONFIRMED" && book.paymentStatus === "PAID",
   );
 
   if (loading) {
@@ -1132,7 +1128,7 @@ const Dashboard: React.FC = () => {
                   <span>
                     {confirmedPaidBookings.reduce(
                       (sum, book) => sum + (book.totalPrice || 0),
-                      0
+                      0,
                     )}
                   </span>
                 </div>
@@ -1265,7 +1261,41 @@ const Dashboard: React.FC = () => {
             <Button
               variant="outlined"
               color="primary"
-              onClick={resetBookings}
+              onClick={async () => {
+                const bookRes = await getAllBookings();
+                const pitchMap = new Map(
+                  pitches.map((pitch) => [pitch.pitchId, pitch]),
+                );
+                const providerMap = new Map(
+                  providers.map((provider) => [provider.providerId, provider]),
+                );
+                const userMap = new Map(
+                  users.map((user) => [user.userId, user]),
+                );
+
+                const enhancedBookings = bookRes.map(
+                  (booking: BookingResponseDTO) => {
+                    const pitchId = booking.bookingDetails[0]?.pitchId;
+                    const pitch = pitchMap.get(pitchId);
+                    const provider = providerMap.get(booking.providerId);
+                    const providerUser = provider
+                      ? userMap.get(provider.userId)
+                      : null;
+
+                    return {
+                      ...booking,
+                      providerName: providerUser?.name || "Không xác định",
+                      pitchName: pitch?.name || "Không xác định",
+                      slots: booking.bookingDetails.map(
+                        (detail) => detail.slot,
+                      ),
+                    };
+                  },
+                );
+
+                setBookings(enhancedBookings || []);
+                toast.success("Đã đặt lại danh sách đơn đặt");
+              }}
               startIcon={<RestartAltOutlinedIcon />}
             >
               Đặt lại
@@ -1722,7 +1752,7 @@ const Dashboard: React.FC = () => {
                 if (editingDiscount?.id) {
                   await updateDiscount(
                     editingDiscount as any,
-                    editingDiscount.id
+                    editingDiscount.id,
                   );
                   toast.success("Cập nhật discount thành công");
                 } else {

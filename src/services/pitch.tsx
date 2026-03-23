@@ -9,6 +9,7 @@ export interface PitchRequestDTO {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
+  environment: string;
 }
 
 export interface PitchResponseDTO {
@@ -18,6 +19,7 @@ export interface PitchResponseDTO {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
+  environment: string;
 }
 
 const getConfig = async () => {

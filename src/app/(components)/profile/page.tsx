@@ -21,32 +21,23 @@ import {
   TextField,
   Button,
   Autocomplete,
-  Card,
-  CardContent,
-  Checkbox,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip,
-  Select,
-  MenuItem,
   Box,
   Modal,
   FormControl,
   InputLabel,
-  useTheme,
+  Select,
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import { SelectChangeEvent } from "@mui/material/Select";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"; // THÊM ICON CHAT
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { DataGrid, GridActionsCellItem, GridColDef } from "@mui/x-data-grid";
 import "../profile/profile.css";
 import { toast } from "react-toastify";
@@ -56,16 +47,13 @@ import {
   updateProvider,
   getProvider,
   getAllProviders,
+  getAddressByProviderId,
 } from "../../../services/provider";
 import Sidebar from "@/utils/sideBar";
 import AddressInfo from "../addressInfo/page";
+import PitchInfo from "../pitchInfo/PitchInfo";
 import {
   getPitchesByProviderAddressId,
-  createPitch,
-  PitchRequestDTO,
-  PitchResponseDTO,
-  deletePitch,
-  updatePitch,
   getAllPitches,
 } from "../../../services/pitch";
 import { getAllUsers, updateUser, getUserById } from "@/services/user";
@@ -81,9 +69,9 @@ import dayjs from "dayjs";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import { persistor } from "@/redux/store";
 import ChatBox from "@/utils/chatBox";
+import { GiSoccerBall } from "react-icons/gi";
 
 const Profile: React.FC = () => {
-  // THÊM: STATE ĐỂ LƯU NGƯỜI ĐANG CHAT (TỰ ĐỘNG BẬT KHUNG CHAT KHI CÓ DATA)
   const [activeChatUser, setActiveChatUser] = useState<{
     id: string;
     name: string;
@@ -107,33 +95,15 @@ const Profile: React.FC = () => {
   const [initTab, setInitTab] = useState(
     tabs.find((tab) => tab.value === initialTab)?.value || tabs[0].value,
   );
-  const [show, setShow] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingProvider, setIsEditingProvider] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
+  // STATE CHO TAB KHU VỰC
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [areas, setAreas] = useState<
     { id: string; name: string; count: number }[]
   >([]);
-  const [pitchesByArea, setPitchesByArea] = useState<{
-    [key: string]: PitchResponseDTO[];
-  }>({});
-  const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
-  const [selectedPitchIds, setSelectedPitchIds] = useState<string[]>([]);
-  const [openPitchModal, setOpenPitchModal] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [pitchToEdit, setPitchToEdit] = useState<PitchResponseDTO | null>(null);
-  const [openDeleteModal, setOpenDeleteModal] = useState(false);
-
   const selectedAreaId = areas[selectedIndex]?.id;
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const pitchesPerPage = 6;
-  const totalPitches = pitches.length;
-  const totalPages = Math.ceil(totalPitches / pitchesPerPage);
-  const indexOfLastPitch = currentPage * pitchesPerPage;
-  const indexOfFirstPitch = indexOfLastPitch - pitchesPerPage;
-  const currentPitches = pitches.slice(indexOfFirstPitch, indexOfLastPitch);
 
   const banks = [
     { code: "BIDV", name: "BIDV" },
@@ -143,13 +113,11 @@ const Profile: React.FC = () => {
     { code: "CTG", name: "VietinBank" },
   ];
 
-  const theme = useTheme();
-
   const [bookings, setBookings] = useState<any[]>([]);
-
   const [open, setOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] =
     useState<BookingResponseDTO | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string>("PAID");
 
   const handleOpen = (booking: BookingResponseDTO) => {
     setSelectedBooking(booking);
@@ -161,8 +129,6 @@ const Profile: React.FC = () => {
     setSelectedBooking(null);
   };
 
-  const [paymentStatus, setPaymentStatus] = useState<string>("PAID");
-
   const handleChangePaymentStatus = (event: SelectChangeEvent) => {
     setPaymentStatus(event.target.value as string);
   };
@@ -173,6 +139,12 @@ const Profile: React.FC = () => {
         await updateStatus(selectedBooking.bookingId, "CONFIRMED");
         await updatePaymentStatus(selectedBooking.bookingId, paymentStatus);
         toast.success("Cập nhật trạng thái thành công");
+
+        // Refresh booking list to reflect changes
+        if (user?.providerId) {
+          resetBooking(user.providerId);
+        }
+
         handleClose();
       } catch (error) {
         toast.error("Lỗi khi cập nhật trạng thái");
@@ -230,66 +202,106 @@ const Profile: React.FC = () => {
         return dayjs(params.row.bookingDate).format("DD/MM/YYYY");
       },
     },
-    // THÊM CỘT TÊN KHÁCH HÀNG ĐỂ CHỦ SÂN DỄ NHÌN
-    { field: "userName", headerName: "Tên Khách hàng", width: 150 },
-    { field: "pitchName", headerName: "Tên sân", width: 150 },
+    {
+      field: "userName",
+      headerName: "Khách hàng",
+      width: 160,
+      renderCell: (params) => (
+        <span className="font-semibold text-gray-800">
+          {params.row.userName}
+        </span>
+      ),
+    },
+    { field: "pitchName", headerName: "Tên sân", width: 160 },
     {
       field: "timeRange",
       headerName: "Khung giờ",
-      width: 150,
+      width: 160,
       renderCell: (params) => {
         if (!params.row) return "Không có dữ liệu";
-        return mergeContinuousSlots(params.row.slots);
+        return (
+          <div className="bg-gray-100 px-2 py-1 rounded-md text-sm text-gray-700 w-fit mt-2">
+            {mergeContinuousSlots(params.row.slots)}
+          </div>
+        );
       },
     },
     {
       field: "status",
       headerName: "Trạng thái",
-      width: 130,
+      width: 140,
       renderCell: (params) => {
         let typeText = "";
+        let colorClass = "";
         switch (params.row.status) {
           case "PENDING":
             typeText = "Đang chờ";
+            colorClass =
+              "bg-yellow-50 text-yellow-600 border border-yellow-200";
             break;
           case "CONFIRMED":
             typeText = "Đã xác nhận";
+            colorClass = "bg-green-50 text-green-600 border border-green-200";
             break;
           case "CANCELED":
             typeText = "Đã hủy";
+            colorClass = "bg-red-50 text-red-600 border border-red-200";
             break;
           default:
             typeText = params.row.status;
+            colorClass = "bg-gray-50 text-gray-600";
         }
-        return <span>{typeText}</span>;
+        return (
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${colorClass}`}
+          >
+            {typeText}
+          </span>
+        );
       },
     },
     {
       field: "paymentStatus",
       headerName: "Thanh toán",
-      width: 130,
+      width: 140,
       renderCell: (params) => {
         let typeText = "";
+        let colorClass = "";
         switch (params.row.paymentStatus) {
           case "PENDING":
             typeText = "Đang chờ";
+            colorClass = "text-yellow-600 font-medium";
             break;
           case "PAID":
             typeText = "Đã thanh toán";
+            colorClass = "text-green-600 font-semibold";
+            break;
+          case "REFUNDED":
+            typeText = "Hoàn tiền";
+            colorClass = "text-red-600 font-medium";
             break;
           default:
             typeText = params.row.paymentStatus;
         }
-        return <span>{typeText}</span>;
+        return <span className={`${colorClass} text-sm`}>{typeText}</span>;
       },
     },
-    { field: "totalPrice", headerName: "Tổng giá", width: 120 },
+    {
+      field: "totalPrice",
+      headerName: "Tổng giá",
+      width: 130,
+      renderCell: (params) => (
+        <span className="font-bold text-[#e25b43]">
+          {params.row.totalPrice?.toLocaleString("vi-VN")} đ
+        </span>
+      ),
+    },
     {
       field: "actions",
       type: "actions",
       headerName: "Thao tác",
       flex: 1,
-      width: 150,
+      minWidth: 120,
       getActions: (params) => {
         if (!params || !params.row) {
           return [];
@@ -300,96 +312,67 @@ const Profile: React.FC = () => {
           userId?: string;
         };
         return [
-          <GridActionsCellItem
-            icon={<EditOutlinedIcon />}
-            label="Sửa trạng thái"
-            onClick={() => handleOpen(booking)}
-            showInMenu={false}
-          />,
-          // THÊM NÚT CHAT VỚI KHÁCH HÀNG Ở ĐÂY
-          <GridActionsCellItem
-            icon={<ChatBubbleOutlineIcon color="primary" />}
-            label="Nhắn tin với khách"
-            onClick={() => {
-              if (booking.userId) {
-                setActiveChatUser({
-                  id: booking.userId,
-                  name: booking.userName || "Khách hàng",
-                });
-              } else {
-                toast.warning("Không tìm thấy thông tin khách hàng!");
-              }
+          <Box
+            sx={{
+              "& .MuiIconButton-root": {
+                color: "#64748b",
+                "&:hover": { color: "#0093FF", backgroundColor: "#e0f2fe" },
+              },
             }}
-            showInMenu={false}
-          />,
+          >
+            <GridActionsCellItem
+              icon={<EditOutlinedIcon />}
+              label="Sửa trạng thái"
+              onClick={() => handleOpen(booking)}
+              showInMenu={false}
+            />
+          </Box>,
+          <Box
+            sx={{
+              "& .MuiIconButton-root": {
+                color: "#64748b",
+                "&:hover": { color: "#10b981", backgroundColor: "#d1fae5" },
+              },
+            }}
+          >
+            <GridActionsCellItem
+              icon={<ChatBubbleOutlineIcon />}
+              label="Nhắn tin với khách"
+              onClick={() => {
+                if (booking.userId) {
+                  setActiveChatUser({
+                    id: booking.userId,
+                    name: booking.userName || "Khách hàng",
+                  });
+                } else {
+                  toast.warning("Không tìm thấy thông tin khách hàng!");
+                }
+              }}
+              showInMenu={false}
+            />
+          </Box>,
         ];
       },
     },
   ];
 
-  const fetchBooking = async (providerId: string) => {
-    try {
-      const response = await getBookingByProviderId(providerId);
-      return response;
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      return [];
-    }
-  };
-
   const resetBooking = async (providerId: string) => {
     try {
-      const [bookings, payments, users, providers, pitches] = await Promise.all(
-        [
-          getAllBookings(),
-          getAllPayments(),
-          getAllUsers(),
-          getAllProviders(),
-          getAllPitches(),
-        ],
+      const providerBookings = await getBookingByProviderId(providerId);
+      // Sort bookings by date descending (newest first) as a sensible default
+      const sortedBookings = [...providerBookings].sort(
+        (a, b) =>
+          new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
       );
-
-      const filteredBookings = bookings.filter(
-        (booking) => booking.providerId === providerId,
-      );
-
-      const pitchMap = new Map(pitches.map((pitch) => [pitch.pitchId, pitch]));
-      const providerMap = new Map(
-        providers.map((provider) => [provider.providerId, provider]),
-      );
-      const userMap = new Map(users.map((user) => [user.userId, user]));
-
-      const paymentMethod =
-        payments.length > 0 ? payments[0].paymentMethod : null;
-
-      const enhancedBookings = filteredBookings.map((booking) => {
-        const pitchId = booking.bookingDetails[0]?.pitchId;
-        const pitch = pitchMap.get(pitchId);
-        const provider = providerMap.get(booking.providerId);
-        const providerUser = provider ? userMap.get(provider.userId) : null;
-        const customerUser = userMap.get(booking.userId); // Lấy user đặt sân
-
-        return {
-          ...booking,
-          paymentMethod,
-          providerName: providerUser?.name || "Không xác định",
-          userName: customerUser?.name || "Khách hàng", // MAP TÊN KHÁCH HÀNG VÀO ĐÂY
-          pitchName: pitch?.name || "Không xác định",
-          slots: booking.bookingDetails.map((detail) => detail.slot),
-        };
-      });
-
-      setBookings(enhancedBookings);
-      toast.success("Đặt lại danh sách đơn đặt thành công!");
+      setBookings(sortedBookings);
     } catch (error) {
       console.error("Error fetching data:", error);
-      return [];
+      toast.error("Lỗi khi tải danh sách đơn đặt!");
     }
   };
 
   useEffect(() => {
     if (user?.role === "PROVIDER" && user?.providerId) {
-      // Để hiển thị tên Khách hàng ngay lần đầu load, ta gọi hàm resetBooking luôn thay vì fetchBooking cơ bản
       resetBooking(user.providerId);
     }
   }, [user?.userId, user?.role, user?.providerId]);
@@ -413,81 +396,45 @@ const Profile: React.FC = () => {
     fetchUser();
   }, [user?.userId]);
 
-  const getPitchTypeName = (type: string) => {
-    switch (type) {
-      case "FIVE_A_SIDE":
-        return "Sân 5";
-      case "SEVEN_A_SIDE":
-        return "Sân 7";
-      case "ELEVEN_A_SIDE":
-        return "Sân 11";
-      default:
-        return type;
+  // SỬ DỤNG getAddressByProviderId THAY VÌ LẤY TỪ user?.addresses
+  const fetchPitchesForAllAreas = async () => {
+    if (user?.providerId) {
+      try {
+        const providerAddresses = await getAddressByProviderId(user.providerId);
+
+        const updatedAreas = await Promise.all(
+          providerAddresses.map(async (addr: any) => {
+            try {
+              const pitchList = await getPitchesByProviderAddressId(
+                addr.providerAddressId,
+              );
+              return {
+                id: addr.providerAddressId,
+                name: addr.address,
+                count: pitchList.length || 0,
+              };
+            } catch (error) {
+              return {
+                id: addr.providerAddressId,
+                name: addr.address,
+                count: 0,
+              };
+            }
+          }),
+        );
+        setAreas(updatedAreas);
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách địa chỉ:", error);
+      }
     }
   };
 
   useEffect(() => {
-    const fetchPitchesForAllAreas = async () => {
-      if (user?.addresses) {
-        const pitchesData: { [key: string]: PitchResponseDTO[] } = {};
-        for (const address of user.addresses) {
-          try {
-            const pitchList = await getPitchesByProviderAddressId(
-              address.providerAddressId,
-            );
-            pitchesData[address.providerAddressId] = pitchList;
-          } catch (error) {
-            console.error(
-              `Lỗi khi lấy sân cho khu vực ${address.providerAddressId}:`,
-              error,
-            );
-            toast.error(
-              `Lỗi khi tải danh sách sân cho khu vực ${address.address}`,
-            );
-          }
-        }
-        setPitchesByArea(pitchesData);
-        const updatedAreas = user.addresses.map((addr: any) => ({
-          id: addr.providerAddressId,
-          name: addr.address,
-          count: pitchesData[addr.providerAddressId]?.length || 0,
-        }));
-        setAreas(updatedAreas);
-        // Set initial pitches for the selected area
-        if (selectedAreaId) {
-          setPitches(pitchesData[selectedAreaId] || []);
-        }
-      }
-    };
     fetchPitchesForAllAreas();
-  }, [user?.addresses]);
+  }, [user?.providerId]); // Cập nhật dependency thành user?.providerId
 
-  useEffect(() => {
-    if (selectedAreaId) {
-      const fetchPitches = async () => {
-        try {
-          // Fetch pitches if not already in pitchesByArea
-          const data =
-            pitchesByArea[selectedAreaId] ||
-            (await getPitchesByProviderAddressId(selectedAreaId));
-          setPitches(data); // Update pitches state
-          setPitchesByArea((prev) => ({
-            ...prev,
-            [selectedAreaId]: data, // Ensure pitchesByArea is updated
-          }));
-        } catch (error) {
-          console.error("Error fetching pitches:", error);
-          toast.error("Lỗi khi tải danh sách sân");
-        }
-      };
-      fetchPitches();
-    }
-  }, [selectedAreaId]);
-
-  const handleSelect = (index: number) => {
+  const handleSelectArea = (index: number) => {
     setSelectedIndex(index);
-    setSelectedPitchIds([]);
-    setCurrentPage(1);
   };
 
   const [providerUser, setProviderUser] = useState({
@@ -557,7 +504,7 @@ const Profile: React.FC = () => {
         phone: editedUser.phone,
       }),
     );
-    toast.success("Change information successfully!");
+    toast.success("Cập nhật thông tin thành công!");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -630,7 +577,7 @@ const Profile: React.FC = () => {
       }
 
       setIsEditingProvider(false);
-      toast.success("Cập nhật thông tin nhà cung cấp thành công");
+      toast.success("Cập nhật thông tin Chủ sân thành công");
     } catch (err) {
       console.error("Lỗi khi cập nhật thông tin nhà cung cấp:", err);
       toast.error("Cập nhật thông tin thất bại");
@@ -647,354 +594,221 @@ const Profile: React.FC = () => {
     providerUser.cardNumber === "Chưa có thông tin" &&
     providerUser.bank === "Chưa có thông tin";
 
-  const handleAddPitch = () => {
-    setIsEditMode(false);
-    setPitchToEdit(null);
-    setOpenPitchModal(true);
-  };
-
-  const handleEditPitch = () => {
-    if (selectedPitchIds.length === 1) {
-      const pitch = pitches.find((p) => p.pitchId === selectedPitchIds[0]);
-      if (pitch) {
-        setIsEditMode(true);
-        setPitchToEdit(pitch);
-        setOpenPitchModal(true);
-      }
-    }
-  };
-
-  const handleDeletePitches = () => {
-    if (selectedPitchIds) {
-      const pitch = pitches.find((p) => p.pitchId === selectedPitchIds[0]);
-      setOpenDeleteModal(true);
-    }
-  };
-
-  const handleSavePitch = async (
-    formData: Omit<PitchRequestDTO, "providerAddressId">,
-  ) => {
-    try {
-      if (isEditMode && pitchToEdit) {
-        const updatedPitch = await updatePitch(pitchToEdit.pitchId, {
-          ...formData,
-          providerAddressId: pitchToEdit.providerAddressId,
-        });
-        setPitches((prevPitches) =>
-          prevPitches.map((p) =>
-            p.pitchId === updatedPitch.pitchId ? updatedPitch : p,
-          ),
-        );
-        setPitchesByArea((prev) => ({
-          ...prev,
-          [selectedAreaId]: prev[selectedAreaId].map((p) =>
-            p.pitchId === updatedPitch.pitchId ? updatedPitch : p,
-          ),
-        }));
-        toast.success("Cập nhật sân thành công");
-      } else if (selectedAreaId) {
-        const isNameDuplicate = pitches.some((p) => p.name === formData.name);
-        if (isNameDuplicate) {
-          toast.error("Tên sân đã tồn tại trong khu vực này");
-          return;
-        }
-        const newPitch = await createPitch({
-          ...formData,
-          providerAddressId: selectedAreaId,
-        });
-        setPitches((prevPitches) => [...prevPitches, newPitch]);
-        setPitchesByArea((prev) => ({
-          ...prev,
-          [selectedAreaId]: [...(prev[selectedAreaId] || []), newPitch],
-        }));
-        setAreas((prevAreas) =>
-          prevAreas.map((area) =>
-            area.id === selectedAreaId
-              ? { ...area, count: area.count + 1 }
-              : area,
-          ),
-        );
-        toast.success("Thêm sân thành công");
-      }
-      setOpenPitchModal(false);
-      setSelectedPitchIds([]);
-    } catch (error) {
-      console.error("Error saving pitch:", error);
-      toast.error("Lỗi khi lưu sân");
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (selectedPitchIds.length === 1) {
-      const pitchId = selectedPitchIds[0];
-      try {
-        await deletePitch(pitchId);
-        toast.success("Xóa sân thành công!");
-        const updatedPitches = pitches.filter((p) => p.pitchId !== pitchId);
-        setPitches(updatedPitches);
-        setAreas((prevAreas) =>
-          prevAreas.map((area) =>
-            area.id === selectedAreaId
-              ? { ...area, count: area.count - 1 }
-              : area,
-          ),
-        );
-        setOpenDeleteModal(false);
-        setSelectedPitchIds([]);
-      } catch (error) {
-        toast.error("Xóa sân thất bại. Vui lòng thử lại.");
-        console.error("Lỗi khi xóa sân:", error);
-      }
-    }
-  };
-
-  const handlePitchCheckboxChange = (pitchId: string) => {
-    if (selectedPitchIds.includes(pitchId)) {
-      setSelectedPitchIds([]);
-    } else {
-      setSelectedPitchIds([pitchId]);
-    }
-  };
-
-  const PitchModal: React.FC<{
-    open: boolean;
-    onClose: () => void;
-    onSave: (data: Omit<PitchRequestDTO, "providerAddressId">) => void;
-    initialData?: PitchResponseDTO;
-    areaName: string;
-  }> = ({ open, onClose, onSave, initialData, areaName }) => {
-    const [formData, setFormData] = useState({
-      name: initialData?.name || "",
-      type: initialData?.type || "FIVE_A_SIDE",
-      price: initialData?.price || 0,
-      description: initialData?.description || "",
-    });
-
-    const handleSave = () => {
-      onSave(formData);
-    };
-
-    return (
-      <Dialog open={open} onClose={onClose}>
-        <DialogTitle>
-          {initialData ? "Chỉnh sửa sân" : "Thêm sân mới"}
-        </DialogTitle>
-        <DialogContent>
-          <Typography>Khu vực: {areaName}</Typography>
-          <TextField
-            label="Tên sân"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            fullWidth
-            margin="dense"
-          />
-          <Select
-            label="Loại sân"
-            value={formData.type}
-            onChange={(e) =>
-              setFormData({ ...formData, type: e.target.value as any })
-            }
-            fullWidth
-            margin="dense"
-          >
-            <MenuItem value="FIVE_A_SIDE">5 người</MenuItem>
-            <MenuItem value="SEVEN_A_SIDE">7 người</MenuItem>
-            <MenuItem value="ELEVEN_A_SIDE">11 người</MenuItem>
-          </Select>
-          <TextField
-            label="Giá"
-            type="number"
-            value={formData.price}
-            onChange={(e) =>
-              setFormData({ ...formData, price: Number(e.target.value) })
-            }
-            fullWidth
-            margin="dense"
-          />
-          <TextField
-            label="Mô tả"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            fullWidth
-            margin="dense"
-            multiline
-            rows={3}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Hủy</Button>
-          <Button
-            onClick={handleSave}
-            disabled={!formData.name || formData.price <= 0}
-          >
-            Lưu
-          </Button>
-        </DialogActions>
-      </Dialog>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 mx-auto flex flex-col space-y-[1rem] sm:space-y-[2rem] pt-[80px] pb-[100px]">
+    <div className="min-h-screen bg-[#F4F7FE] flex flex-col pt-[80px] pb-[100px] font-sans">
       <Header />
-      <div className="main flex items-start justify-center gap-x-[2rem]">
+
+      {/* Container Chính */}
+      <div className="flex flex-col md:flex-row items-start justify-center gap-6 w-full max-w-7xl mx-auto px-4 md:px-8 mt-8">
         <Sidebar
           tabs={tabs}
           initTab={initTab}
           handleChangeTab={handleChangeTab}
           handleLogout={handleLogout}
         />
-        <div className="w-[75%] mt-[1.5rem] space-y-[2rem]">
+
+        <div className="w-full md:flex-1 space-y-8">
           {/* TAB 0: Thông tin cá nhân */}
           {initTab === 0 && (
-            <div className="flex flex-col items-start justify-start gap-y-[1rem]">
-              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                Thông tin cá nhân
+            <div className="flex flex-col gap-6">
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: "800",
+                  color: "#1e293b",
+                  letterSpacing: "-0.5px",
+                }}
+              >
+                Hồ sơ cá nhân
               </Typography>
-              <div className="bg-white w-full flex flex-col items-center justify-start rounded-lg shadow-md py-6 px-10 right-sidebar gap-y-[1.5rem]">
-                <div className="flex items-center justify-between w-[90%]">
-                  <div className="flex items-start gap-x-[2rem]">
+
+              {/* Thẻ Avatar & Header */}
+              <div className="bg-white w-full rounded-[20px] shadow-sm border border-gray-100 p-6 lg:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 transition-all hover:shadow-md">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+                  <div className="relative">
                     <img
                       src="./images/lc1.jpg"
-                      className="w-21 h-21 rounded-full"
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
                     />
-                    <div className="flex flex-col gap-y-[0.3rem]">
-                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                        {editedUser?.name || "Nguyễn Văn A"}
-                      </Typography>
-                      <Typography
-                        className="text-[1.2rem]"
-                        sx={{ fontWeight: "medium" }}
-                      >
-                        {user?.role || "Người dùng"}
-                      </Typography>
-                      <Typography
-                        className="text-[1rem]"
-                        sx={{ fontWeight: "medium" }}
-                      >
-                        45 Tân Lập
+                    <div className="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
+                  </div>
+                  <div className="flex flex-col justify-center gap-y-1">
+                    <Typography
+                      variant="h5"
+                      sx={{ fontWeight: "800", color: "#0f172a" }}
+                    >
+                      {editedUser?.name || "Nguyễn Văn A"}
+                    </Typography>
+                    <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
+                      <Chip
+                        label={user?.role || "Người dùng"}
+                        size="small"
+                        sx={{
+                          backgroundColor:
+                            user?.role === "PROVIDER" ? "#e0e7ff" : "#f1f5f9",
+                          color:
+                            user?.role === "PROVIDER" ? "#0369a1" : "#475569",
+                          fontWeight: "bold",
+                          fontSize: "0.75rem",
+                        }}
+                      />
+                      <Typography className="text-gray-400 text-sm">
+                        {editedUser.email}
                       </Typography>
                     </div>
-                  </div>
-                  <div>
-                    {!isEditing ? (
-                      <div
-                        className="flex items-center justify-center border-1 border-gray-600 rounded-lg px-4 py-2 cursor-pointer gap-x-[0.5rem] hover:bg-gray-200"
-                        onClick={handleEdit}
-                      >
-                        <Typography className="text-[1.2rem]">Edit</Typography>
-                        <BorderColorIcon fontSize="small" />
-                      </div>
-                    ) : (
-                      <div className="flex gap-x-[1rem]">
-                        <Button
-                          variant="contained"
-                          sx={{
-                            backgroundColor: "#0093FF",
-                            color: "white",
-                            fontWeight: "bold",
-                          }}
-                          onClick={handleSave}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          sx={{
-                            borderColor: "red",
-                            color: "red",
-                            fontWeight: "bold",
-                          }}
-                          onClick={handleCancel}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </div>
-                <Divider
-                  sx={{
-                    borderBottomWidth: "1px",
-                    borderColor: "black",
-                    width: "90%",
-                  }}
-                />
-                <div className="flex items-center gap-y-[2rem] flex-col w-[90%]">
-                  <div className="flex justify-between w-full">
-                    <div className="flex flex-col items-start gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">Tên</Typography>
-                      {isEditing ? (
-                        <TextField
-                          name="name"
-                          value={editedUser.name}
-                          onChange={handleInputChange}
-                          size="small"
-                          sx={{ width: "200px" }}
-                        />
-                      ) : (
-                        <Typography
-                          className="text-[1.2rem]"
-                          sx={{ fontWeight: "bold", textAlign: "left" }}
-                        >
-                          {editedUser.name}
-                        </Typography>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">Email</Typography>
-                      {isEditing ? (
-                        <TextField
-                          name="email"
-                          value={editedUser.email}
-                          onChange={handleInputChange}
-                          size="small"
-                          sx={{ width: "200px" }}
-                        />
-                      ) : (
-                        <Typography
-                          className="text-[1.2rem]"
-                          sx={{ fontWeight: "bold", textAlign: "right" }}
-                        >
-                          {editedUser.email}
-                        </Typography>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-between w-full">
-                    <div className="flex flex-col items-start gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">
-                        Số điện thoại
-                      </Typography>
-                      {isEditing ? (
-                        <TextField
-                          name="phone"
-                          value={editedUser.phone}
-                          onChange={handleInputChange}
-                          size="small"
-                          sx={{ width: "200px" }}
-                        />
-                      ) : (
-                        <Typography
-                          className="text-[1.2rem]"
-                          sx={{ fontWeight: "bold", textAlign: "left" }}
-                        >
-                          {editedUser.phone}
-                        </Typography>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">Vai trò</Typography>
-                      <Typography
-                        className="text-[1.2rem]"
-                        sx={{ fontWeight: "bold", textAlign: "right" }}
+                <div className="w-full sm:w-auto flex justify-center sm:justify-end">
+                  {!isEditing ? (
+                    <Button
+                      variant="outlined"
+                      startIcon={<BorderColorIcon fontSize="small" />}
+                      onClick={handleEdit}
+                      sx={{
+                        borderRadius: "10px",
+                        textTransform: "none",
+                        fontWeight: "700",
+                        borderColor: "#e2e8f0",
+                        color: "#475569",
+                        "&:hover": {
+                          backgroundColor: "#f8fafc",
+                          borderColor: "#cbd5e1",
+                        },
+                      }}
+                    >
+                      Chỉnh sửa
+                    </Button>
+                  ) : (
+                    <div className="flex gap-3">
+                      <Button
+                        variant="contained"
+                        sx={{
+                          backgroundColor: "#0093FF",
+                          color: "white",
+                          fontWeight: "700",
+                          borderRadius: "10px",
+                          textTransform: "none",
+                          boxShadow: "none",
+                          "&:hover": {
+                            boxShadow: "0 4px 12px rgba(0,147,255,0.2)",
+                          },
+                        }}
+                        onClick={handleSave}
                       >
-                        {user?.role || "Người dùng"}
-                      </Typography>
+                        Lưu thay đổi
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        sx={{
+                          fontWeight: "700",
+                          borderRadius: "10px",
+                          textTransform: "none",
+                        }}
+                        onClick={handleCancel}
+                      >
+                        Hủy
+                      </Button>
                     </div>
-                  </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Lưới thông tin chi tiết */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-[16px] border border-gray-100 shadow-sm flex flex-col gap-1">
+                  <Typography className="text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    Họ và Tên
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      name="name"
+                      value={editedUser.name}
+                      onChange={handleInputChange}
+                      size="small"
+                      fullWidth
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        fontWeight: "600",
+                        color: "#1e293b",
+                        fontSize: "1.05rem",
+                      }}
+                    >
+                      {editedUser.name}
+                    </Typography>
+                  )}
+                </div>
+
+                <div className="bg-white p-5 rounded-[16px] border border-gray-100 shadow-sm flex flex-col gap-1">
+                  <Typography className="text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    Địa chỉ Email
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      name="email"
+                      value={editedUser.email}
+                      onChange={handleInputChange}
+                      size="small"
+                      fullWidth
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        fontWeight: "600",
+                        color: "#1e293b",
+                        fontSize: "1.05rem",
+                      }}
+                    >
+                      {editedUser.email}
+                    </Typography>
+                  )}
+                </div>
+
+                <div className="bg-white p-5 rounded-[16px] border border-gray-100 shadow-sm flex flex-col gap-1">
+                  <Typography className="text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    Số điện thoại
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      name="phone"
+                      value={editedUser.phone}
+                      onChange={handleInputChange}
+                      size="small"
+                      fullWidth
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        fontWeight: "600",
+                        color: "#1e293b",
+                        fontSize: "1.05rem",
+                      }}
+                    >
+                      {editedUser.phone || "Chưa cập nhật"}
+                    </Typography>
+                  )}
+                </div>
+
+                <div className="bg-white p-5 rounded-[16px] border border-gray-100 shadow-sm flex flex-col gap-1">
+                  <Typography className="text-gray-400 text-xs font-bold uppercase tracking-wider">
+                    Loại tài khoản
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: "700",
+                      color: "#0093FF",
+                      fontSize: "1.05rem",
+                    }}
+                  >
+                    {user?.role === "PROVIDER"
+                      ? "Đối tác Chủ sân"
+                      : "Khách hàng thành viên"}
+                  </Typography>
                 </div>
               </div>
             </div>
@@ -1002,69 +816,90 @@ const Profile: React.FC = () => {
 
           {/* TAB 0 (Tiếp tục): Thông tin nhà cung cấp */}
           {initTab === 0 && user?.role === "PROVIDER" && (
-            <div className="flex flex-col items-start justify-start gap-y-[1rem]">
-              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                Thông tin nhà cung cấp
+            <div className="flex flex-col gap-6 mt-8">
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: "800",
+                  color: "#1e293b",
+                  letterSpacing: "-0.5px",
+                }}
+              >
+                Thiết lập Chủ sân
               </Typography>
-              <div className="bg-white w-full flex flex-col items-center justify-start rounded-lg shadow-md py-6 px-10 right-sidebar gap-y-[1.5rem]">
-                <div className="flex items-center justify-between w-[90%]">
-                  <div className="flex items-center gap-x-[2rem] rounded-md border-gray-400 border-1 py-2 px-8">
+
+              <div className="bg-white w-full rounded-[20px] shadow-sm border border-gray-100 p-6 lg:p-8 flex flex-col gap-y-8 transition-all hover:shadow-md">
+                {/* Banner Hoàn thiện hồ sơ */}
+                <div
+                  className={`flex flex-col sm:flex-row items-center justify-between w-full gap-4 p-5 rounded-2xl border ${isProviderInfoEmpty ? "bg-orange-50 border-orange-100" : "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100"}`}
+                >
+                  <div className="flex items-center gap-x-4 w-full sm:w-auto">
                     <div
-                      className={`w-15 h-15 rounded-full flex items-center justify-center border-1 ${
-                        isProviderInfoEmpty ? "border-dashed" : "border-solid"
-                      } border-gray-600`}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center bg-white shadow-sm ${isProviderInfoEmpty ? "text-orange-500" : "text-emerald-500"}`}
                     >
-                      <ManageAccountsIcon
-                        fontSize="medium"
-                        sx={{ fontWeight: "bold", color: "black" }}
-                      />
+                      {isProviderInfoEmpty ? (
+                        <WarningAmberIcon fontSize="medium" />
+                      ) : (
+                        <VerifiedUserIcon fontSize="medium" />
+                      )}
                     </div>
-                    <div className="flex flex-col gap-y-[0.3rem]">
-                      <div className="flex items-center gap-x-[0.5rem]">
-                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                          {providerUser?.bank === "Chưa có thông tin" &&
-                          providerUser?.cardNumber === "Chưa có thông tin"
-                            ? "0%"
-                            : "100%"}
-                        </Typography>
-                        <KeyboardArrowRightIcon
-                          fontSize="small"
-                          sx={{
-                            fontWeight: "bold",
-                            color: "black",
-                            cursor: "pointer",
-                          }}
-                        />
-                      </div>
+                    <div className="flex flex-col gap-y-1">
                       <Typography
-                        className="text-[1.2rem]"
-                        sx={{ fontWeight: "medium" }}
+                        variant="h6"
+                        sx={{
+                          fontWeight: "800",
+                          color: isProviderInfoEmpty ? "#c2410c" : "#065f46",
+                          lineHeight: 1,
+                        }}
                       >
-                        của phần thông tin đã được hoàn thành
+                        {isProviderInfoEmpty
+                          ? "Hồ sơ chưa hoàn tất"
+                          : "Hồ sơ hoàn tất 100%"}
+                      </Typography>
+                      <Typography
+                        className={`text-sm font-medium ${isProviderInfoEmpty ? "text-orange-600" : "text-emerald-600"}`}
+                      >
+                        {isProviderInfoEmpty
+                          ? "Cập nhật ngân hàng để nhận thanh toán"
+                          : "Bạn đã có thể nhận tiền từ khách hàng"}
                       </Typography>
                     </div>
                   </div>
-                  <div>
+                  <div className="w-full sm:w-auto flex justify-center sm:justify-end">
                     {!isEditingProvider ? (
-                      <div
-                        className="flex items-center justify-center border-1 border-gray-600 rounded-lg px-4 py-2 cursor-pointer gap-x-[0.5rem] hover:bg-gray-200"
+                      <Button
+                        variant="contained"
                         onClick={handleEditProvider}
+                        sx={{
+                          borderRadius: "10px",
+                          textTransform: "none",
+                          fontWeight: "700",
+                          backgroundColor: isProviderInfoEmpty
+                            ? "#ea580c"
+                            : "#059669",
+                          boxShadow: "none",
+                          "&:hover": {
+                            backgroundColor: isProviderInfoEmpty
+                              ? "#c2410c"
+                              : "#047857",
+                            boxShadow: "none",
+                          },
+                        }}
                       >
-                        <Typography className="text-[1.2rem]">
-                          {isProviderInfoEmpty
-                            ? "Thêm thông tin"
-                            : "Chỉnh sửa thông tin"}
-                        </Typography>
-                        <BorderColorIcon fontSize="small" />
-                      </div>
+                        {isProviderInfoEmpty
+                          ? "Bổ sung ngay"
+                          : "Chỉnh sửa ngân hàng"}
+                      </Button>
                     ) : (
-                      <div className="flex gap-x-[1rem]">
+                      <div className="flex gap-2">
                         <Button
                           variant="contained"
                           sx={{
                             backgroundColor: "#0093FF",
-                            color: "white",
-                            fontWeight: "bold",
+                            fontWeight: "700",
+                            borderRadius: "10px",
+                            textTransform: "none",
+                            boxShadow: "none",
                           }}
                           onClick={handleSaveProvider}
                         >
@@ -1072,10 +907,11 @@ const Profile: React.FC = () => {
                         </Button>
                         <Button
                           variant="outlined"
+                          color="error"
                           sx={{
-                            borderColor: "red",
-                            color: "red",
-                            fontWeight: "bold",
+                            fontWeight: "700",
+                            borderRadius: "10px",
+                            textTransform: "none",
                           }}
                           onClick={handleCancelProvider}
                         >
@@ -1085,307 +921,214 @@ const Profile: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div
-                  id="bank-info"
-                  className="flex items-center gap-y-[2rem] flex-col w-[90%]"
-                >
-                  <div className="flex justify-between w-full">
-                    <div className="flex flex-col items-start gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">
-                        Số tài khoản ngân hàng
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                  <div className="flex flex-col items-start gap-y-2 flex-1 w-full">
+                    <Typography className="text-gray-500 font-bold text-xs uppercase tracking-wider">
+                      Số tài khoản ngân hàng
+                    </Typography>
+                    {isEditingProvider ? (
+                      <TextField
+                        name="cardNumber"
+                        type="string"
+                        value={providerUser.cardNumber}
+                        onChange={handleProviderInputChange}
+                        size="small"
+                        fullWidth
+                      />
+                    ) : (
+                      <Typography
+                        sx={{
+                          fontWeight: "600",
+                          fontSize: "1.1rem",
+                          color:
+                            providerUser.cardNumber === "Chưa có thông tin"
+                              ? "#94a3b8"
+                              : "#1e293b",
+                        }}
+                      >
+                        {providerUser.cardNumber}
                       </Typography>
-                      {isEditingProvider ? (
-                        <TextField
-                          name="cardNumber"
-                          type="string"
-                          value={providerUser.cardNumber}
-                          onChange={handleProviderInputChange}
-                          size="small"
-                          sx={{ width: "200px" }}
-                        />
-                      ) : (
-                        <Typography
-                          className="text-[1.2rem]"
-                          sx={{ fontWeight: "bold", textAlign: "left" }}
-                        >
-                          {providerUser.cardNumber}
-                        </Typography>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-y-[0.5rem]">
-                      <Typography className="text-[1.2rem]">
-                        Ngân hàng
+                    )}
+                  </div>
+                  <div className="flex flex-col items-start gap-y-2 flex-1 w-full">
+                    <Typography className="text-gray-500 font-bold text-xs uppercase tracking-wider">
+                      Ngân hàng thụ hưởng
+                    </Typography>
+                    {isEditingProvider ? (
+                      <Autocomplete
+                        options={banks}
+                        getOptionLabel={(option) => option.name}
+                        value={
+                          banks.find(
+                            (bank) => bank.code === providerUser.bank,
+                          ) || null
+                        }
+                        onChange={(_, value) => {
+                          setProviderUser((prev) => ({
+                            ...prev,
+                            bank: value ? value.code : "",
+                          }));
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            name="bank"
+                            size="small"
+                            fullWidth
+                          />
+                        )}
+                        sx={{ width: "100%" }}
+                      />
+                    ) : (
+                      <Typography
+                        sx={{
+                          fontWeight: "600",
+                          fontSize: "1.1rem",
+                          color:
+                            providerUser.bank === "Chưa có thông tin"
+                              ? "#94a3b8"
+                              : "#1e293b",
+                        }}
+                      >
+                        {providerUser.bank}
                       </Typography>
-                      {isEditingProvider ? (
-                        <Autocomplete
-                          options={banks}
-                          getOptionLabel={(option) => option.name}
-                          value={
-                            banks.find(
-                              (bank) => bank.code === providerUser.bank,
-                            ) || null
-                          }
-                          onChange={(_, value) => {
-                            setProviderUser((prev) => ({
-                              ...prev,
-                              bank: value ? value.code : "",
-                            }));
-                          }}
-                          renderInput={(params) => (
-                            <TextField {...params} name="bank" size="small" />
-                          )}
-                          sx={{ width: "200px" }}
-                        />
-                      ) : (
-                        <Typography
-                          className="text-[1.2rem]"
-                          sx={{ fontWeight: "bold", textAlign: "right" }}
-                        >
-                          {providerUser.bank}
-                        </Typography>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
-                <Divider
-                  sx={{
-                    borderBottomWidth: "1px",
-                    borderColor: "black",
-                    width: "90%",
-                  }}
-                />
-                <AddressInfo />
+
+                <Divider sx={{ width: "100%", borderStyle: "dashed" }} />
+
+                <div className="w-full">
+                  {/* Truyền providerId để AddressInfo có thể gọi getAddressByProviderId */}
+                  <AddressInfo providerId={user?.providerId} />
+                </div>
               </div>
             </div>
           )}
 
           {/* TAB 1: Thông tin sân */}
           {initTab === 1 && (
-            <div className="flex flex-col items-start justify-start gap-y-[1rem]">
-              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                Thông tin sân
+            <div className="flex flex-col gap-6">
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: "800",
+                  color: "#1e293b",
+                  letterSpacing: "-0.5px",
+                }}
+              >
+                Quản lý Sân bóng
               </Typography>
-              <div className="bg-white w-full flex items-start justify-start rounded-lg shadow-md p-6 right-sidebar gap-x-[1rem]">
-                <div className="w-[28%] flex flex-col gap-y-[1rem]">
+              <div className="bg-white w-full flex flex-col md:flex-row items-start justify-start rounded-[20px] shadow-sm border border-gray-100 p-6 gap-8">
+                {/* Cột chọn Khu vực */}
+                <div className="w-full md:w-[30%] flex flex-col gap-y-4">
                   <Typography
                     sx={{
-                      fontWeight: "bold",
-                      fontSize: "1.2rem",
-                      color: "#e25b43",
+                      fontWeight: "700",
+                      fontSize: "1rem",
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      tracking: "wider",
                     }}
                   >
-                    Khu vực
+                    Các khu vực
                   </Typography>
-                  <div className="locations flex flex-col gap-y-[1rem]">
-                    {areas.map((area, index) => {
-                      const isSelected = selectedIndex === index;
-                      return (
-                        <div
-                          className={`flex flex-col items-start ${
-                            isSelected
-                              ? "bg-[#e25b43] text-white"
-                              : "bg-white text-black"
-                          } rounded-xl px-4 py-[0.3rem] w-[200px] cursor-pointer shadow-xl`}
-                          onClick={() => handleSelect(index)}
-                          key={index}
-                        >
-                          <Typography
-                            sx={{
-                              fontWeight: "medium",
-                              fontSize: "1rem",
-                              color: isSelected ? "white" : "#e25b43",
-                            }}
+                  <div className="flex flex-col gap-y-3 overflow-x-auto md:overflow-visible pb-2 md:pb-0 hide-scrollbar">
+                    <div className="flex md:flex-col gap-3 min-w-max md:min-w-0">
+                      {areas.map((area, index) => {
+                        const isSelected = selectedIndex === index;
+                        return (
+                          <div
+                            className={`flex flex-col items-start justify-center rounded-xl px-5 py-4 cursor-pointer transition-all border ${
+                              isSelected
+                                ? "bg-orange-50 border-orange-200 text-orange-700 shadow-sm"
+                                : "bg-white border-gray-100 text-gray-600 hover:border-orange-100 hover:bg-orange-50/50"
+                            } md:w-full`}
+                            onClick={() => handleSelectArea(index)}
+                            key={index}
                           >
-                            {area.name}
-                          </Typography>
-                          <div className="flex items-center gap-x-[0.3rem]">
-                            <LocationOnOutlinedIcon sx={{ fontSize: "1rem" }} />
                             <Typography
-                              sx={{ fontWeight: "normal", fontSize: "0.8rem" }}
+                              sx={{ fontWeight: "700", fontSize: "0.95rem" }}
+                              className="truncate w-full"
                             >
-                              {area.count} sân
+                              {area.name}
                             </Typography>
+                            <div
+                              className={`flex items-center gap-x-1 mt-1.5 ${isSelected ? "text-orange-600" : "text-gray-400"}`}
+                            >
+                              <LocationOnOutlinedIcon
+                                sx={{ fontSize: "1.1rem" }}
+                              />
+                              <Typography
+                                sx={{ fontSize: "0.85rem", fontWeight: "600" }}
+                              >
+                                {area.count} sân đang hoạt động
+                              </Typography>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                      {areas.length === 0 && (
+                        <Typography className="text-gray-400 italic text-sm py-4">
+                          Chưa có khu vực nào. Hãy thêm địa chỉ ở phần Hồ sơ.
+                        </Typography>
+                      )}
+                    </div>
                   </div>
                 </div>
+
                 <Divider
                   orientation="vertical"
                   flexItem
                   sx={{
-                    borderColor: "grey",
-                    borderWidth: "1px",
-                    marginLeft: "-3rem",
+                    display: { xs: "none", md: "block" },
+                    borderStyle: "dashed",
                   }}
                 />
-                <div className="w-[70%] flex flex-col gap-y-[1rem] ml-[1rem]">
-                  <Typography
-                    sx={{
-                      fontWeight: "bold",
-                      fontSize: "1.2rem",
-                      color: "#e25b43",
-                    }}
-                  >
-                    {areas[selectedIndex]?.name || "Khu vực"}
-                  </Typography>
-                  <div className="action-bars flex items-center gap-x-[1rem]">
-                    <div className="search px-4 py-[0.3rem] border-1 border-black rounded-md flex items-center justify-between w-[320px]">
-                      <input
-                        placeholder="Nhập tên sân"
-                        className="w-[100%] text-gray-600 focus:outline-none text-[0.9rem]"
-                      />
-                      <SearchOutlinedIcon
-                        sx={{ color: "black", cursor: "pointer" }}
-                        fontSize="small"
-                      />
-                    </div>
-                    <div className="flex items-center gap-x-[0.8rem]">
-                      <Tooltip title="Thêm sân" arrow>
-                        <div
-                          className="bg-[#e25b43] text-white cursor-pointer w-8 h-8 flex items-center justify-center rounded-md"
-                          onClick={handleAddPitch}
-                        >
-                          <AddOutlinedIcon fontSize="medium" />
-                        </div>
-                      </Tooltip>
-                      <Tooltip title="Sửa sân" arrow>
-                        <div
-                          className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                            selectedPitchIds.length === 1
-                              ? "bg-[#e25b43] text-white cursor-pointer"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          }`}
-                          onClick={
-                            selectedPitchIds.length === 1
-                              ? handleEditPitch
-                              : undefined
-                          }
-                        >
-                          <EditOutlinedIcon fontSize="medium" />
-                        </div>
-                      </Tooltip>
-                      <Tooltip title="Xóa sân" arrow>
-                        <div
-                          className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                            selectedPitchIds.length > 0
-                              ? "bg-[#e25b43] text-white cursor-pointer"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          }`}
-                          onClick={
-                            selectedPitchIds.length > 0
-                              ? handleDeletePitches
-                              : undefined
-                          }
-                        >
-                          <DeleteOutlineOutlinedIcon fontSize="medium" />
-                        </div>
-                      </Tooltip>
-                    </div>
-                  </div>
-                  <div className="san flex flex-wrap gap-x-[2rem] gap-y-[2rem] mt-[1rem]">
-                    {currentPitches.map((pitch) => (
-                      <Card
-                        key={pitch.pitchId}
+                <Divider
+                  orientation="horizontal"
+                  flexItem
+                  sx={{
+                    display: { xs: "block", md: "none" },
+                    width: "100%",
+                    borderStyle: "dashed",
+                  }}
+                />
+
+                {/* Cột hiển thị Sân bóng */}
+                <div className="w-full md:flex-1 flex flex-col min-h-[500px]">
+                  {selectedAreaId ? (
+                    <PitchInfo
+                      providerAddressId={selectedAreaId}
+                      onPitchUpdate={fetchPitchesForAllAreas}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full w-full bg-[#f8fafc] rounded-2xl border-2 border-dashed border-gray-200 p-10 mt-4 md:mt-0">
+                      <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                        <GiSoccerBall size={40} color="#cbd5e1" />
+                      </div>
+                      <Typography
                         sx={{
-                          width: "200px",
-                          height: "150px",
-                          padding: "0px",
+                          color: "#64748b",
+                          fontWeight: "600",
+                          fontSize: "1.1rem",
                         }}
                       >
-                        <CardContent
-                          sx={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            gap: "0.3rem",
-                            flexDirection: "column",
-                            padding: 0,
-                          }}
-                        >
-                          <div className="header flex items-center gap-x-[1rem] w-full px-[1rem] py-[0.5rem] bg-gray-200 relative">
-                            <img
-                              src="./images/lc1.jpg"
-                              className="rounded-md h-8 w-8 object-cover"
-                            />
-                            <div className="flex flex-col gap-y-[0.4rem] pb-[0.2rem] items-start">
-                              <p className="font-bold text-[0.7rem] text-[#e25b43] text-ellipsis flex-1 overflow-hidden whitespace-nowrap">
-                                {pitch.name}
-                              </p>
-                              <p className="flex items-start text-[0.7rem]">
-                                {getPitchTypeName(pitch.type)}
-                              </p>
-                            </div>
-                            <div className="flex flex-col items-center right-2 top-0 absolute">
-                              <Checkbox
-                                checked={selectedPitchIds.includes(
-                                  pitch.pitchId,
-                                )}
-                                onChange={() =>
-                                  handlePitchCheckboxChange(pitch.pitchId)
-                                }
-                                sx={{ "& .MuiSvgIcon-root": { fontSize: 16 } }}
-                              />
-                            </div>
-                          </div>
-                          <div className="footer flex flex-col gap-y-[0.2rem] text-gray-600 text-[0.8rem] px-[1rem] py-[0.5rem] h-fit w-full">
-                            <p>Giá: {pitch.price}</p>
-                            <p>Mô tả: {pitch.description || "Không có"}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  {totalPages > 1 && (
-                    <div className="flex justify-center mt-4 gap-1 items-center">
-                      <button
-                        onClick={() => setCurrentPage(1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-gray-500 disabled:text-gray-300 text-2xl cursor-pointer"
+                        Chưa chọn khu vực
+                      </Typography>
+                      <Typography
+                        sx={{
+                          color: "#94a3b8",
+                          fontSize: "0.9rem",
+                          textAlign: "center",
+                          mt: 1,
+                          maxWidth: "300px",
+                        }}
                       >
-                        «
-                      </button>
-
-                      <button
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-gray-500 disabled:text-gray-300 text-2xl  cursor-pointer"
-                      >
-                        ‹
-                      </button>
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                        (page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-1 rounded font-medium ${
-                              page === currentPage
-                                ? "bg-blue-500 text-white"
-                                : "bg-white text-black border border-gray-300"
-                            } cursor-pointer`}
-                          >
-                            {page}
-                          </button>
-                        ),
-                      )}
-
-                      <button
-                        onClick={() => setCurrentPage(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-gray-500 disabled:text-gray-300 text-2xl  cursor-pointer"
-                      >
-                        ›
-                      </button>
-
-                      <button
-                        onClick={() => setCurrentPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 text-gray-500 disabled:text-gray-300 text-2xl  cursor-pointer"
-                      >
-                        »
-                      </button>
+                        Vui lòng chọn một khu vực bên trái để xem và quản lý các
+                        sân bóng tương ứng.
+                      </Typography>
                     </div>
                   )}
                 </div>
@@ -1395,28 +1138,67 @@ const Profile: React.FC = () => {
 
           {/* TAB 2: Thông tin đặt sân (DANH SÁCH KHÁCH HÀNG & CHAT) */}
           {initTab === 2 && user?.role === "PROVIDER" && (
-            <div className="flex flex-col gap-y-[1rem]">
-              <div className="flex justify-between items-center mb-4">
-                <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                  Danh sách đặt sân
-                </Typography>
-                <button
-                  type="button"
-                  className="flex items-center gap-x-2 border border-blue-500 text-blue-500 px-4 py-2 rounded hover:bg-blue-50 cursor-pointer"
-                  onClick={() => resetBooking(user?.providerId)}
+            <div className="flex flex-col gap-6">
+              <div className="flex justify-between items-center flex-wrap gap-4">
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: "800",
+                    color: "#1e293b",
+                    letterSpacing: "-0.5px",
+                  }}
                 >
-                  <RestartAltOutlinedIcon />
-                  Làm mới danh sách
-                </button>
+                  Đơn đặt sân gần đây
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<RestartAltOutlinedIcon />}
+                  onClick={() => resetBooking(user?.providerId)}
+                  sx={{
+                    borderRadius: "10px",
+                    textTransform: "none",
+                    fontWeight: "700",
+                    backgroundColor: "white",
+                    color: "#0f172a",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                    "&:hover": {
+                      backgroundColor: "#f8fafc",
+                      borderColor: "#cbd5e1",
+                    },
+                  }}
+                >
+                  Làm mới dữ liệu
+                </Button>
               </div>
+
               <Box
                 sx={{
-                  height: 500,
+                  height: 650,
                   width: "100%",
                   backgroundColor: "white",
-                  padding: 2,
-                  borderRadius: 2,
-                  boxShadow: 1,
+                  borderRadius: "20px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  border: "1px solid #f1f5f9",
+                  overflow: "hidden",
+                  "& .MuiDataGrid-root": {
+                    border: "none",
+                  },
+                  "& .MuiDataGrid-columnHeaders": {
+                    backgroundColor: "#f8fafc",
+                    color: "#475569",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    textTransform: "uppercase",
+                    borderBottom: "1px solid #e2e8f0",
+                  },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "1px solid #f1f5f9",
+                    fontSize: "0.95rem",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: "#f8fafc",
+                  },
                 }}
               >
                 <DataGrid
@@ -1425,11 +1207,11 @@ const Profile: React.FC = () => {
                   getRowId={(row) => row.bookingId}
                   initialState={{
                     pagination: {
-                      paginationModel: { pageSize: 5 },
+                      paginationModel: { pageSize: 10 },
                     },
                   }}
                   pageSizeOptions={[5, 10, 20]}
-                  checkboxSelection={false} // Tắt cái này đi cho bảng đỡ rối
+                  checkboxSelection={false}
                   disableRowSelectionOnClick
                 />
               </Box>
@@ -1438,34 +1220,16 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* RENDER KHUNG CHAT (Nổi lên khi activeChatUser có dữ liệu) */}
       {activeChatUser && (
         <ChatBox
           currentUserId={user?.userId}
           receiverId={activeChatUser.id}
           receiverName={activeChatUser.name}
-          onClose={() => setActiveChatUser(null)} // Bấm X thì đóng ChatBox
+          onClose={() => setActiveChatUser(null)}
         />
       )}
 
-      {/* CÁC MODAL HIỆN CÓ CỦA BẠN */}
-      <PitchModal
-        open={openPitchModal}
-        onClose={() => setOpenPitchModal(false)}
-        onSave={handleSavePitch}
-        initialData={isEditMode && pitchToEdit ? pitchToEdit : undefined}
-        areaName={areas[selectedIndex]?.name || ""}
-      />
-      <Dialog open={openDeleteModal} onClose={() => setOpenDeleteModal(false)}>
-        <DialogTitle>Xác nhận xóa sân</DialogTitle>
-        <DialogContent>Bạn có chắc chắn muốn xóa sân đã chọn?</DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteModal(false)}>Hủy</Button>
-          <Button color="error" onClick={handleDeleteConfirm}>
-            Xóa
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Modal Xác Nhận Thanh Toán (Làm đẹp lại) */}
       <Modal open={open} onClose={handleClose}>
         <Box
           sx={{
@@ -1473,55 +1237,116 @@ const Profile: React.FC = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 500,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            gapY: 4,
+            width: { xs: "90%", sm: 450 },
+            bgcolor: "white",
+            borderRadius: "24px",
+            boxShadow:
+              "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
             p: 4,
+            outline: "none",
           }}
         >
-          <Typography variant="h5">Xác nhận thanh toán</Typography>
-          <Divider
-            orientation="horizontal"
-            flexItem
-            sx={{
-              borderColor: "black",
-              borderWidth: "1px",
-              marginBottom: 2,
-              marginTop: 1,
-            }}
-          />
-          {selectedBooking && (
-            <>
-              <Typography>ID Đặt chỗ: {selectedBooking.bookingId}</Typography>
-              <Typography>
-                Ngày đặt:{" "}
-                {dayjs(selectedBooking.bookingDate).format("DD-MM-YYYY")}
-              </Typography>
-              <Typography>
-                Tổng giá: {selectedBooking.totalPrice} VNĐ
-              </Typography>
-              <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel id="payment-status-label">
-                  Trạng thái thanh toán
-                </InputLabel>
-                <Select
-                  labelId="payment-status-label"
-                  value={paymentStatus}
-                  label="Trạng thái thanh toán"
-                  onChange={handleChangePaymentStatus}
-                >
-                  <MenuItem value="PAID">Đã thanh toán</MenuItem>
-                  <MenuItem value="REFUNDED">Đã hoàn tiền</MenuItem>
-                </Select>
-              </FormControl>
-            </>
-          )}
-          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-            <Button variant="outlined" onClick={handleClose}>
-              Hủy
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: "800", color: "#0f172a", mb: 1 }}
+          >
+            Cập nhật trạng thái Booking
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>
+            Vui lòng kiểm tra kỹ thông tin đơn đặt sân trước khi xác nhận thanh
+            toán.
+          </Typography>
+
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-5">
+            {selectedBooking && (
+              <div className="flex flex-col gap-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Mã đơn:</span>
+                  <span className="text-slate-800 font-mono text-xs">
+                    {selectedBooking.bookingId.split("-")[0]}...
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500 font-medium">Ngày đặt:</span>
+                  <span className="text-slate-800 font-semibold">
+                    {dayjs(selectedBooking.bookingDate).format("DD/MM/YYYY")}
+                  </span>
+                </div>
+                <Divider sx={{ borderStyle: "dashed", my: 0.5 }} />
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Cần thu:</span>
+                  <span className="text-[#e25b43] font-black text-lg">
+                    {selectedBooking.totalPrice.toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <FormControl fullWidth sx={{ mb: 4 }}>
+            <InputLabel id="payment-status-label" sx={{ fontWeight: 600 }}>
+              Trạng thái thực tế
+            </InputLabel>
+            <Select
+              labelId="payment-status-label"
+              value={paymentStatus}
+              label="Trạng thái thực tế"
+              onChange={handleChangePaymentStatus}
+              sx={{
+                borderRadius: "12px",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#cbd5e1",
+                },
+              }}
+            >
+              <MenuItem value="PAID" sx={{ fontWeight: 600, color: "#059669" }}>
+                Khách đã thanh toán đủ
+              </MenuItem>
+              <MenuItem
+                value="PENDING"
+                sx={{ fontWeight: 600, color: "#d97706" }}
+              >
+                Khách chưa thanh toán
+              </MenuItem>
+              <MenuItem
+                value="REFUNDED"
+                sx={{ fontWeight: 600, color: "#dc2626" }}
+              >
+                Hoàn tiền cho khách
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", gap: 3 }}
+          >
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={handleClose}
+              sx={{
+                borderRadius: "12px",
+                fontWeight: "700",
+                padding: "10px 0",
+                color: "#64748b",
+                borderColor: "#cbd5e1",
+              }}
+            >
+              Hủy bỏ
             </Button>
-            <Button variant="contained" onClick={handleConfirm}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleConfirm}
+              sx={{
+                borderRadius: "12px",
+                fontWeight: "700",
+                padding: "10px 0",
+                bgcolor: "#0093FF",
+                boxShadow: "none",
+                "&:hover": { boxShadow: "0 4px 12px rgba(0,147,255,0.25)" },
+              }}
+            >
               Xác nhận
             </Button>
           </Box>

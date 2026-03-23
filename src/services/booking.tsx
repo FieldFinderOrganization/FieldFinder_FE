@@ -30,6 +30,22 @@ export interface BookingResponseDTO {
   }[];
 }
 
+// THÊM INTERFACE NÀY ĐỂ KHỚP VỚI BACKEND
+export interface ProviderBookingResponseDTO {
+  bookingId: string;
+  bookingDate: string;
+  status: string;
+  paymentStatus: string;
+  totalPrice: number;
+  providerId: string;
+  paymentMethod?: string;
+  userId?: string;
+  userName?: string;
+  providerName?: string;
+  pitchName: string;
+  slots: number[];
+}
+
 const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
@@ -100,6 +116,7 @@ export const getAvailablePitches = async (
   slots: number[],
   type: string,
 ) => {
+  const config = await getConfig();
   const params = new URLSearchParams();
   params.append("date", date);
 
@@ -111,22 +128,26 @@ export const getAvailablePitches = async (
 
   const response = await axios.get(`${baseURL}/available-pitches`, {
     params,
+    ...config,
   });
 
   return response.data;
 };
 
 export const getAllBookings = async () => {
-  const response = await axios.get<BookingResponseDTO[]>(`${baseURL}`);
+  const config = await getConfig();
+  const response = await axios.get<BookingResponseDTO[]>(`${baseURL}`, config);
   return response.data;
 };
 
 export const updateStatus = async (bookingId: string, status: string) => {
+  const config = await getConfig();
   const response = await axios.put<string>(
     `${baseURL}/${bookingId}/status`,
     null,
     {
       params: { status },
+      ...config,
     },
   );
   return response.data;
@@ -136,11 +157,13 @@ export const updatePaymentStatus = async (
   bookingId: string,
   status: string,
 ) => {
+  const config = await getConfig();
   const response = await axios.put<string>(
     `${baseURL}/${bookingId}/payment-status`,
     null,
     {
       params: { status },
+      ...config,
     },
   );
   return response.data;
@@ -148,7 +171,7 @@ export const updatePaymentStatus = async (
 
 export const getBookingByUserId = async (userId: string) => {
   const config = await getConfig();
-  const response = await axios.get<BookingResponseDTO[]>(
+  const response = await axios.get<ProviderBookingResponseDTO[]>(
     `${baseURL}/user/${userId}`,
     config,
   );
@@ -157,7 +180,7 @@ export const getBookingByUserId = async (userId: string) => {
 
 export const getBookingByProviderId = async (providerId: string) => {
   const config = await getConfig();
-  const response = await axios.get<BookingResponseDTO[]>(
+  const response = await axios.get<ProviderBookingResponseDTO[]>(
     `${baseURL}/provider/${providerId}`,
     config,
   );

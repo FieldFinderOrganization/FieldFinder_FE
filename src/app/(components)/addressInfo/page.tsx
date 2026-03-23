@@ -18,19 +18,26 @@ import Autocomplete from "@mui/material/Autocomplete";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import { update } from "@/redux/features/authSlice";
 import { toast } from "react-toastify";
-import { addAddress, updateAddress, deleteAddress } from "@/services/provider";
+import {
+  addAddress,
+  updateAddress,
+  deleteAddress,
+  getAddressByProviderId,
+} from "@/services/provider";
 
 import {
   getPitchesByProviderAddressId,
   PitchResponseDTO,
 } from "@/services/pitch";
 
+export interface AddressInfoProps {
+  providerId?: string;
+}
 const buttonBase =
   "w-8 h-8 flex items-center justify-center rounded-md transition-all";
 
-export default function AddressInfo() {
+export default function AddressInfo({ providerId }: AddressInfoProps) {
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.auth.user);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -43,61 +50,66 @@ export default function AddressInfo() {
     "Quận 1",
     "Quận 2",
     "Quận 3",
-    "Gò Vấp",
+    "Quận 4",
     "Quận 5",
-    "Tân Phú",
-    "Thủ Đức",
+    "Quận 6",
+    "Quận 7",
     "Quận 8",
+    "Quận 9",
+    "Quận 10",
+    "Quận 11",
+    "Quận 12",
+    "Gò Vấp",
+    "Tân Bình",
+    "Tân Phú",
+    "Bình Thạnh",
+    "Phú Nhuận",
+    "Bình Tân",
+    "Thủ Đức",
   ];
-
- 
-  interface Address {
-    providerAddressId: string;
-    address: string;
-  }
 
   const [areas, setAreas] = useState<
     { id: string; name: string; count: number }[]
   >([]);
-  // const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
-  const [pitchesByArea, setPitchesByArea] = useState<{
-    [key: string]: PitchResponseDTO[];
-  }>({});
+
   const selectedArea = areas.find((a) => a.id === selectedId);
 
-  useEffect(() => {
-    const fetchPitchesForAllAreas = async () => {
-      if (user?.addresses) {
-        const pitchesData: { [key: string]: PitchResponseDTO[] } = {};
-        for (const address of user.addresses) {
+  // HÀM LẤY DANH SÁCH TỪ API THAY VÌ REDUX
+  const fetchAddresses = async () => {
+    if (!providerId) return;
+
+    try {
+      const providerAddresses = await getAddressByProviderId(providerId);
+
+      const updatedAreas = await Promise.all(
+        providerAddresses.map(async (addr: any) => {
           try {
             const pitchList = await getPitchesByProviderAddressId(
-              address.providerAddressId
+              addr.providerAddressId,
             );
-            pitchesData[address.providerAddressId] = pitchList;
+            return {
+              id: addr.providerAddressId,
+              name: addr.address,
+              count: pitchList.length || 0,
+            };
           } catch (error) {
-            console.error(
-              `Lỗi khi lấy sân cho khu vực ${address.providerAddressId}:`,
-              error
-            );
-            toast.error(
-              `Lỗi khi tải danh sách sân cho khu vực ${address.address}`
-            );
+            return {
+              id: addr.providerAddressId,
+              name: addr.address,
+              count: 0,
+            };
           }
-        }
-        setPitchesByArea(pitchesData);
+        }),
+      );
+      setAreas(updatedAreas);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách địa chỉ:", error);
+    }
+  };
 
-        const updatedAreas = user.addresses.map((addr: any) => ({
-          id: addr.providerAddressId,
-          name: addr.address,
-          count: pitchesData[addr.providerAddressId]?.length || 0,
-        }));
-        setAreas(updatedAreas);
-      }
-    };
-
-    fetchPitchesForAllAreas();
-  }, [user?.addresses]);
+  useEffect(() => {
+    fetchAddresses();
+  }, [providerId]);
 
   const handleAddClick = () => {
     setTempAddress("");
@@ -117,22 +129,20 @@ export default function AddressInfo() {
       return;
     }
 
-    // Kiểm tra trùng tên (không phân biệt hoa thường)
-    const existingAddresses = (user?.addresses || []).map((addr: Address) =>
-      addr.address.toLowerCase()
-    );
+    // Kiểm tra trùng tên dựa vào danh sách areas từ API
+    const existingAddresses = areas.map((area) => area.name.toLowerCase());
     if (existingAddresses.includes(trimmedAddress.toLowerCase())) {
       toast.error("Khu vực này đã tồn tại");
       return;
     }
 
     try {
-      const newAddr = await addAddress({
+      await addAddress({
         address: trimmedAddress,
-        providerId: user?.providerId!,
+        providerId: providerId!,
       });
-      dispatch(update({ addresses: [...(user?.addresses || []), newAddr] }));
       toast.success("Đã thêm khu vực thành công");
+      fetchAddresses(); // Gọi API tải lại danh sách mới
       handleAddClose();
     } catch {
       toast.error("Thêm khu vực thất bại");
@@ -148,25 +158,23 @@ export default function AddressInfo() {
       return;
     }
 
-    // Kiểm tra trùng tên với các khu vực khác (ngoại trừ khu vực đang chỉnh sửa)
-    const existingAddresses = (user?.addresses || [])
-      .filter((addr: Address) => addr.providerAddressId !== selectedId)
-      .map((addr: Address) => addr.address.toLowerCase());
+    // Kiểm tra trùng tên
+    const existingAddresses = areas
+      .filter((area) => area.id !== selectedId)
+      .map((area) => area.name.toLowerCase());
+
     if (existingAddresses.includes(trimmedAddress.toLowerCase())) {
       toast.error("Khu vực này đã tồn tại");
       return;
     }
 
     try {
-      const updatedAddr = await updateAddress(
-        { address: trimmedAddress, providerId: user?.providerId! },
-        selectedId
+      await updateAddress(
+        { address: trimmedAddress, providerId: providerId! },
+        selectedId,
       );
-      const list: Address[] = (user?.addresses || []).map((addr: Address) =>
-        addr.providerAddressId === selectedId ? updatedAddr : addr
-      );
-      dispatch(update({ addresses: list }));
       toast.success("Chỉnh sửa thành công");
+      fetchAddresses(); // Gọi API tải lại danh sách mới
       handleEditClose();
     } catch {
       toast.error("Chỉnh sửa thất bại");
@@ -177,12 +185,9 @@ export default function AddressInfo() {
     if (!selectedId) return;
     try {
       await deleteAddress(selectedId);
-      const updatedAddresses = (user?.addresses || []).filter(
-        (addr: Address) => addr.providerAddressId !== selectedId
-      );
-      dispatch(update({ addresses: updatedAddresses }));
       toast.success("Xóa khu vực thành công");
       setSelectedId(null);
+      fetchAddresses(); // Gọi API tải lại danh sách mới
     } catch (error: any) {
       if (error.response?.status === 404) {
         toast.error("Khu vực không tồn tại");
@@ -195,76 +200,101 @@ export default function AddressInfo() {
   };
 
   return (
-    <div id="address-info" className="flex flex-col w-[90%]">
-      <div className="flex items-center gap-x-[2rem] mb-4">
-        <Typography variant="h6">Địa chỉ</Typography>
-        <div className="flex space-x-4">
+    <div id="address-info" className="flex flex-col w-full">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: "700", color: "#1e293b", fontSize: "1.1rem" }}
+        >
+          Địa chỉ các chi nhánh
+        </Typography>
+        <div className="flex gap-3">
           <Tooltip title="Thêm khu vực" arrow>
             <div
-              className={`${buttonBase} bg-[#e25b43] text-white cursor-pointer`}
+              className={`${buttonBase} bg-[#059669] hover:bg-[#047857] text-white cursor-pointer shadow-sm`}
               onClick={handleAddClick}
             >
-              <AddOutlinedIcon fontSize="medium" />
+              <AddOutlinedIcon fontSize="small" />
             </div>
           </Tooltip>
           <Tooltip title="Sửa khu vực" arrow>
             <div
               className={`${buttonBase} ${
                 selectedId
-                  ? "bg-[#e25b43] text-white cursor-pointer"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  ? "bg-[#0093FF] hover:bg-[#007add] text-white cursor-pointer shadow-sm"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}
               onClick={handleEditClick}
             >
-              <EditOutlinedIcon fontSize="medium" />
+              <EditOutlinedIcon fontSize="small" />
             </div>
           </Tooltip>
           <Tooltip title="Xóa khu vực" arrow>
             <div
               className={`${buttonBase} ${
                 selectedId
-                  ? "bg-[#e25b43] text-white cursor-pointer"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  ? "bg-[#ef4444] hover:bg-[#dc2626] text-white cursor-pointer shadow-sm"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}
               onClick={handleDeleteClick}
             >
-              <DeleteOutlineOutlinedIcon fontSize="medium" />
+              <DeleteOutlineOutlinedIcon fontSize="small" />
             </div>
           </Tooltip>
         </div>
       </div>
 
-      <div className="areas grid grid-cols-4 gap-x-[1.5rem] gap-y-[1.5rem]">
-        {areas.map((area) => (
-          <div
-            key={area.id}
-            className="area border-2 border-gray-400 rounded-md flex items-center relative px-4 py-2 w-[190px]"
-          >
-            <Typography component="div" className="flex items-center w-full">
-              <span className="flex-1 overflow-hidden whitespace-nowrap text-ellipsis">
-                {area.name}
-              </span>
-              <span className="flex-shrink-0">🏟️ {area.count}</span>
-            </Typography>
+      {areas.length === 0 ? (
+        <div className="p-6 border-2 border-dashed border-gray-200 rounded-xl text-center bg-gray-50">
+          <Typography className="text-gray-500 font-medium">
+            Chưa có địa chỉ nào được thêm
+          </Typography>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {areas.map((area) => {
+            const isSelected = selectedId === area.id;
+            return (
+              <div
+                key={area.id}
+                onClick={() => setSelectedId(isSelected ? null : area.id)}
+                className={`border-2 rounded-xl flex items-center justify-between px-4 py-3 cursor-pointer transition-all ${
+                  isSelected
+                    ? "border-[#0093FF] bg-blue-50"
+                    : "border-gray-200 hover:border-[#0093FF]/50 bg-white"
+                }`}
+              >
+                <div className="flex flex-col flex-1 overflow-hidden pr-2">
+                  <Typography className="font-bold text-[#1e293b] truncate text-[0.95rem]">
+                    {area.name}
+                  </Typography>
+                  <Typography className="text-xs font-medium text-gray-500 mt-0.5">
+                    🏟️ {area.count} sân đang hoạt động
+                  </Typography>
+                </div>
+                <Checkbox
+                  checked={isSelected}
+                  sx={{
+                    "& .MuiSvgIcon-root": { fontSize: 20 },
+                    color: "#cbd5e1",
+                    "&.Mui-checked": { color: "#0093FF" },
+                    padding: 0,
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-            <Checkbox
-              checked={selectedId === area.id}
-              onChange={() =>
-                setSelectedId(selectedId === area.id ? null : area.id)
-              }
-              sx={{
-                "& .MuiSvgIcon-root": { fontSize: 16 },
-                marginTop: "-0.5rem",
-                marginRight: "-0.5rem",
-              }}
-            />
-          </div>
-        ))}
-      </div>
-
-      <Dialog open={openAddModal} onClose={handleAddClose}>
-        <DialogTitle>Thêm khu vực mới</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={openAddModal}
+        onClose={handleAddClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold" }}>Thêm khu vực mới</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
           <Autocomplete
             freeSolo
             options={locations}
@@ -284,17 +314,33 @@ export default function AddressInfo() {
             )}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleAddClose}>Hủy</Button>
-          <Button onClick={handleAddSave} disabled={!tempAddress.trim()}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleAddClose}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleAddSave}
+            disabled={!tempAddress.trim()}
+            variant="contained"
+            sx={{ bgcolor: "#0093FF", fontWeight: "bold" }}
+          >
             Lưu
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={openEditModal} onClose={handleEditClose}>
-        <DialogTitle>Chỉnh sửa khu vực</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={openEditModal}
+        onClose={handleEditClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold" }}>Chỉnh sửa khu vực</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
           <Autocomplete
             freeSolo
             options={locations}
@@ -314,22 +360,47 @@ export default function AddressInfo() {
             )}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleEditClose}>Hủy</Button>
-          <Button onClick={handleEditSave} disabled={!tempAddress.trim()}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleEditClose}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleEditSave}
+            disabled={!tempAddress.trim()}
+            variant="contained"
+            sx={{ bgcolor: "#0093FF", fontWeight: "bold" }}
+          >
             Lưu
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog open={openDeleteModal} onClose={handleDeleteClose}>
-        <DialogTitle>Xác nhận xóa khu vực</DialogTitle>
+        <DialogTitle sx={{ fontWeight: "bold" }}>
+          Xác nhận xóa khu vực
+        </DialogTitle>
         <DialogContent>
-          Bạn có chắc chắn muốn xóa khu vực "{selectedArea?.name}"?
+          Bạn có chắc chắn muốn xóa khu vực "{selectedArea?.name}"? Các sân
+          thuộc khu vực này có thể bị ảnh hưởng.
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>Hủy</Button>
-          <Button color="error" onClick={handleDeleteConfirm}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleDeleteClose}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            color="error"
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            sx={{ fontWeight: "bold" }}
+          >
             Xóa
           </Button>
         </DialogActions>

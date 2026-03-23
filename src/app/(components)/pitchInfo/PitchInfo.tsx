@@ -16,6 +16,7 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { toast } from "react-toastify";
+import MenuItem from "@mui/material/MenuItem";
 
 import {
   getPitchesByProviderAddressId,
@@ -29,9 +30,10 @@ import { TextField } from "@mui/material";
 
 export interface PitchInfoProps {
   providerAddressId: string;
+  onPitchUpdate?: () => void;
 }
 
-export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
+const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
   const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -45,6 +47,7 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
     type: "FIVE_A_SIDE",
     price: 0,
     description: "",
+    environment: "OUTDOOR",
   };
   const [formData, setFormData] = useState<PitchRequestDTO>(emptyForm);
 
@@ -71,6 +74,7 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
       setPitches([newPitch, ...pitches]);
       toast.success("Đã thêm sân");
       setOpenAdd(false);
+      onPitchUpdate?.();
     } catch {
       toast.error("Thêm sân thất bại");
     }
@@ -84,6 +88,7 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
       type: selectedPitch.type,
       price: Number(selectedPitch.price),
       description: selectedPitch.description ?? "",
+      environment: selectedPitch.environment || "OUTDOOR",
     });
     setOpenEdit(true);
   };
@@ -92,7 +97,7 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
     try {
       const updated = await updatePitch(selectedPitch.pitchId, formData);
       setPitches(
-        pitches.map((p) => (p.pitchId === updated.pitchId ? updated : p))
+        pitches.map((p) => (p.pitchId === updated.pitchId ? updated : p)),
       );
       toast.success("Đã cập nhật sân");
       setOpenEdit(false);
@@ -105,7 +110,13 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
   const confirmDelete = async () => {
     if (!selectedPitch) return;
     await deletePitch(selectedPitch.pitchId);
+
+    setPitches(pitches.filter((p) => p.pitchId !== selectedPitch.pitchId));
+
     toast.success("Xóa sân thành công");
+    setOpenDelete(false);
+    setSelectedIndex(null);
+    onPitchUpdate?.();
   };
 
   return (
@@ -116,7 +127,7 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
       <div className="flex items-center gap-x-4">
         <Tooltip title="Thêm sân" arrow>
           <div
-            className="w-8 h-8 bg-[#e25b43] text-white flex items-center justify-center rounded-md cursor-pointer"
+            className="w-8 h-8 bg-[#e25b43] text-white flex items-center justify-center rounded-md cursor-pointer hover:bg-[#c84b35] transition-colors"
             onClick={onAdd}
           >
             <AddOutlinedIcon fontSize="small" />
@@ -127,24 +138,24 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
           arrow
         >
           <div
-            className={`w-8 h-8 flex items-center justify-center rounded-md ${
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
               selectedPitch
-                ? "bg-[#e25b43] text-white cursor-pointer"
-                : "bg-gray-300 text-gray-500"
+                ? "bg-[#e25b43] text-white cursor-pointer hover:bg-[#c84b35]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
-            onClick={onEdit}
+            onClick={selectedPitch ? onEdit : undefined}
           >
             <EditOutlinedIcon fontSize="small" />
           </div>
         </Tooltip>
         <Tooltip title={selectedPitch ? "Xóa sân" : "Chọn sân để xóa"} arrow>
           <div
-            className={`w-8 h-8 flex items-center justify-center rounded-md ${
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
               selectedPitch
-                ? "bg-[#e25b43] text-white cursor-pointer"
-                : "bg-gray-300 text-gray-500"
+                ? "bg-[#e25b43] text-white cursor-pointer hover:bg-[#c84b35]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
-            onClick={onDelete}
+            onClick={selectedPitch ? onDelete : undefined}
           >
             <DeleteOutlineOutlinedIcon fontSize="small" />
           </div>
@@ -159,7 +170,11 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
           return (
             <Card
               key={pitch.pitchId}
-              className={`max-w-[218px] h-[130px] cursor-pointer ${isSel ? "border-2 border-[#e25b43]" : ""}`}
+              className={`max-w-[218px] h-[130px] cursor-pointer transition-all ${
+                isSel
+                  ? "border-2 border-[#e25b43] shadow-md transform scale-[1.02]"
+                  : "hover:shadow-md"
+              }`}
               onClick={() => handleSelect(idx)}
             >
               <CardContent className="p-2 flex flex-col justify-between">
@@ -168,16 +183,22 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
                     fontWeight="bold"
                     fontSize="0.9rem"
                     color={isSel ? "#e25b43" : "text.primary"}
+                    className="truncate pr-2"
                   >
                     {pitch.name}
                   </Typography>
                   <Checkbox
                     checked={isSel}
-                    sx={{ "& .MuiSvgIcon-root": { fontSize: 16 } }}
+                    sx={{ "& .MuiSvgIcon-root": { fontSize: 16 }, padding: 0 }}
                   />
                 </div>
-                <Typography fontSize="0.8rem" color="text.secondary">
-                  {pitch.type.replace(/_/g, " ")} • {pitch.price}₫
+                <Typography
+                  fontSize="0.8rem"
+                  color="text.secondary"
+                  className="mt-2"
+                >
+                  {pitch.type.replace(/_/g, " ")} •{" "}
+                  {pitch.price.toLocaleString("vi-VN")}₫
                 </Typography>
               </CardContent>
             </Card>
@@ -185,10 +206,16 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
         })}
       </div>
 
-      {/* Dialog Thêm */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)}>
-        <DialogTitle>Thêm sân mới</DialogTitle>
-        <DialogContent className="flex flex-col gap-4">
+      <Dialog
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.25rem", pb: 1 }}>
+          Thêm sân mới
+        </DialogTitle>
+        <DialogContent className="flex flex-col gap-5 mt-2">
           <TextField
             label="Tên sân"
             fullWidth
@@ -198,15 +225,20 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
             }
           />
           <TextField
-            label="Loại (FIVE_A_SIDE, ...)"
+            select
+            label="Loại sân"
             fullWidth
             value={formData.type}
             onChange={(e) =>
               setFormData((f) => ({ ...f, type: e.target.value as any }))
             }
-          />
+          >
+            <MenuItem value="FIVE_A_SIDE">5 người (FIVE A SIDE)</MenuItem>
+            <MenuItem value="SEVEN_A_SIDE">7 người (SEVEN A SIDE)</MenuItem>
+            <MenuItem value="ELEVEN_A_SIDE">11 người (ELEVEN A SIDE)</MenuItem>
+          </TextField>
           <TextField
-            label="Giá"
+            label="Giá (VNĐ)"
             type="number"
             fullWidth
             value={formData.price}
@@ -215,28 +247,61 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
             }
           />
           <TextField
+            select
+            label="Môi trường"
+            fullWidth
+            value={formData.environment}
+            onChange={(e) =>
+              setFormData((f) => ({ ...f, environment: e.target.value }))
+            }
+          >
+            <MenuItem value="OUTDOOR">Ngoài trời (OUTDOOR)</MenuItem>
+            <MenuItem value="INDOOR">Trong nhà (INDOOR)</MenuItem>
+          </TextField>
+          <TextField
             label="Mô tả"
             fullWidth
             multiline
+            rows={3}
             value={formData.description}
             onChange={(e) =>
               setFormData((f) => ({ ...f, description: e.target.value }))
             }
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>Hủy</Button>
-          <Button onClick={saveAdd} disabled={!formData.name.trim()}>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setOpenAdd(false)}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={saveAdd}
+            disabled={!formData.name.trim()}
+            variant="contained"
+            sx={{
+              bgcolor: "#e25b43",
+              "&:hover": { bgcolor: "#c84b35" },
+              fontWeight: "bold",
+            }}
+          >
             Lưu
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Dialog Sửa */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)}>
-        <DialogTitle>Chỉnh sửa sân</DialogTitle>
-        <DialogContent className="flex flex-col gap-4">
-          {/* Các input giống Dialog Thêm */}
+      <Dialog
+        open={openEdit}
+        onClose={() => setOpenEdit(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.25rem", pb: 1 }}>
+          Chỉnh sửa sân
+        </DialogTitle>
+        <DialogContent className="flex flex-col gap-5 mt-2">
           <TextField
             label="Tên sân"
             fullWidth
@@ -246,15 +311,20 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
             }
           />
           <TextField
-            label="Loại"
+            select
+            label="Loại sân"
             fullWidth
             value={formData.type}
             onChange={(e) =>
               setFormData((f) => ({ ...f, type: e.target.value as any }))
             }
-          />
+          >
+            <MenuItem value="FIVE_A_SIDE">5 người (FIVE A SIDE)</MenuItem>
+            <MenuItem value="SEVEN_A_SIDE">7 người (SEVEN A SIDE)</MenuItem>
+            <MenuItem value="ELEVEN_A_SIDE">11 người (ELEVEN A SIDE)</MenuItem>
+          </TextField>
           <TextField
-            label="Giá"
+            label="Giá (VNĐ)"
             type="number"
             fullWidth
             value={formData.price}
@@ -263,36 +333,78 @@ export default function PitchInfo({ providerAddressId }: PitchInfoProps) {
             }
           />
           <TextField
+            select
+            label="Môi trường"
+            fullWidth
+            value={formData.environment}
+            onChange={(e) =>
+              setFormData((f) => ({ ...f, environment: e.target.value }))
+            }
+          >
+            <MenuItem value="OUTDOOR">Ngoài trời (OUTDOOR)</MenuItem>
+            <MenuItem value="INDOOR">Trong nhà (INDOOR)</MenuItem>
+          </TextField>
+          <TextField
             label="Mô tả"
             fullWidth
             multiline
+            rows={3}
             value={formData.description}
             onChange={(e) =>
               setFormData((f) => ({ ...f, description: e.target.value }))
             }
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEdit(false)}>Hủy</Button>
-          <Button onClick={saveEdit} disabled={!formData.name.trim()}>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setOpenEdit(false)}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={saveEdit}
+            disabled={!formData.name.trim()}
+            variant="contained"
+            sx={{
+              bgcolor: "#e25b43",
+              "&:hover": { bgcolor: "#c84b35" },
+              fontWeight: "bold",
+            }}
+          >
             Lưu
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Dialog Xóa */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Xác nhận xóa sân</DialogTitle>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Xác nhận xóa sân</DialogTitle>
         <DialogContent>
-          Bạn có chắc muốn xóa sân “{selectedPitch?.name}”?
+          <Typography>
+            Bạn có chắc muốn xóa sân <strong>{selectedPitch?.name}</strong>?
+          </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Hủy</Button>
-          <Button color="error" onClick={confirmDelete}>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setOpenDelete(false)}
+            color="inherit"
+            sx={{ fontWeight: "bold" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            color="error"
+            onClick={confirmDelete}
+            variant="contained"
+            sx={{ fontWeight: "bold" }}
+          >
             Xóa
           </Button>
         </DialogActions>
       </Dialog>
     </div>
   );
-}
+};
+
+export default PitchInfo;

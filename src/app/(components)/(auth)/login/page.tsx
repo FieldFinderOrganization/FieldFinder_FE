@@ -62,7 +62,7 @@ const Login: React.FC = () => {
       setPasswordError("Mật khẩu không được để trống.");
     } else if (value.length < MIN_PASSWORD_LENGTH) {
       setPasswordError(
-        `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`
+        `Mật khẩu phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự.`,
       );
     } else {
       setPasswordError(null);
@@ -99,7 +99,7 @@ const Login: React.FC = () => {
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       const user = userCredential.user;
       const idToken = await user.getIdToken();
@@ -129,7 +129,7 @@ const Login: React.FC = () => {
         toast.error("Sai email hoặc mật khẩu!");
       } else if (error.code === "auth/too-many-requests") {
         toast.error(
-          "Tài khoản bị tạm khóa do quá nhiều lần đăng nhập thất bại."
+          "Tài khoản bị tạm khóa do quá nhiều lần đăng nhập thất bại.",
         );
       } else if (error.response?.status === 401) {
         toast.error("Tài khoản không tồn tại. Vui lòng đăng ký.");
@@ -179,11 +179,11 @@ const Login: React.FC = () => {
         loginSuccess({
           user: tempLoginData.user,
           token: tempLoginData.token,
-        })
+        }),
       );
 
       localStorage.setItem("token", tempLoginData.token);
-      
+
       setLoading(true);
       toast.success("Đăng nhập thành công!");
 
@@ -202,7 +202,9 @@ const Login: React.FC = () => {
       className="h-screen flex"
     >
       <form
-        className="w-1/2 min-h-screen flex items-center justify-center bg-white p-4"
+        className={`w-1/2 min-h-screen flex items-center justify-center bg-white p-4 transition-opacity duration-300 ${
+          loading ? "pointer-events-none opacity-70" : ""
+        }`}
         onSubmit={handleSubmit}
       >
         <div className="w-full max-w-[400px]">

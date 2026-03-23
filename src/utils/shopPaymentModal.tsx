@@ -57,7 +57,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
   const calculateItemCurrentPrice = (
     item: any,
-    selectedDiscounts: discountRes[]
+    selectedDiscounts: discountRes[],
   ) => {
     const originalPrice = (item as any).originalPrice ?? item.priceAtTime;
 
@@ -67,7 +67,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
     const itemDiscounts = (item as any).appliedDiscounts || [];
 
     const validDiscounts = itemDiscounts.filter((d: any) =>
-      activeCodes.has(d.code)
+      activeCodes.has(d.code),
     );
 
     let currentPrice = originalPrice;
@@ -162,7 +162,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
         }
 
         const fullDiscountsToSelect = allDiscounts.filter((d) =>
-          appliedCodes.has(d.code)
+          appliedCodes.has(d.code),
         );
 
         if (fullDiscountsToSelect.length > 0) {
@@ -178,7 +178,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
 
   const totalOriginalPrice = useMemo(() => {
     return finalCartItems.reduce((total, item) => {
-      const original = (item as any).originalPrice ?? item.priceAtTime;
+      const original = (item as any).originalPrice;
       return total + original * item.quantity;
     }, 0);
   }, [finalCartItems]);
@@ -362,14 +362,13 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                     {finalCartItems.map((item) => {
                       const dynamicPrice = calculateItemCurrentPrice(
                         item,
-                        selectedDiscounts
+                        selectedDiscounts,
                       );
-                      const originalPrice =
-                        (item as any).originalPrice ?? item.priceAtTime;
+                      const originalPrice = (item as any).originalPrice;
 
                       return (
                         <div
-                          key={item.id || item.productId}
+                          key={item.productId}
                           className="flex gap-4 items-start p-3 border border-gray-100 rounded-lg"
                         >
                           <img
@@ -392,7 +391,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                           <div className="text-right">
                             <p className="text-sm font-bold">
                               {new Intl.NumberFormat("vi-VN").format(
-                                originalPrice
+                                originalPrice,
                               )}{" "}
                               ₫
                             </p>
@@ -401,7 +400,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                               <p className="text-xs text-red-500 font-semibold">
                                 Sau giảm:{" "}
                                 {new Intl.NumberFormat("vi-VN").format(
-                                  dynamicPrice
+                                  dynamicPrice,
                                 )}{" "}
                                 ₫
                               </p>
@@ -410,7 +409,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                             <p className="text-xs text-gray-500 mt-1">
                               Tổng cộng:{" "}
                               {new Intl.NumberFormat("vi-VN").format(
-                                dynamicPrice * item.quantity
+                                dynamicPrice * item.quantity,
                               )}{" "}
                               ₫
                             </p>
@@ -472,7 +471,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                             size="small"
                             onClick={() =>
                               setSelectedDiscounts((prev) =>
-                                prev.filter((d) => d.id !== discount.id)
+                                prev.filter((d) => d.id !== discount.id),
                               )
                             }
                           >
@@ -560,7 +559,7 @@ const ShopPaymentModal: React.FC<ShopPaymentModalProps> = ({
                     <span className="font-medium">
                       -
                       {(totalOriginalPrice - finalTotal).toLocaleString(
-                        "vi-VN"
+                        "vi-VN",
                       )}{" "}
                       ₫
                     </span>

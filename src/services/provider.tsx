@@ -140,7 +140,7 @@ export const updateAddress = async (
   return response.data;
 };
 
-export const getAddress = async (
+export const getAddressByProviderId = async (
   providerId: string,
 ): Promise<providerAddress[]> => {
   const config = await getConfig();
