@@ -9,7 +9,6 @@ import {
   Button,
   Card,
   CardContent,
-  Divider,
   IconButton,
   Typography,
 } from "@mui/material";
@@ -18,7 +17,6 @@ import KeyboardArrowRightOutlinedIcon from "@mui/icons-material/KeyboardArrowRig
 import { FaStar, FaStarHalfAlt } from "react-icons/fa";
 import { CiStar } from "react-icons/ci";
 import { BsPinMap } from "react-icons/bs";
-import Image from "next/image";
 import CloseIcon from "@mui/icons-material/Close";
 import { useInView } from "react-intersection-observer";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
@@ -32,7 +30,8 @@ import { toast } from "react-toastify";
 
 import { getBookingSlot } from "@/services/booking";
 import { getReviewByPitch } from "@/services/review";
-import { getAllUsers } from "@/services/user";
+import { getUserById } from "@/services/user";
+import { PitchResponseDTO, getPitchById } from "@/services/pitch";
 import BookingModal from "@/utils/bookingModal";
 import f from "../../../../../../public/images/field3.jpg";
 
@@ -66,13 +65,15 @@ const FieldDetail: React.FC = () => {
   const [reviews, setReviews] = useState<reviewResponseDTO[]>([]);
   const [users, setUsers] = useState<{ [key: string]: User }>({});
 
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal zoom ảnh
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [isModalBookingOpen, setIsModalBookingOpen] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<number[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+
+  const [pitchData, setPitchData] = useState<PitchResponseDTO | null>(null);
 
   const fieldData = {
     id: id ?? "",
@@ -92,20 +93,39 @@ const FieldDetail: React.FC = () => {
     const loadData = async () => {
       if (!id) return;
       try {
-        const [pitchReviews, usersData] = await Promise.all([
-          getReviewByPitch(id),
-          getAllUsers(),
+        const [pitchReviews, fetchedPitch] = await Promise.all([
+          getReviewByPitch(id).catch(() => []),
+          getPitchById(id).catch(() => null),
         ]);
 
         setReviews(pitchReviews);
-        const userMap: { [key: string]: User } = {};
-        usersData.forEach((user) => {
-          userMap[user.userId] = user;
-        });
-        setUsers(userMap);
+
+        if (fetchedPitch) {
+          setPitchData(fetchedPitch);
+        }
+
+        if (pitchReviews && pitchReviews.length > 0) {
+          const uniqueUserIds = Array.from(
+            new Set(pitchReviews.map((r: any) => r.userId)),
+          );
+
+          const usersData = await Promise.all(
+            uniqueUserIds.map((uid) =>
+              getUserById(uid as string).catch(() => null),
+            ),
+          );
+
+          const userMap: { [key: string]: User } = {};
+          usersData.forEach((user: any, index) => {
+            if (user) {
+              const uId = uniqueUserIds[index] as string;
+              userMap[uId] = user;
+            }
+          });
+          setUsers(userMap);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Không thể tải dữ liệu sân");
       }
     };
     loadData();
@@ -151,7 +171,7 @@ const FieldDetail: React.FC = () => {
 
   const toggleTimeSlot = (slot: string) => {
     setSelectedTimeSlots((prev) =>
-      prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
+      prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot],
     );
   };
 
@@ -166,7 +186,7 @@ const FieldDetail: React.FC = () => {
     threshold: 0.1,
   });
 
-  const handleImageClick = (imageSrc: any) => {
+  const handleImageClick = (imageSrc: string) => {
     setSelectedImage(imageSrc);
     setIsModalOpen(true);
   };
@@ -207,15 +227,18 @@ const FieldDetail: React.FC = () => {
     for (let i = 0; i < 5; i++) {
       if (i < fullStars)
         stars.push(
-          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
+          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />,
         );
       else if (i === fullStars && hasHalfStar)
         stars.push(
-          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
+          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />,
         );
       else
         stars.push(
-          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
+          <CiStar
+            key={`empty-${i}`}
+            className="text-[0.8rem] text-green-600"
+          />,
         );
     }
     return stars;
@@ -224,6 +247,34 @@ const FieldDetail: React.FC = () => {
   const truncateName = (name: string, maxLength: number = 15) => {
     if (name.length > maxLength) return name.substring(0, 12) + "...";
     return name;
+  };
+
+  const currentGallery =
+    pitchData?.imageUrls && pitchData.imageUrls.length > 1
+      ? pitchData.imageUrls
+      : [
+          pitchData?.imageUrls?.[0] || "/images/field3.jpg",
+          "/images/field1.jpg",
+        ];
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = currentGallery.indexOf(selectedImage || "");
+    if (currentIndex > 0) {
+      setSelectedImage(currentGallery[currentIndex - 1]);
+    } else {
+      setSelectedImage(currentGallery[currentGallery.length - 1]);
+    }
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentIndex = currentGallery.indexOf(selectedImage || "");
+    if (currentIndex < currentGallery.length - 1) {
+      setSelectedImage(currentGallery[currentIndex + 1]);
+    } else {
+      setSelectedImage(currentGallery[0]);
+    }
   };
 
   return (
@@ -330,24 +381,35 @@ const FieldDetail: React.FC = () => {
 
           <div className="right-content relative w-full max-w-[320px] h-[300px] lg:w-[400px] lg:h-[350px] flex-shrink-0 mx-auto mt-4 lg:mt-0">
             <div className="relative w-full h-full group">
-              <Image
-                src="/images/field3.jpg"
-                width={240}
-                height={240}
+              <img
+                src={pitchData?.imageUrls?.[0] || "/images/field3.jpg"}
                 className="rounded-2xl rotate-[-6deg] cursor-pointer object-cover shadow-xl border-4 border-white absolute top-0 left-2 z-20 transition-transform group-hover:rotate-0 group-hover:scale-105 duration-300"
                 style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
                 alt="Field Main"
-                onClick={() => handleImageClick("/images/field3.jpg")}
+                onClick={() =>
+                  handleImageClick(
+                    pitchData?.imageUrls?.[0] || "/images/field3.jpg",
+                  )
+                }
               />
-              <Image
-                src="/images/field1.jpg"
-                width={248}
-                height={248}
-                className="rounded-2xl cursor-pointer object-cover shadow-lg border-4 border-gray-100 absolute top-8 left-8 z-10 opacity-90"
-                style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
-                alt="Field Sub"
-                onClick={() => handleImageClick("/images/field1.jpg")}
-              />
+
+              {pitchData?.imageUrls && pitchData.imageUrls.length > 1 ? (
+                <img
+                  src={pitchData.imageUrls[1]}
+                  className="rounded-2xl cursor-pointer object-cover shadow-lg border-4 border-gray-100 absolute top-8 left-8 z-10 opacity-90 hover:opacity-100 transition-opacity"
+                  style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
+                  alt="Field Sub"
+                  onClick={() => handleImageClick(pitchData.imageUrls![1])}
+                />
+              ) : (
+                <img
+                  src="/images/field1.jpg"
+                  className="rounded-2xl cursor-pointer object-cover shadow-lg border-4 border-gray-100 absolute top-8 left-8 z-10 opacity-90 hover:opacity-100 transition-opacity"
+                  style={{ width: "85%", height: "auto", aspectRatio: "1/1" }}
+                  alt="Field Sub"
+                  onClick={() => handleImageClick("/images/field1.jpg")}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -430,7 +492,8 @@ const FieldDetail: React.FC = () => {
                         <div>
                           <p className="font-bold text-sm text-gray-800">
                             {truncateName(
-                              users[review.userId]?.name || "Người dùng ẩn danh"
+                              users[review.userId]?.name ||
+                                "Người dùng ẩn danh",
                             )}
                           </p>
                           <div className="flex gap-0.5">
@@ -464,16 +527,51 @@ const FieldDetail: React.FC = () => {
           className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={closeModal}
         >
-          <div className="relative w-full max-w-5xl h-auto max-h-[90vh]">
-            <Image
+          <div className="relative w-full max-w-5xl max-h-[90vh] flex items-center justify-center">
+            {currentGallery.length > 1 && (
+              <IconButton
+                onClick={handlePrevImage}
+                sx={{
+                  position: "absolute",
+                  left: { xs: 0, md: -60 },
+                  color: "white",
+                  bgcolor: "rgba(255,255,255,0.1)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+                  zIndex: 60,
+                }}
+              >
+                <MdKeyboardArrowLeft size={36} />
+              </IconButton>
+            )}
+
+            {/* Ảnh hiển thị */}
+            <img
               src={selectedImage || "/images/field1.jpg"}
-              width={1000}
-              height={800}
-              objectFit="contain"
-              className="rounded-lg shadow-2xl mx-auto"
+              className="rounded-lg shadow-2xl object-contain max-h-[85vh] w-auto"
               alt="Zoomed"
+              onClick={(e) => e.stopPropagation()}
             />
-            <button className="absolute -top-12 right-0 text-white hover:text-red-500 transition-colors">
+
+            {currentGallery.length > 1 && (
+              <IconButton
+                onClick={handleNextImage}
+                sx={{
+                  position: "absolute",
+                  right: { xs: 0, md: -60 },
+                  color: "white",
+                  bgcolor: "rgba(255,255,255,0.1)",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+                  zIndex: 60,
+                }}
+              >
+                <MdKeyboardArrowRight size={36} />
+              </IconButton>
+            )}
+
+            <button
+              className="absolute -top-10 right-0 text-white hover:text-red-500 transition-colors"
+              onClick={closeModal}
+            >
               <CloseIcon fontSize="large" />
             </button>
           </div>

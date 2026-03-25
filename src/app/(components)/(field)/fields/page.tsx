@@ -23,13 +23,14 @@ interface Pitch {
   type: "FIVE_A_SIDE" | "SEVEN_A_SIDE" | "ELEVEN_A_SIDE";
   price: number;
   description?: string;
+  imageUrls?: string[]; // Đã nâng cấp để nhận mảng ảnh
 }
 
 const FieldLists: React.FC = () => {
   const router = useRouter();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
-    null
+    null,
   );
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -53,13 +54,13 @@ const FieldLists: React.FC = () => {
 
         const initialPitches = pitchIdsParam
           ? pitchesData.filter((pitch) =>
-              availablePitchIds.includes(pitch.pitchId)
+              availablePitchIds.includes(pitch.pitchId),
             )
           : pitchesData;
 
         setBasePitches(initialPitches);
         setFilteredAddresses(
-          getAddressesForPitches(addressesData, initialPitches)
+          getAddressesForPitches(addressesData, initialPitches),
         );
 
         const pitchRatings: { [key: string]: number } = {};
@@ -71,16 +72,16 @@ const FieldLists: React.FC = () => {
             } catch (error) {
               console.error(
                 `Error fetching rating for pitch ${pitch.pitchId}:`,
-                error
+                error,
               );
               pitchRatings[pitch.pitchId] = 0;
             }
-          })
+          }),
         );
         setRatings(pitchRatings);
 
         updateSelectedAddress(
-          getAddressesForPitches(addressesData, initialPitches)
+          getAddressesForPitches(addressesData, initialPitches),
         );
 
         setSearchTerm("");
@@ -97,20 +98,20 @@ const FieldLists: React.FC = () => {
       ...new Set(pitches.map((pitch) => pitch.providerAddressId)),
     ];
     return addresses.filter((addr) =>
-      addressIds.includes(addr.providerAddressId)
+      addressIds.includes(addr.providerAddressId),
     );
   };
 
   const updateSelectedAddress = (addresses: Address[]) => {
     setSelectedAddressId(
-      addresses.length > 0 ? addresses[0].providerAddressId : null
+      addresses.length > 0 ? addresses[0].providerAddressId : null,
     );
   };
 
   useEffect(() => {
     const filtered = searchTerm
       ? basePitches.filter((pitch) =>
-          pitch.name.toLowerCase().includes(searchTerm.toLowerCase())
+          pitch.name.toLowerCase().includes(searchTerm.toLowerCase()),
         )
       : basePitches;
 
@@ -120,7 +121,7 @@ const FieldLists: React.FC = () => {
     if (
       !selectedAddressId ||
       !addressesForPitches.some(
-        (addr) => addr.providerAddressId === selectedAddressId
+        (addr) => addr.providerAddressId === selectedAddressId,
       )
     ) {
       updateSelectedAddress(addressesForPitches);
@@ -128,7 +129,7 @@ const FieldLists: React.FC = () => {
 
     const pitchesForSelectedAddress = selectedAddressId
       ? filtered.filter(
-          (pitch) => pitch.providerAddressId === selectedAddressId
+          (pitch) => pitch.providerAddressId === selectedAddressId,
         )
       : [];
 
@@ -147,7 +148,7 @@ const FieldLists: React.FC = () => {
   const handlePitchClick = (pitch: Pitch) => {
     const address =
       addresses.find(
-        (addr) => addr.providerAddressId === pitch.providerAddressId
+        (addr) => addr.providerAddressId === pitch.providerAddressId,
       )?.address || "Không xác định";
 
     router.push(
@@ -159,7 +160,7 @@ const FieldLists: React.FC = () => {
         description: pitch.description || "Không có mô tả",
         address: address,
         rating: (ratings[pitch.pitchId] || 0).toFixed(1),
-      }).toString()}`
+      }).toString()}`,
     );
   };
 
@@ -174,7 +175,7 @@ const FieldLists: React.FC = () => {
         stars.push(<FaStar key={i} className="text-green-600 text-[0.7rem]" />);
       } else if (i === fullStars && hasHalfStar) {
         stars.push(
-          <FaStarHalfAlt key={i} className="text-green-600 text-[0.7rem]" />
+          <FaStarHalfAlt key={i} className="text-green-600 text-[0.7rem]" />,
         );
       } else {
         stars.push(<CiStar key={i} className="text-[0.8rem] text-green-600" />);
@@ -259,9 +260,14 @@ const FieldLists: React.FC = () => {
                   className="w-full max-w-[320px] sm:max-w-none h-auto bg-white rounded-[10px] shadow-md flex flex-col items-start gap-y-[0.8rem] cursor-pointer hover:shadow-lg transition-shadow duration-300 pb-4"
                   onClick={() => handlePitchClick(pitch)}
                 >
+                  {/* LUÔN LẤY ẢNH ĐẦU TIÊN LÀM COVER NẾU CÓ, NẾU KHÔNG DÙNG ẢNH DEFAULT */}
                   <img
-                    src={f.src}
-                    alt="Field"
+                    src={
+                      pitch.imageUrls && pitch.imageUrls.length > 0
+                        ? pitch.imageUrls[0]
+                        : f.src
+                    }
+                    alt="Field Cover"
                     className="w-full h-[120px] rounded-t-[10px] object-cover"
                   />
                   <div className="content flex flex-col gap-y-[0.2rem] px-[1rem] w-full">

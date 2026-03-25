@@ -10,6 +10,7 @@ export interface PitchRequestDTO {
   price: number;
   description?: string;
   environment: string;
+  imageUrls?: string[];
 }
 
 export interface PitchResponseDTO {
@@ -20,6 +21,7 @@ export interface PitchResponseDTO {
   price: number;
   description?: string;
   environment: string;
+  imageUrls: string[];
 }
 
 const getConfig = async () => {

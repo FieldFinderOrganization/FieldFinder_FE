@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
 import Checkbox from "@mui/material/Checkbox";
@@ -15,8 +15,12 @@ import Button from "@mui/material/Button";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import CancelIcon from "@mui/icons-material/Cancel";
 import { toast } from "react-toastify";
 import MenuItem from "@mui/material/MenuItem";
+import f from "../../../../public/images/field1.jpg";
+
+import ImageEditorUploader from "@/utils/imageEditorUploader";
 
 import {
   getPitchesByProviderAddressId,
@@ -25,15 +29,18 @@ import {
   PitchRequestDTO,
   PitchResponseDTO,
   deletePitch,
-} from "../../../services/pitch";
+} from "@/services/pitch";
 import { TextField } from "@mui/material";
 
 export interface PitchInfoProps {
   providerAddressId: string;
-  onPitchUpdate?: () => void;
+  onPitchUpdate?: () => void | Promise<void>;
 }
 
-const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
+const PitchInfo: React.FC<PitchInfoProps> = ({
+  providerAddressId,
+  onPitchUpdate,
+}) => {
   const [pitches, setPitches] = useState<PitchResponseDTO[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -48,6 +55,7 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
     price: 0,
     description: "",
     environment: "OUTDOOR",
+    imageUrls: [],
   };
   const [formData, setFormData] = useState<PitchRequestDTO>(emptyForm);
 
@@ -68,13 +76,14 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
     setFormData({ ...emptyForm });
     setOpenAdd(true);
   };
+
   const saveAdd = async () => {
     try {
       const newPitch = await createPitch(formData);
       setPitches([newPitch, ...pitches]);
       toast.success("Đã thêm sân");
       setOpenAdd(false);
-      onPitchUpdate?.();
+      if (onPitchUpdate) await onPitchUpdate();
     } catch {
       toast.error("Thêm sân thất bại");
     }
@@ -89,9 +98,11 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
       price: Number(selectedPitch.price),
       description: selectedPitch.description ?? "",
       environment: selectedPitch.environment || "OUTDOOR",
+      imageUrls: selectedPitch.imageUrls || [],
     });
     setOpenEdit(true);
   };
+
   const saveEdit = async () => {
     if (!selectedPitch) return;
     try {
@@ -107,6 +118,7 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
   };
 
   const onDelete = () => setOpenDelete(true);
+
   const confirmDelete = async () => {
     if (!selectedPitch) return;
     await deletePitch(selectedPitch.pitchId);
@@ -116,8 +128,15 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
     toast.success("Xóa sân thành công");
     setOpenDelete(false);
     setSelectedIndex(null);
-    onPitchUpdate?.();
+    if (onPitchUpdate) await onPitchUpdate();
   };
+
+  const handleImageUpload = useCallback((url: string) => {
+    setFormData((prevData: PitchRequestDTO) => ({
+      ...prevData,
+      imageUrls: [...(prevData.imageUrls || []), url],
+    }));
+  }, []);
 
   return (
     <div className="flex flex-col items-start gap-y-6">
@@ -167,17 +186,27 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
       <div className="san flex flex-wrap gap-x-5 gap-y-6">
         {pitches.map((pitch, idx) => {
           const isSel = idx === selectedIndex;
+          const coverImage =
+            pitch.imageUrls && pitch.imageUrls.length > 0
+              ? pitch.imageUrls[0]
+              : f.src;
+
           return (
             <Card
               key={pitch.pitchId}
-              className={`max-w-[218px] h-[130px] cursor-pointer transition-all ${
+              className={`w-[218px] min-h-[160px] cursor-pointer transition-all flex flex-col ${
                 isSel
                   ? "border-2 border-[#e25b43] shadow-md transform scale-[1.02]"
                   : "hover:shadow-md"
               }`}
               onClick={() => handleSelect(idx)}
             >
-              <CardContent className="p-2 flex flex-col justify-between">
+              <img
+                src={coverImage}
+                alt="pitch-cover"
+                className="w-full h-[90px] object-cover border-b border-gray-100"
+              />
+              <CardContent className="p-2 flex flex-col justify-between flex-1">
                 <div className="flex justify-between items-center">
                   <Typography
                     fontWeight="bold"
@@ -211,6 +240,8 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
         onClose={() => setOpenAdd(false)}
         maxWidth="sm"
         fullWidth
+        disableEnforceFocus
+        disableAutoFocus
       >
         <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.25rem", pb: 1 }}>
           Thêm sân mới
@@ -219,18 +250,18 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
           <TextField
             label="Tên sân"
             fullWidth
-            value={formData.name}
+            value={formData.name || ""}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, name: e.target.value }))
+              setFormData((f: any) => ({ ...f, name: e.target.value }))
             }
           />
           <TextField
             select
             label="Loại sân"
             fullWidth
-            value={formData.type}
+            value={formData.type || "FIVE_A_SIDE"}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, type: e.target.value as any }))
+              setFormData((f: any) => ({ ...f, type: e.target.value as any }))
             }
           >
             <MenuItem value="FIVE_A_SIDE">5 người (FIVE A SIDE)</MenuItem>
@@ -241,18 +272,21 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
             label="Giá (VNĐ)"
             type="number"
             fullWidth
-            value={formData.price}
+            value={formData.price === 0 ? "" : formData.price}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, price: Number(e.target.value) }))
+              setFormData((f: any) => ({
+                ...f,
+                price: e.target.value ? Number(e.target.value) : 0,
+              }))
             }
           />
           <TextField
             select
             label="Môi trường"
             fullWidth
-            value={formData.environment}
+            value={formData.environment || "OUTDOOR"}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, environment: e.target.value }))
+              setFormData((f: any) => ({ ...f, environment: e.target.value }))
             }
           >
             <MenuItem value="OUTDOOR">Ngoài trời (OUTDOOR)</MenuItem>
@@ -263,11 +297,44 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
             fullWidth
             multiline
             rows={3}
-            value={formData.description}
+            value={formData.description || ""}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, description: e.target.value }))
+              setFormData((f: any) => ({ ...f, description: e.target.value }))
             }
           />
+
+          <div className="flex flex-col gap-2 mt-2">
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: "bold", color: "#475569" }}
+            >
+              Ảnh đại diện sân (Có thể tải lên nhiều ảnh)
+            </Typography>
+            <div className="flex flex-wrap items-center gap-4">
+              {formData.imageUrls?.map(
+                (url: string | undefined, index: number) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Preview-${index}`}
+                      className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                    />
+                    <div
+                      className="absolute -top-2 -right-2 bg-white rounded-full cursor-pointer shadow-md text-red-500 hover:text-red-700 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        const newUrls = [...(formData.imageUrls || [])];
+                        newUrls.splice(index, 1);
+                        setFormData((f: any) => ({ ...f, imageUrls: newUrls }));
+                      }}
+                    >
+                      <CancelIcon sx={{ fontSize: 20 }} />
+                    </div>
+                  </div>
+                ),
+              )}
+              <ImageEditorUploader onUploadSuccess={handleImageUpload} />
+            </div>
+          </div>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button
@@ -297,6 +364,8 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
         onClose={() => setOpenEdit(false)}
         maxWidth="sm"
         fullWidth
+        disableEnforceFocus
+        disableAutoFocus
       >
         <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.25rem", pb: 1 }}>
           Chỉnh sửa sân
@@ -305,18 +374,18 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
           <TextField
             label="Tên sân"
             fullWidth
-            value={formData.name}
+            value={formData.name || ""}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, name: e.target.value }))
+              setFormData((f: any) => ({ ...f, name: e.target.value }))
             }
           />
           <TextField
             select
             label="Loại sân"
             fullWidth
-            value={formData.type}
+            value={formData.type || "FIVE_A_SIDE"}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, type: e.target.value as any }))
+              setFormData((f: any) => ({ ...f, type: e.target.value as any }))
             }
           >
             <MenuItem value="FIVE_A_SIDE">5 người (FIVE A SIDE)</MenuItem>
@@ -327,18 +396,21 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
             label="Giá (VNĐ)"
             type="number"
             fullWidth
-            value={formData.price}
+            value={formData.price === 0 ? "" : formData.price}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, price: Number(e.target.value) }))
+              setFormData((f: any) => ({
+                ...f,
+                price: e.target.value ? Number(e.target.value) : 0,
+              }))
             }
           />
           <TextField
             select
             label="Môi trường"
             fullWidth
-            value={formData.environment}
+            value={formData.environment || "OUTDOOR"}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, environment: e.target.value }))
+              setFormData((f: any) => ({ ...f, environment: e.target.value }))
             }
           >
             <MenuItem value="OUTDOOR">Ngoài trời (OUTDOOR)</MenuItem>
@@ -349,11 +421,44 @@ const PitchInfo = ({ providerAddressId, onPitchUpdate }: PitchInfoProps) => {
             fullWidth
             multiline
             rows={3}
-            value={formData.description}
+            value={formData.description || ""}
             onChange={(e) =>
-              setFormData((f) => ({ ...f, description: e.target.value }))
+              setFormData((f: any) => ({ ...f, description: e.target.value }))
             }
           />
+
+          <div className="flex flex-col gap-2 mt-2">
+            <Typography
+              variant="subtitle2"
+              sx={{ fontWeight: "bold", color: "#475569" }}
+            >
+              Ảnh đại diện sân (Có thể tải lên nhiều ảnh)
+            </Typography>
+            <div className="flex flex-wrap items-center gap-4">
+              {formData.imageUrls?.map(
+                (url: string | undefined, index: number) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Preview-${index}`}
+                      className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                    />
+                    <div
+                      className="absolute -top-2 -right-2 bg-white rounded-full cursor-pointer shadow-md text-red-500 hover:text-red-700 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        const newUrls = [...(formData.imageUrls || [])];
+                        newUrls.splice(index, 1);
+                        setFormData((f: any) => ({ ...f, imageUrls: newUrls }));
+                      }}
+                    >
+                      <CancelIcon sx={{ fontSize: 20 }} />
+                    </div>
+                  </div>
+                ),
+              )}
+              <ImageEditorUploader onUploadSuccess={handleImageUpload} />
+            </div>
+          </div>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button
