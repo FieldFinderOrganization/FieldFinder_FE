@@ -10,6 +10,7 @@ export interface UserDTO {
   bank?: string;
   addresses?: { providerAddressId: string; address: string }[];
   providerId?: string;
+  imageUrl?: string;
 }
 
 export interface AuthState {

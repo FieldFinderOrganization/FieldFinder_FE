@@ -112,7 +112,7 @@ export const ProductProvider = ({
         (c) =>
           c.name !== "test" &&
           !brands.includes(c.name) &&
-          !sports.includes(c.parentName || "")
+          !sports.includes(c.parentName || ""),
       )
       .forEach((c: any) => {
         if (c.parentName === null) {
@@ -204,7 +204,7 @@ export const ProductProvider = ({
   const getNextState = (
     item: string,
     currentActiveSport: string | null,
-    currentSubCategories: string[]
+    currentSubCategories: string[],
   ): AppState => {
     const uiGroupMap: Record<string, string[]> = {
       Shoes: [
@@ -371,7 +371,7 @@ export const ProductProvider = ({
   const buildNewHistory = (
     item: string,
     nextState: AppState,
-    newHistoryItem: HistoryItem
+    newHistoryItem: HistoryItem,
   ) => {
     const childToParentMap = buildChildToParentMap();
     const currentHistoryItem = history[history.length - 1];
@@ -425,7 +425,7 @@ export const ProductProvider = ({
     // 2. Tính toán History/State mới
     const nextState = getNextState(item, activeSport, subCategories);
     const isNewItemLeaf = !categories.some(
-      (c) => c.parentName === nextState.selectedCategory
+      (c) => c.parentName === nextState.selectedCategory,
     );
     const newHistoryItem: HistoryItem = {
       title: nextState.selectedCategory,
@@ -477,7 +477,7 @@ export const ProductProvider = ({
     // 2. Lấy state/history cho category
     const nextState = getNextState(targetCategory, activeSport, subCategories);
     const isNewItemLeaf = !categories.some(
-      (c) => c.parentName === nextState.selectedCategory
+      (c) => c.parentName === nextState.selectedCategory,
     );
     const newHistoryItem: HistoryItem = {
       title: nextState.selectedCategory,
@@ -487,7 +487,7 @@ export const ProductProvider = ({
     const newHistory = buildNewHistory(
       targetCategory,
       nextState,
-      newHistoryItem
+      newHistoryItem,
     );
 
     // 3. Set CẢ HAI state

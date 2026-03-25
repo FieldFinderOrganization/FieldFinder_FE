@@ -40,7 +40,7 @@ const OrderHistoryPage = () => {
         const data: orderResponseDTO[] = await getOrdersByUserId(user.userId);
         const sortedOrders = data.sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         setOrders(sortedOrders);
       } catch (error) {
@@ -60,7 +60,7 @@ const OrderHistoryPage = () => {
 
   const handlePageChange = (
     event: React.ChangeEvent<unknown>,
-    value: number
+    value: number,
   ) => {
     setPage(value);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -168,7 +168,7 @@ const OrderHistoryPage = () => {
                         </span>
                         <span className="font-bold text-gray-900 text-base">
                           {new Intl.NumberFormat("vi-VN").format(
-                            order.totalAmount
+                            order.totalAmount,
                           )}{" "}
                           đ
                         </span>
@@ -234,7 +234,7 @@ const OrderHistoryPage = () => {
                               <span>•</span>
                               <span>
                                 {new Intl.NumberFormat("vi-VN").format(
-                                  item.price / item.quantity
+                                  item.price / item.quantity,
                                 )}{" "}
                                 đ/sp
                               </span>
@@ -244,7 +244,7 @@ const OrderHistoryPage = () => {
 
                         <div className="text-right font-medium text-gray-900">
                           {new Intl.NumberFormat("vi-VN").format(
-                            order.totalAmount
+                            order.totalAmount,
                           )}{" "}
                           đ
                         </div>

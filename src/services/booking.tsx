@@ -30,7 +30,6 @@ export interface BookingResponseDTO {
   }[];
 }
 
-// THÊM INTERFACE NÀY ĐỂ KHỚP VỚI BACKEND
 export interface ProviderBookingResponseDTO {
   bookingId: string;
   bookingDate: string;
@@ -171,7 +170,7 @@ export const updatePaymentStatus = async (
 
 export const getBookingByUserId = async (userId: string) => {
   const config = await getConfig();
-  const response = await axios.get<ProviderBookingResponseDTO[]>(
+  const response = await axios.get<BookingResponseDTO[]>(
     `${baseURL}/user/${userId}`,
     config,
   );

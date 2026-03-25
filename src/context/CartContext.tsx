@@ -58,11 +58,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const dispatch = useDispatch();
-  const pathname = usePathname(); // Lấy đường dẫn hiện tại (VD: "/login")
+  const pathname = usePathname();
+  const hiddenRoutes = ["/login", "/signup"];
 
   const fetchCart = useCallback(async () => {
+    if (hiddenRoutes.includes(pathname)) {
+      return null;
+    }
     // FIX 1: CHẶN GỌI API NẾU ĐANG Ở TRANG LOGIN HOẶC REGISTER
-    if (pathname === "/login" || pathname === "/register") {
+    if (pathname === "/login" || pathname === "/signup") {
       setCartData(null);
       setLoadingCart(false);
       return;

@@ -89,7 +89,7 @@ const reviewHistory: React.FC = () => {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedPitchFilter, setSelectedPitchFilter] = useState<string | null>(
-    null
+    null,
   );
   const [newReview, setNewReview] = useState<{
     pitchId: string;
@@ -147,15 +147,18 @@ const reviewHistory: React.FC = () => {
     for (let i = 0; i < 5; i++) {
       if (i < fullStars) {
         stars.push(
-          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />
+          <FaStar key={`full-${i}`} className="text-green-600 text-[0.7rem]" />,
         );
       } else if (i === fullStars && hasHalfStar) {
         stars.push(
-          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />
+          <FaStarHalfAlt key="half" className="text-green-600 text-[0.7rem]" />,
         );
       } else {
         stars.push(
-          <CiStar key={`empty-${i}`} className="text-[0.8rem] text-green-600" />
+          <CiStar
+            key={`empty-${i}`}
+            className="text-[0.8rem] text-green-600"
+          />,
         );
       }
     }
@@ -189,7 +192,7 @@ const reviewHistory: React.FC = () => {
           const slotData = await getBookingSlotByDate(date);
           const slotInfo = slotData.find(
             (slot: { pitchId: string; bookedSlots: number[] }) =>
-              slot.bookedSlots.includes(booking.bookingDetails[0]?.slot)
+              slot.bookedSlots.includes(booking.bookingDetails[0]?.slot),
           );
           if (slotInfo?.pitchId && !uniquePitches.has(slotInfo.pitchId)) {
             const pitch = await getPitchById(slotInfo.pitchId);
@@ -208,7 +211,7 @@ const reviewHistory: React.FC = () => {
               });
               const pitchReviews = await getReviewByPitch(slotInfo.pitchId);
               const userPitchReviews = pitchReviews.filter(
-                (review) => review.userId === user.userId
+                (review) => review.userId === user.userId,
               );
               userPitchReviews.forEach((review) => {
                 if (!reviewIds.has(review.reviewId)) {
@@ -218,7 +221,7 @@ const reviewHistory: React.FC = () => {
               });
             }
           }
-        })
+        }),
       );
 
       setPitches(Array.from(uniquePitches.values()));
@@ -322,21 +325,21 @@ const reviewHistory: React.FC = () => {
 
   const handlePitchPageChange = (
     event: React.ChangeEvent<unknown>,
-    value: number
+    value: number,
   ) => {
     setPitchPage(value);
   };
 
   const handleReviewPageChange = (
     event: React.ChangeEvent<unknown>,
-    value: number
+    value: number,
   ) => {
     setReviewPage(value);
   };
 
   const paginatedPitches = pitches.slice(
     (pitchPage - 1) * ITEMS_PER_PAGE,
-    pitchPage * ITEMS_PER_PAGE
+    pitchPage * ITEMS_PER_PAGE,
   );
 
   const filteredReviews = selectedPitchFilter
@@ -345,7 +348,7 @@ const reviewHistory: React.FC = () => {
 
   const paginatedReviews = filteredReviews.slice(
     (reviewPage - 1) * ITEMS_PER_PAGE,
-    reviewPage * ITEMS_PER_PAGE
+    reviewPage * ITEMS_PER_PAGE,
   );
 
   useEffect(() => {
@@ -550,7 +553,7 @@ const reviewHistory: React.FC = () => {
                               setSelectedId(
                                 selectedId === review.reviewId
                                   ? null
-                                  : review.reviewId
+                                  : review.reviewId,
                               )
                             }
                             sx={{ position: "absolute", top: 0, right: 0 }}

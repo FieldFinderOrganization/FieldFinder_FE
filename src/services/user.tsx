@@ -10,12 +10,14 @@ interface User {
   phone: string;
   role: string;
   status: string;
+  imageUrl?: string;
 }
 
 interface User1 {
   name: string;
   email: string;
   phone: string;
+  imageUrl?: string;
 }
 
 const getConfig = async () => {

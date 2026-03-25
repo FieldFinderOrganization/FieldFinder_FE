@@ -71,6 +71,9 @@ import { persistor } from "@/redux/store";
 import ChatBox from "@/utils/chatBox";
 import { GiSoccerBall } from "react-icons/gi";
 
+// IMPORT COMPONENT UPLOAD CỦA BẠN (Sửa đường dẫn nếu cần)
+import ImageEditorUploader from "@/utils/imageEditorUploader";
+
 const Profile: React.FC = () => {
   const [activeChatUser, setActiveChatUser] = useState<{
     id: string;
@@ -140,7 +143,6 @@ const Profile: React.FC = () => {
         await updatePaymentStatus(selectedBooking.bookingId, paymentStatus);
         toast.success("Cập nhật trạng thái thành công");
 
-        // Refresh booking list to reflect changes
         if (user?.providerId) {
           resetBooking(user.providerId);
         }
@@ -300,8 +302,7 @@ const Profile: React.FC = () => {
       field: "actions",
       type: "actions",
       headerName: "Thao tác",
-      flex: 1,
-      minWidth: 120,
+      width: 160,
       getActions: (params) => {
         if (!params || !params.row) {
           return [];
@@ -311,6 +312,7 @@ const Profile: React.FC = () => {
           userName?: string;
           userId?: string;
         };
+
         return [
           <Box
             sx={{
@@ -336,7 +338,7 @@ const Profile: React.FC = () => {
             }}
           >
             <GridActionsCellItem
-              icon={<ChatBubbleOutlineIcon />}
+              icon={<ChatBubbleOutlineIcon color="primary" />}
               label="Nhắn tin với khách"
               onClick={() => {
                 if (booking.userId) {
@@ -359,7 +361,6 @@ const Profile: React.FC = () => {
   const resetBooking = async (providerId: string) => {
     try {
       const providerBookings = await getBookingByProviderId(providerId);
-      // Sort bookings by date descending (newest first) as a sensible default
       const sortedBookings = [...providerBookings].sort(
         (a, b) =>
           new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
@@ -389,6 +390,7 @@ const Profile: React.FC = () => {
           name: freshUser.name,
           email: freshUser.email,
           phone: freshUser.phone,
+          imageUrl: freshUser.imageUrl, // Đồng bộ ảnh vào Redux nếu có
         }),
       );
     };
@@ -396,7 +398,6 @@ const Profile: React.FC = () => {
     fetchUser();
   }, [user?.userId]);
 
-  // SỬ DỤNG getAddressByProviderId THAY VÌ LẤY TỪ user?.addresses
   const fetchPitchesForAllAreas = async () => {
     if (user?.providerId) {
       try {
@@ -431,7 +432,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     fetchPitchesForAllAreas();
-  }, [user?.providerId]); // Cập nhật dependency thành user?.providerId
+  }, [user?.providerId]);
 
   const handleSelectArea = (index: number) => {
     setSelectedIndex(index);
@@ -468,12 +469,27 @@ const Profile: React.FC = () => {
     }
   }, [user, dispatch]);
 
+  // STATE ĐƯỢC MỞ RỘNG ĐỂ CHỨA THÊM IMAGE_URL
   const [editedUser, setEditedUser] = useState({
     name: user?.name || "Nguyễn Văn A",
     email: user?.email || "vittapbay@gmail.com",
     phone: user?.phone || "0000000000",
     status: "ACTIVE",
+    imageUrl: user?.imageUrl || "",
   });
+
+  // Tự động cập nhật editedUser khi user Redux tải xong
+  useEffect(() => {
+    if (user) {
+      setEditedUser((prev) => ({
+        ...prev,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "Chưa cập nhật",
+        imageUrl: user.imageUrl || "",
+      }));
+    }
+  }, [user]);
 
   const handleChangeTab = (event: React.SyntheticEvent, newValue: number) => {
     setInitTab(newValue);
@@ -491,20 +507,27 @@ const Profile: React.FC = () => {
       email: user?.email || "vittapbay@gmail.com",
       phone: user?.phone || "0000000000",
       status: "ACTIVE",
+      imageUrl: user?.imageUrl || "",
     });
   };
 
   const handleSave = async () => {
-    await updateUser(editedUser, user?.userId);
-    setIsEditing(false);
-    dispatch(
-      update({
-        name: editedUser.name,
-        email: editedUser.email,
-        phone: editedUser.phone,
-      }),
-    );
-    toast.success("Cập nhật thông tin thành công!");
+    try {
+      await updateUser(editedUser, user?.userId);
+      setIsEditing(false);
+      // Cập nhật cả imageUrl mới vào Redux để hiển thị toàn App
+      dispatch(
+        update({
+          name: editedUser.name,
+          email: editedUser.email,
+          phone: editedUser.phone,
+          imageUrl: editedUser.imageUrl,
+        }),
+      );
+      toast.success("Cập nhật thông tin thành công!");
+    } catch (err) {
+      toast.error("Lỗi cập nhật thông tin!");
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -625,13 +648,19 @@ const Profile: React.FC = () => {
               {/* Thẻ Avatar & Header */}
               <div className="bg-white w-full rounded-[20px] shadow-sm border border-gray-100 p-6 lg:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 transition-all hover:shadow-md">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-                  <div className="relative">
+                  {/* HIỂN THỊ ẢNH AVATAR */}
+                  <div className="relative group">
                     <img
-                      src="./images/lc1.jpg"
-                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+                      src={
+                        editedUser.imageUrl ||
+                        user?.imageUrl ||
+                        "./images/lc1.jpg"
+                      }
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md bg-gray-100"
                     />
                     <div className="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
                   </div>
+
                   <div className="flex flex-col justify-center gap-y-1">
                     <Typography
                       variant="h5"
@@ -656,8 +685,23 @@ const Profile: React.FC = () => {
                         {editedUser.email}
                       </Typography>
                     </div>
+
+                    {/* HIỂN THỊ NÚT UPLOAD KHI Ở CHẾ ĐỘ CHỈNH SỬA */}
+                    {isEditing && (
+                      <div className="mt-3">
+                        <ImageEditorUploader
+                          onUploadSuccess={(url) =>
+                            setEditedUser((prev) => ({
+                              ...prev,
+                              imageUrl: url,
+                            }))
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
+
                 <div className="w-full sm:w-auto flex justify-center sm:justify-end">
                   {!isEditing ? (
                     <Button
@@ -754,6 +798,7 @@ const Profile: React.FC = () => {
                       size="small"
                       fullWidth
                       sx={{ mt: 1 }}
+                      disabled // Email không nên cho sửa dễ dàng
                     />
                   ) : (
                     <Typography
@@ -1000,7 +1045,6 @@ const Profile: React.FC = () => {
                 <Divider sx={{ width: "100%", borderStyle: "dashed" }} />
 
                 <div className="w-full">
-                  {/* Truyền providerId để AddressInfo có thể gọi getAddressByProviderId */}
                   <AddressInfo providerId={user?.providerId} />
                 </div>
               </div>
@@ -1136,7 +1180,7 @@ const Profile: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 2: Thông tin đặt sân (DANH SÁCH KHÁCH HÀNG & CHAT) */}
+          {/* TAB 2: Thông tin đặt sân */}
           {initTab === 2 && user?.role === "PROVIDER" && (
             <div className="flex flex-col gap-6">
               <div className="flex justify-between items-center flex-wrap gap-4">
@@ -1229,7 +1273,7 @@ const Profile: React.FC = () => {
         />
       )}
 
-      {/* Modal Xác Nhận Thanh Toán (Làm đẹp lại) */}
+      {/* Modal Xác Nhận Thanh Toán */}
       <Modal open={open} onClose={handleClose}>
         <Box
           sx={{

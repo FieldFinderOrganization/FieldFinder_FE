@@ -35,8 +35,8 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import ava from "../../public/images/20.png";
 import LineAxisOutlinedIcon from "@mui/icons-material/LineAxisOutlined";
 import FlutterDashOutlinedIcon from "@mui/icons-material/FlutterDashOutlined";
-import MenuIcon from "@mui/icons-material/Menu"; // Icon 3 gạch
-import CloseIcon from "@mui/icons-material/Close"; // Icon đóng
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import { IoCartOutline } from "react-icons/io5";
 import { useCart } from "@/context/CartContext";
 import { useFavourite } from "@/context/FavouriteContext";
@@ -57,7 +57,7 @@ const Header: React.FC = () => {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated } = useSelector(
-    (state: RootState) => state.auth
+    (state: RootState) => state.auth,
   ) as { user: any; isAuthenticated: boolean };
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -239,7 +239,7 @@ const Header: React.FC = () => {
               sx={{
                 fontWeight: "bold",
                 cursor: "pointer",
-                fontSize: { xs: "1.2rem", sm: "1.5rem", md: "2.125rem" }, // Responsive Font Size
+                fontSize: { xs: "1.2rem", sm: "1.5rem", md: "2.125rem" },
               }}
             >
               MTKICKS
@@ -247,7 +247,6 @@ const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* MIDDLE SECTION: Tabs (Chỉ hiện trên Desktop - hidden on mobile) */}
         <Box className="hidden md:flex items-center justify-center flex-1 px-4">
           <Tabs
             value={value}
@@ -331,7 +330,7 @@ const Header: React.FC = () => {
                     Xin chào,
                   </span>
                   <img
-                    src={ava.src}
+                    src={user?.imageUrl || ava.src}
                     alt="Avatar"
                     className="w-8 h-8 rounded-full border border-gray-200"
                   />
@@ -370,9 +369,9 @@ const Header: React.FC = () => {
               >
                 <div className="px-4 py-3 flex items-center gap-3">
                   <img
-                    src={ava.src}
+                    src={user?.imageUrl || ava.src}
                     alt="Avatar"
-                    className="w-10 h-10 rounded-full border"
+                    className="rounded-full overflow-hidden w-10 h-10 cursor-pointer object-cover"
                   />
                   <div>
                     <Typography variant="subtitle2" fontWeight="bold">

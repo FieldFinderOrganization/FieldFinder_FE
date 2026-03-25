@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-sync-scripts */
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -7,6 +8,8 @@ import "../styles/AIAssistantChat.css";
 import { CartProvider } from "@/context/CartContext";
 import GlobalAIChat from "./(components)/GlobalAIChat";
 import { FavouriteProvider } from "@/context/FavouriteContext";
+import Script from "next/script";
+import { ProductProvider } from "@/context/ProductContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,19 +35,25 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ReduxProvider>
-          <CartProvider>
-            <FavouriteProvider>
-              {children}
-              <GlobalAIChat />
-              <ToastContainer
-                position="bottom-right"
-                autoClose={2000}
-                theme="colored"
-              />
-            </FavouriteProvider>
-          </CartProvider>
-        </ReduxProvider>
+        <Script
+          src="https://upload-widget.cloudinary.com/global/all.js"
+          strategy="lazyOnload"
+        />
+        <ProductProvider>
+          <ReduxProvider>
+            <CartProvider>
+              <FavouriteProvider>
+                {children}
+                <GlobalAIChat />
+                <ToastContainer
+                  position="bottom-right"
+                  autoClose={2000}
+                  theme="colored"
+                />
+              </FavouriteProvider>
+            </CartProvider>
+          </ReduxProvider>
+        </ProductProvider>
       </body>
     </html>
   );
