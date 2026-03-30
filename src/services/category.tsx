@@ -55,14 +55,12 @@ const getConfig = async () => {
 };
 
 export const getAllCategory = async () => {
-  const config = await getConfig();
-  const response = await axios.get<categoryRes[]>(base_url, config);
+  const response = await axios.get<categoryRes[]>(base_url);
   return response.data;
 };
 
 export const getCategoryById = async (id: string) => {
-  const config = await getConfig();
-  const response = await axios.get<categoryRes>(`${base_url}/${id}`, config);
+  const response = await axios.get<categoryRes>(`${base_url}/${id}`);
   return response.data;
 };
 

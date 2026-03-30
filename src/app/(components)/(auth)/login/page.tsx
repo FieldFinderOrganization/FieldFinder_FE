@@ -76,7 +76,7 @@ const Login: React.FC = () => {
   }, [email, password, emailError, passwordError]);
 
   const handleShowPassword = (): void => {
-    setShowPassword((prev) => !prev);
+    if (!loading) setShowPassword((prev) => !prev);
   };
 
   const [isOtpOpen, setIsOtpOpen] = useState(false);
@@ -161,7 +161,6 @@ const Login: React.FC = () => {
           setEmail(userEmail);
           setIsOtpOpen(true);
         } else {
-          // ...
           toast.error("Không tìm thấy email từ Google.");
           setLoading(false);
         }
@@ -184,6 +183,7 @@ const Login: React.FC = () => {
 
       localStorage.setItem("token", tempLoginData.token);
 
+      // Đảm bảo loading vẫn bật để khóa toàn bộ UI trong lúc chờ chuyển trang
       setLoading(true);
       toast.success("Đăng nhập thành công!");
 
@@ -199,8 +199,13 @@ const Login: React.FC = () => {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
       transition={{ duration: 0.5 }}
-      className="h-screen flex"
+      className="h-screen flex relative"
     >
+      {/* KHÓA UI TUYỆT ĐỐI BẰNG BACKDROP VÔ HÌNH NẾU ĐANG LOADING CHỜ CHUYỂN TRANG */}
+      {loading && !isOtpOpen && (
+        <div className="absolute inset-0 z-50 cursor-wait"></div>
+      )}
+
       <form
         className={`w-1/2 min-h-screen flex items-center justify-center bg-white p-4 transition-opacity duration-300 ${
           loading ? "pointer-events-none opacity-70" : ""
@@ -223,7 +228,10 @@ const Login: React.FC = () => {
                 name="email"
                 onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="Điền email của bạn"
-                className={`w-full px-5 py-2 border rounded-lg ${emailError ? "border-red-500" : ""}`}
+                disabled={loading}
+                className={`w-full px-5 py-2 border rounded-lg transition-colors ${
+                  emailError ? "border-red-500" : ""
+                } ${loading ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
               />
               {emailError && (
                 <p className="text-red-500 text-sm mt-1">{emailError}</p>
@@ -238,16 +246,27 @@ const Login: React.FC = () => {
                 name="password"
                 onChange={(e) => handlePasswordChange(e.target.value)}
                 placeholder="Điền mật khẩu của bạn"
-                className={`w-full px-5 py-2 border rounded-lg ${passwordError ? "border-red-500" : ""}`}
+                disabled={loading}
+                className={`w-full px-5 py-2 border rounded-lg transition-colors ${
+                  passwordError ? "border-red-500" : ""
+                } ${loading ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""}`}
               />
               {showPassword ? (
                 <LuEyeClosed
-                  className="absolute top-[68%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className={`absolute top-[68%] right-3 transform -translate-y-1/2 text-[1.2rem] ${
+                    loading
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
                   onClick={handleShowPassword}
                 />
               ) : (
                 <FaEye
-                  className="absolute top-[68%] right-3 transform -translate-y-1/2 cursor-pointer text-[1.2rem]"
+                  className={`absolute top-[68%] right-3 transform -translate-y-1/2 text-[1.2rem] ${
+                    loading
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "cursor-pointer"
+                  }`}
                   onClick={handleShowPassword}
                 />
               )}
@@ -258,10 +277,10 @@ const Login: React.FC = () => {
 
             <motion.button
               name="Login"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={loading ? {} : { scale: 1.05 }}
+              whileTap={loading ? {} : { scale: 0.95 }}
               disabled={loading}
-              className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center cursor-pointer hover:bg-red-700 disabled:bg-gray-400"
+              className="w-full bg-red-600 text-white px-5 py-2 rounded-lg font-bold text-center transition-all disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-red-700"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
@@ -277,17 +296,21 @@ const Login: React.FC = () => {
               <p className="text-xl">
                 Bạn chưa có tài khoản?{" "}
                 <motion.span
-                  className="text-purple-600 font-bold cursor-pointer ml-[0.5rem]"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => router.push("/signup")}
+                  className={`text-purple-600 font-bold ml-[0.5rem] transition-opacity ${
+                    loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                  }`}
+                  whileHover={loading ? {} : { scale: 1.1 }}
+                  whileTap={loading ? {} : { scale: 0.95 }}
+                  onClick={() => !loading && router.push("/signup")}
                 >
                   Đăng ký ngay →
                 </motion.span>
               </p>
               <p
-                className="text-red-500 font-bold cursor-pointer mt-1 text-xl"
-                onClick={() => setIsForgotOpen(true)}
+                className={`text-red-500 font-bold mt-1 text-xl transition-opacity ${
+                  loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                }`}
+                onClick={() => !loading && setIsForgotOpen(true)}
               >
                 Quên mật khẩu?
               </p>
@@ -296,9 +319,18 @@ const Login: React.FC = () => {
             <button
               type="button"
               onClick={handleGoogleLogin}
-              className="flex items-center gap-2 border px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-100 w-full justify-center mt-4"
+              disabled={loading}
+              className={`flex items-center gap-2 border px-4 py-2 rounded-lg w-full justify-center mt-4 transition-all ${
+                loading
+                  ? "bg-gray-100 opacity-50 cursor-not-allowed text-gray-500"
+                  : "cursor-pointer hover:bg-gray-100"
+              }`}
             >
-              <img src="/GG.png" alt="Google" className="w-5 h-5" />
+              <img
+                src="/GG.png"
+                alt="Google"
+                className={`w-5 h-5 ${loading ? "grayscale" : ""}`}
+              />
               Continue with Google
             </button>
           </div>
