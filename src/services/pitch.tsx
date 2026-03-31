@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { auth } from "./firebaseAuth";
 
@@ -28,11 +29,17 @@ const getConfig = async () => {
   if (typeof window === "undefined") return {};
 
   try {
-    const currentUser = auth.currentUser;
+    // 1. Chờ Firebase khởi tạo xong (Tránh lỗi auth.currentUser bị null khi vừa F5)
+    const currentUser: any = await new Promise((resolve) => {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
 
     if (currentUser) {
+      // 2. Gọi getIdToken(true) để ép Firebase cấp Token mới tinh nếu token cũ sắp tèo
       const token = await currentUser.getIdToken(true);
-
       return {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -43,6 +50,7 @@ const getConfig = async () => {
     console.error("Lỗi khi lấy token sống từ Firebase:", error);
   }
 
+  // 3. Fallback LocalStorage (Chỉ chạy vào đây nếu Firebase thực sự không có user)
   try {
     const persistedState = localStorage.getItem("persist:root");
     if (persistedState) {

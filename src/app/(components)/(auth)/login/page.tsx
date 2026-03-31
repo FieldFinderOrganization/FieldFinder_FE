@@ -9,7 +9,7 @@ import { FaEye } from "react-icons/fa";
 import { LuEyeClosed } from "react-icons/lu";
 import { useDispatch } from "react-redux";
 import { loginSuccess, UserDTO } from "@/redux/features/authSlice";
-import { login } from "../../../../services/auth";
+import { login, loginSocial } from "../../../../services/auth";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
@@ -146,7 +146,7 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       const { idToken, user } = await googleLogin();
-      const res = await login(idToken);
+      const res = await loginSocial(idToken);
 
       if (res && res.data) {
         const userEmail = res.data.user.email;

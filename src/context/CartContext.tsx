@@ -90,12 +90,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
       setCartData(data);
     } catch (error: any) {
       console.error("Failed to fetch cart:", error);
-      // FIX 2: TỰ ĐỘNG XÓA TOKEN HẾT HẠN KHỎI REDUX KHI GẶP LỖI 401
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.");
-        dispatch(logout()); // Đuổi cổ cái token cũ đi để tránh nó gọi API bậy bạ lần sau
+
+      // FIX LỖI NETWORK ERROR DO XUNG ĐỘT CORS KHI TOKEN HẾT HẠN TỪ BACKEND
+      const isUnauthorized =
+        error.response?.status === 401 || error.response?.status === 403;
+      const isNetworkError = error.message === "Network Error";
+
+      if (isUnauthorized || isNetworkError) {
+        toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+        dispatch(logout()); // Đuổi cổ cái token cũ đi
+        setCartData(null);
       }
-      setCartData(null);
     } finally {
       setLoadingCart(false);
     }
