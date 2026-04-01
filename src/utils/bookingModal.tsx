@@ -147,7 +147,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
 
   const temporaryTotal = useMemo(
     () => bookingDetails.reduce((sum, item) => sum + item.priceDetail, 0),
-    [bookingDetails]
+    [bookingDetails],
   );
 
   const discountAmount = useMemo(() => {
@@ -462,7 +462,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
                           }}
                           onClick={() =>
                             setSelectedDiscounts((prev) =>
-                              prev.filter((d) => d.id !== discount.id)
+                              prev.filter((d) => d.id !== discount.id),
                             )
                           }
                         />

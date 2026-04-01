@@ -10,7 +10,7 @@ import {
 import Header from "@/utils/header";
 import Sidebar from "@/utils/sideBar";
 import { Box, Typography, Button } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,6 +18,8 @@ import dayjs from "dayjs";
 import { persistor } from "@/redux/store";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import { toast } from "react-toastify";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ChatBox from "@/utils/chatBox";
 
 const slotToTime = (slot: number): string => {
   const startHour = slot + 5;
@@ -61,6 +63,11 @@ const mergeContinuousSlots = (slots: number[]): string => {
 };
 
 const BookingHistory: React.FC = () => {
+  const [activeChatUser, setActiveChatUser] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
   const dispatch = useDispatch();
   const router = useRouter();
   const [bookings, setBookings] = useState<ProviderBookingResponseDTO[]>([]);
@@ -195,6 +202,35 @@ const BookingHistory: React.FC = () => {
         </span>
       ),
     },
+    {
+      field: "actions",
+      type: "actions",
+      headerName: "Thao tác",
+      width: 160,
+      getActions: (params) => {
+        if (!params || !params.row) {
+          return [];
+        }
+        return [
+          <GridActionsCellItem
+            key="chat-action"
+            icon={<ChatBubbleOutlineIcon />}
+            label="Nhắn tin với chủ sân"
+            onClick={() => {
+              if (params.row.userId) {
+                setActiveChatUser({
+                  id: params.row.userId,
+                  name: params.row.providerName || "Chủ sân",
+                });
+              } else {
+                toast.warning("Không tìm thấy thông tin chủ sân!");
+              }
+            }}
+            className="text-[#1976d2] hover:text-[#10b981] hover:bg-[#d1fae5]"
+          />,
+        ];
+      },
+    },
   ];
 
   const fetchBookings = async () => {
@@ -207,7 +243,14 @@ const BookingHistory: React.FC = () => {
         (a, b) =>
           new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
       );
-      setBookings(sorted);
+
+      const mappedBookings: ProviderBookingResponseDTO[] = sorted.map((b: any) => ({
+        ...b,
+        pitchName: b.pitchName || b.bookingDetails?.[0]?.name || "Không rõ",
+        slots: b.slots || b.bookingDetails?.map((detail: any) => detail.slot) || [],
+      }));
+
+      setBookings(mappedBookings);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
       toast.error("Không thể tải lịch sử đặt sân");
@@ -315,6 +358,15 @@ const BookingHistory: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {activeChatUser && (
+        <ChatBox
+          currentUserId={user?.userId}
+          receiverId={activeChatUser.id}
+          receiverName={activeChatUser.name}
+          onClose={() => setActiveChatUser(null)}
+        />
+      )}
     </div>
   );
 };

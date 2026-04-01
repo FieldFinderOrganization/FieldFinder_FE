@@ -176,11 +176,10 @@ const Signup: React.FC = () => {
                     if (errors.name) setErrors({ ...errors, name: undefined }); // Xóa lỗi khi user nhập lại
                   }}
                   placeholder="Điền tên của bạn"
-                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
-                    errors.name
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${errors.name
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
-                  }`}
+                    }`}
                 />
                 {errors.name && (
                   <p className="text-red-500 text-xs mt-1">{errors.name}</p>
@@ -198,11 +197,10 @@ const Signup: React.FC = () => {
                       setErrors({ ...errors, email: undefined });
                   }}
                   placeholder="Điền email của bạn"
-                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
-                    errors.email
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${errors.email
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
-                  }`}
+                    }`}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -224,11 +222,10 @@ const Signup: React.FC = () => {
                       setErrors({ ...errors, phone: undefined });
                   }}
                   placeholder="Điền số điện thoại"
-                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
-                    errors.phone
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${errors.phone
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
-                  }`}
+                    }`}
                 />
                 {errors.phone && (
                   <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
@@ -259,11 +256,10 @@ const Signup: React.FC = () => {
                       setErrors({ ...errors, password: undefined });
                   }}
                   placeholder="Điền mật khẩu"
-                  className={`w-full px-5 py-2 border rounded-lg outline-none ${
-                    errors.password
+                  className={`w-full px-5 py-2 border rounded-lg outline-none ${errors.password
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
-                  }`}
+                    }`}
                 />
                 {errors.password && (
                   <p className="text-red-500 text-xs mt-1">{errors.password}</p>

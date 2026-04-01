@@ -54,8 +54,8 @@ const FieldLists: React.FC = () => {
 
         const initialPitches = pitchIdsParam
           ? pitchesData.filter((pitch) =>
-              availablePitchIds.includes(pitch.pitchId),
-            )
+            availablePitchIds.includes(pitch.pitchId),
+          )
           : pitchesData;
 
         setBasePitches(initialPitches);
@@ -111,8 +111,8 @@ const FieldLists: React.FC = () => {
   useEffect(() => {
     const filtered = searchTerm
       ? basePitches.filter((pitch) =>
-          pitch.name.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
+        pitch.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
       : basePitches;
 
     const addressesForPitches = getAddressesForPitches(addresses, filtered);
@@ -129,8 +129,8 @@ const FieldLists: React.FC = () => {
 
     const pitchesForSelectedAddress = selectedAddressId
       ? filtered.filter(
-          (pitch) => pitch.providerAddressId === selectedAddressId,
-        )
+        (pitch) => pitch.providerAddressId === selectedAddressId,
+      )
       : [];
 
     setPitches(pitchesForSelectedAddress);
@@ -152,7 +152,7 @@ const FieldLists: React.FC = () => {
       )?.address || "Không xác định";
 
     router.push(
-      `fields/fieldDetail?${new URLSearchParams({
+      `/fields/fieldDetail?${new URLSearchParams({
         id: pitch.pitchId,
         name: pitch.name,
         type: pitch.type,
@@ -204,11 +204,10 @@ const FieldLists: React.FC = () => {
               {filteredAddresses.map((address) => (
                 <div
                   key={address.providerAddressId}
-                  className={`w-full h-[3rem] rounded-[10px] border border-gray-600 px-[2rem] py-[1rem] flex items-center justify-between cursor-pointer ${
-                    selectedAddressId === address.providerAddressId
+                  className={`w-full h-[3rem] rounded-[10px] border border-gray-600 px-[2rem] py-[1rem] flex items-center justify-between cursor-pointer ${selectedAddressId === address.providerAddressId
                       ? "bg-[#188862]"
                       : "bg-white"
-                  } hover:bg-blue-500 transition duration-200 ease-in-out area`}
+                    } hover:bg-blue-500 transition duration-200 ease-in-out area`}
                   onClick={() => handleAreaClick(address.providerAddressId)}
                 >
                   <Typography
