@@ -38,6 +38,7 @@ export interface ProviderBookingResponseDTO {
   paymentStatus: string;
   totalPrice: number;
   providerId: string;
+  providerUserId?: string;
   paymentMethod?: string;
   userId?: string;
   userName?: string;

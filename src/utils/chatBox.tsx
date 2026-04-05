@@ -121,7 +121,13 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         if (data && data.content) {
           const reversedMessages = [...data.content].reverse();
           setMessages(reversedMessages);
-          setHasMore(!data.last);
+
+          // Hỗ trợ cả 2 chuẩn: PageImpl cũ (data.last) và PagedModel VIA_DTO mới (data.page)
+          const isLastPage = data.page
+            ? data.page.number >= data.page.totalPages - 1
+            : data.last;
+
+          setHasMore(!isLastPage);
           setPage(0);
           setTimeout(scrollToBottom, 100);
         }
@@ -149,7 +155,13 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   //         const reversedOlderMessages = [...data.content].reverse();
 
   //         setMessages((prev) => [...reversedOlderMessages, ...prev]);
-  //         setHasMore(!data.last);
+
+  //         // Hỗ trợ cả PageImpl cũ và PagedModel mới
+  //         const isLastPage = data.page
+  //           ? data.page.number >= data.page.totalPages - 1
+  //           : data.last;
+
+  //         setHasMore(!isLastPage);
   //         setPage(nextPage);
 
   //         setTimeout(() => {
@@ -182,7 +194,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           heartbeatOutgoing: 4000,
           onConnect: () => {
             setIsConnected(true);
-            client.subscribe(`/topic/messages/${currentUserId}`, (msg: any) => {
+
+            // Đã thay đổi dấu "/" thành "." để Broker không hiểu nhầm đường dẫn
+            client.subscribe(`/topic/messages.${currentUserId}`, (msg: any) => {
               if (msg.body) {
                 const newMsg: ChatMessage = JSON.parse(msg.body);
 
@@ -222,7 +236,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({
             });
           },
           onStompError: (frame: any) => {
+            // Hiển thị chi tiết lỗi "Invalid destination" trả về từ Backend
             console.error("Lỗi STOMP: " + frame.headers["message"]);
+            console.error("Chi tiết Backend trả về: ", frame.body);
           },
         });
 
@@ -357,17 +373,21 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       type: messageType,
     };
 
-    stompClient.publish({
-      destination: "/app/chat",
-      body: JSON.stringify(chatMessage),
-    });
+    try {
+      stompClient.publish({
+        destination: "/app/chat", // Đảm bảo Spring Boot có @MessageMapping("/chat")
+        body: JSON.stringify(chatMessage),
+      });
 
-    setMessages((prev) => [
-      ...prev,
-      { ...chatMessage, timestamp: new Date().toISOString() },
-    ]);
-    setInputMessage("");
-    setTimeout(scrollToBottom, 50);
+      setMessages((prev) => [
+        ...prev,
+        { ...chatMessage, timestamp: new Date().toISOString() },
+      ]);
+      setInputMessage("");
+      setTimeout(scrollToBottom, 50);
+    } catch (error) {
+      console.error("Lỗi khi gửi STOMP message: ", error);
+    }
   };
 
   const handleTyping = (
@@ -382,10 +402,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         content: "",
         type: "TYPING",
       };
-      stompClient.publish({
-        destination: "/app/chat",
-        body: JSON.stringify(typingEvent),
-      });
+
+      try {
+        stompClient.publish({
+          destination: "/app/chat", // Đảm bảo Spring Boot có @MessageMapping("/chat")
+          body: JSON.stringify(typingEvent),
+        });
+      } catch (err) {
+        console.log("Lỗi gửi trạng thái typing:", err);
+      }
     }
   };
 

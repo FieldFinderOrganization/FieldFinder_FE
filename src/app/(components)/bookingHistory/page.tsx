@@ -10,7 +10,12 @@ import {
 import Header from "@/utils/header";
 import Sidebar from "@/utils/sideBar";
 import { Box, Typography, Button } from "@mui/material";
-import { DataGrid, GridActionsCellItem, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import {
+  DataGrid,
+  GridActionsCellItem,
+  GridColDef,
+  GridRenderCellParams,
+} from "@mui/x-data-grid";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -217,9 +222,13 @@ const BookingHistory: React.FC = () => {
             icon={<ChatBubbleOutlineIcon />}
             label="Nhắn tin với chủ sân"
             onClick={() => {
-              if (params.row.userId) {
+              // FIX TẠI ĐÂY: Lấy ID của chủ sân (providerUserId hoặc providerId) thay vì userId của khách.
+              const targetProviderId =
+                params.row.providerUserId || params.row.providerId;
+
+              if (targetProviderId) {
                 setActiveChatUser({
-                  id: params.row.userId,
+                  id: targetProviderId,
                   name: params.row.providerName || "Chủ sân",
                 });
               } else {
@@ -244,11 +253,16 @@ const BookingHistory: React.FC = () => {
           new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime(),
       );
 
-      const mappedBookings: ProviderBookingResponseDTO[] = sorted.map((b: any) => ({
-        ...b,
-        pitchName: b.pitchName || b.bookingDetails?.[0]?.name || "Không rõ",
-        slots: b.slots || b.bookingDetails?.map((detail: any) => detail.slot) || [],
-      }));
+      const mappedBookings: ProviderBookingResponseDTO[] = sorted.map(
+        (b: any) => ({
+          ...b,
+          pitchName: b.pitchName || b.bookingDetails?.[0]?.name || "Không rõ",
+          slots:
+            b.slots ||
+            b.bookingDetails?.map((detail: any) => detail.slot) ||
+            [],
+        }),
+      );
 
       setBookings(mappedBookings);
     } catch (error) {

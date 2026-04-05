@@ -1143,11 +1143,11 @@ const Profile: React.FC = () => {
                 {/* Cột hiển thị Sân bóng */}
                 <div className="w-full md:flex-1 flex flex-col min-h-[500px]">
                   {selectedAreaId ? (
-                      <PitchInfo
-                        providerAddressId={selectedAreaId}
-                        onPitchUpdate={fetchPitchesForAllAreas}
-                      />
-                    ) : (
+                    <PitchInfo
+                      providerAddressId={selectedAreaId}
+                      onPitchUpdate={fetchPitchesForAllAreas}
+                    />
+                  ) : (
                     <div className="flex flex-col items-center justify-center h-full w-full bg-[#f8fafc] rounded-2xl border-2 border-dashed border-gray-200 p-10 mt-4 md:mt-0">
                       <div className="bg-white p-4 rounded-full shadow-sm mb-4">
                         <GiSoccerBall size={40} color="#cbd5e1" />
