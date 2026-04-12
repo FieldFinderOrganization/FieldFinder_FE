@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { logout, setShowSidebar } from "@/redux/features/authSlice";
@@ -275,7 +274,7 @@ const BookingHistory: React.FC = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [user?.userId]);
+  });
 
   return (
     <div className="min-h-screen bg-[#F4F7FE] flex flex-col pt-[80px] pb-[100px] font-sans">
